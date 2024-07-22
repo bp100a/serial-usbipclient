@@ -139,13 +139,6 @@ class BaseDescriptor(BaseProtocolPacket):
         super().__init__()  # keep type checker happy
         self.length = length
         self.descriptor_type = descriptor_type
-        if not BaseDescriptor.fmt:
-            BaseDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [BaseDescriptor.format[item][0] for item in BaseDescriptor.format]
-            )
-            BaseDescriptor.args = [
-                BaseDescriptor.format[item][1] for item in BaseDescriptor.format
-            ]
 
 
 class DeviceDescriptor(BaseProtocolPacket):
@@ -203,13 +196,6 @@ class DeviceDescriptor(BaseProtocolPacket):
         self.product: int = product
         self.serial_number: int = serial_number
         self.num_configurations: int = num_configurations
-        if not DeviceDescriptor.fmt:
-            DeviceDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [DeviceDescriptor.format[item][0] for item in DeviceDescriptor.format]
-            )
-            DeviceDescriptor.args = [
-                DeviceDescriptor.format[item][1] for item in DeviceDescriptor.format
-            ]
 
 
 class ConfigurationDescriptor(BaseProtocolPacket):
@@ -250,18 +236,6 @@ class ConfigurationDescriptor(BaseProtocolPacket):
         self.attributes: int = attributes
         self.max_power: int = max_power
         self.interfaces: list[InterfaceDescriptor] = []
-
-        if not ConfigurationDescriptor.fmt:
-            ConfigurationDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [
-                    ConfigurationDescriptor.format[item][0]
-                    for item in ConfigurationDescriptor.format
-                ]
-            )
-            ConfigurationDescriptor.args = [
-                ConfigurationDescriptor.format[item][1]
-                for item in ConfigurationDescriptor.format
-            ]
 
 
 class InterfaceDescriptor(BaseProtocolPacket):
@@ -345,18 +319,6 @@ class InterfaceAssociation(BaseProtocolPacket):
         self.function_protocol = function_protocol
         self.function = function
 
-        if not InterfaceAssociation.fmt:
-            InterfaceAssociation.fmt = BaseDescriptor.endianness + "".join(
-                [
-                    InterfaceAssociation.format[item][0]
-                    for item in InterfaceAssociation.format
-                ]
-            )
-            InterfaceAssociation.args = [
-                InterfaceAssociation.format[item][1]
-                for item in InterfaceAssociation.format
-            ]
-
 
 class FunctionalDescriptor(BaseProtocolPacket):
     """interface descriptor base"""
@@ -380,17 +342,6 @@ class FunctionalDescriptor(BaseProtocolPacket):
         self.function_length: int = function_length
         self.descriptor_type: int = descriptor_type
         self.descriptor_subtype: int = descriptor_subtype
-        if not FunctionalDescriptor.fmt:
-            FunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [
-                    FunctionalDescriptor.format[item][0]
-                    for item in FunctionalDescriptor.format
-                ]
-            )
-            FunctionalDescriptor.args = [
-                FunctionalDescriptor.format[item][1]
-                for item in FunctionalDescriptor.format
-            ]
 
 
 class UnionFunctionalDescriptor(FunctionalDescriptor):
@@ -421,17 +372,6 @@ class UnionFunctionalDescriptor(FunctionalDescriptor):
         self.descriptor_subtype: int = descriptor_subtype
         self.controller_interface: int = controller_interface
         self.subordinate_interface: int = subordinate_interface
-        if not UnionFunctionalDescriptor.fmt:
-            UnionFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [
-                    UnionFunctionalDescriptor.format[item][0]
-                    for item in UnionFunctionalDescriptor.format
-                ]
-            )
-            UnionFunctionalDescriptor.args = [
-                UnionFunctionalDescriptor.format[item][1]
-                for item in UnionFunctionalDescriptor.format
-            ]
 
 
 class ACMFunctionalDescriptor(FunctionalDescriptor):
@@ -459,17 +399,6 @@ class ACMFunctionalDescriptor(FunctionalDescriptor):
         self.descriptor_type: int = descriptor_type
         self.descriptor_subtype: int = descriptor_subtype
         self.capabilities: int = capabilities
-        if not ACMFunctionalDescriptor.fmt:
-            ACMFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [
-                    ACMFunctionalDescriptor.format[item][0]
-                    for item in ACMFunctionalDescriptor.format
-                ]
-            )
-            ACMFunctionalDescriptor.args = [
-                ACMFunctionalDescriptor.format[item][1]
-                for item in ACMFunctionalDescriptor.format
-            ]
 
 
 class HeaderFunctionalDescriptor(FunctionalDescriptor):
@@ -497,17 +426,6 @@ class HeaderFunctionalDescriptor(FunctionalDescriptor):
         self.descriptor_type: int = descriptor_type
         self.descriptor_subtype: int = descriptor_subtype
         self.cdc: int = cdc
-        if not HeaderFunctionalDescriptor.fmt:
-            HeaderFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [
-                    HeaderFunctionalDescriptor.format[item][0]
-                    for item in HeaderFunctionalDescriptor.format
-                ]
-            )
-            HeaderFunctionalDescriptor.args = [
-                HeaderFunctionalDescriptor.format[item][1]
-                for item in HeaderFunctionalDescriptor.format
-            ]
 
 
 class CallManagementFunctionalDescriptor(FunctionalDescriptor):
@@ -538,20 +456,6 @@ class CallManagementFunctionalDescriptor(FunctionalDescriptor):
         self.descriptor_subtype: int = descriptor_subtype
         self.capabilities: int = capabilities
         self.data_interface: int = data_interface
-        if not CallManagementFunctionalDescriptor.fmt:
-            CallManagementFunctionalDescriptor.fmt = (
-                BaseDescriptor.endianness
-                + "".join(
-                    [
-                        CallManagementFunctionalDescriptor.format[item][0]
-                        for item in CallManagementFunctionalDescriptor.format
-                    ]
-                )
-            )
-            CallManagementFunctionalDescriptor.args = [
-                CallManagementFunctionalDescriptor.format[item][1]
-                for item in CallManagementFunctionalDescriptor.format
-            ]
 
 
 class EndPointDescriptor(BaseProtocolPacket):
@@ -586,17 +490,6 @@ class EndPointDescriptor(BaseProtocolPacket):
         self.wMaxPacketSize: int = max_packet_size
         self.bInterval: int = interval
 
-        if not EndPointDescriptor.fmt:
-            EndPointDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [
-                    EndPointDescriptor.format[item][0]
-                    for item in EndPointDescriptor.format
-                ]
-            )
-            EndPointDescriptor.args = [
-                EndPointDescriptor.format[item][1] for item in EndPointDescriptor.format
-            ]
-
     def transfer_type(self) -> EndpointAttributesTransferType:
         """determine the transfer type from the bitfield"""
         return EndpointAttributesTransferType(self.bmAttributes & 0x3)
@@ -629,15 +522,6 @@ class StringDescriptor(BaseDescriptor):
         self.length: int = length
         self.descriptor_type: int = descriptor_type
         self.language: int = language
-
-        if not EndPointDescriptor.fmt:
-            StringDescriptor.fmt = BaseDescriptor.endianness + "".join(
-                [StringDescriptor.format[item][0] for item in StringDescriptor.format]
-            )
-            StringDescriptor.args = [
-                StringDescriptor.format[item][1] for item in StringDescriptor.format
-            ]
-
 
 class GenericDescriptor:
     """handle a generic descriptor and return correct type"""

@@ -61,16 +61,16 @@ class ErrorCodes:  # pylint: disable=line-too-long
         errno.ENOENT: "specified interface or endpoint does not exist or is not enabled",
         errno.ENXIO: "host controller driver does not support queuing of this type of urb. (treat as a host controller bug.)",
         errno.EINVAL: "a. Invalid transfer type specified (or not supported)\n"
-        "b. Invalid or unsupported periodic transfer interval\n"
-        "c. ISO: attempted to change transfer interval\n"
-        "d. ISO: number_of_packets is < 0\n"
-        "e. various other cases",
+                      "b. Invalid or unsupported periodic transfer interval\n"
+                      "c. ISO: attempted to change transfer interval\n"
+                      "d. ISO: number_of_packets is < 0\n"
+                      "e. various other cases",
         errno.EXDEV: "ISO: URB_ISO_ASAP wasn’t specified and all the frames the URB would be scheduled in have already expired.",
         errno.EFBIG: "Host controller driver can’t schedule that many ISO frames.",
         errno.EPIPE: "The pipe type specified in the URB doesn't match the endpoint’s actual type.",
         errno.EMSGSIZE: "a. endpoint maxpacket size is zero; it is not usable in the current interface altsetting.\n"
-        "b. ISO packet is larger than the endpoint maxpacket.\n"
-        "c. requested data transfer length is invalid: negative or too large for the host controller.",
+                        "b. ISO packet is larger than the endpoint maxpacket.\n"
+                        "c. requested data transfer length is invalid: negative or too large for the host controller.",
         errno.ENOSPC: "This request would over commit the usb bandwidth reserved for periodic transfers (interrupt, isochronous).",
         errno.ESHUTDOWN: "The device or host controller has been disabled due to some problem that could not be worked around.",
         errno.EPERM: "Submission failed because urb->reject was set.",
@@ -104,6 +104,7 @@ class BaseProtocolPacket:  # pylint: disable = too-few-public-methods
 
     def struct_formatting(self) -> None:
         """create formatting strings"""
+        # formatting strings are **class** variables so should only be initialized once
         if not self.fmt:
             self.fmt = self.endianness + "".join(
                 [value[0] for _, value in self.format.items()]
@@ -112,10 +113,9 @@ class BaseProtocolPacket:  # pylint: disable = too-few-public-methods
 
     def packet(self) -> bytes:
         """Turn this structure into binary representation"""
-        packet_bytes = struct.pack(
-            self.fmt, *[getattr(self, item) for item in self.args]
-        )
-        return packet_bytes
+        return struct.pack(self.fmt,
+                           *[getattr(self, item)
+                             for item in self.args])
 
     @classmethod
     def new(cls, data: bytes):
