@@ -19,18 +19,20 @@ from usbip_defs import BaseProtocolPacket
 
 class DescriptorType(IntEnum):
     """types of descriptors"""
+
     DEVICE_DESCRIPTOR = 0x1
     CONFIGURATION_DESCRIPTOR = 0x2
     STRING_DESCRIPTOR = 0x3
     INTERFACE_DESCRIPTOR = 0x4
     ENDPOINT_DESCRIPTOR = 0x5
-    INTERFACE_ASSOCIATION = 0xb  # Gener8 electronics reports this
+    INTERFACE_ASSOCIATION = 0xB  # Gener8 electronics reports this
     CS_INTERFACE = 0x24
 
 
 class CDCDescriptorSubType(IntEnum):
     """subtypes of descriptors"""
-    EthernetNetworkingFunctionalDescriptor = 0xf
+
+    EthernetNetworkingFunctionalDescriptor = 0xF
     Header = 0x0
     CallManagement = 0x1
     AbstractControlManagement = 0x2
@@ -39,6 +41,7 @@ class CDCDescriptorSubType(IntEnum):
 
 class DeviceInterfaceClass(IntEnum):
     """device and/or interface class"""
+
     PER_INTERFACE = 0  # for DeviceClass
     AUDIO = 1
     COMM = 2  # communications & cdc control
@@ -48,22 +51,23 @@ class DeviceInterfaceClass(IntEnum):
     PRINTER = 7
     MASS_STORAGE = 8
     HUB = 9
-    CDC_DATA = 0x0a
-    CSCID = 0x0b  # chip+ smart card
-    CONTENT_SEC = 0x0d  # content security
-    VIDEO = 0x0e
-    WIRELESS_CONTROLLER = 0xe0
-    PERSONAL_HEALTHCARE = 0x0f
+    CDC_DATA = 0x0A
+    CSCID = 0x0B  # chip+ smart card
+    CONTENT_SEC = 0x0D  # content security
+    VIDEO = 0x0E
+    WIRELESS_CONTROLLER = 0xE0
+    PERSONAL_HEALTHCARE = 0x0F
     AUDIO_VIDEO = 0x10
     BILLBOARD = 0x11
     USB_TYPE_C_BRIDGE = 0x12
-    MISC = 0xef
-    APP_SPEC = 0xfe
-    VENDOR_SPEC = 0xff
+    MISC = 0xEF
+    APP_SPEC = 0xFE
+    VENDOR_SPEC = 0xFF
 
 
 class FunctionClass(IntEnum):
     """define our function classes"""
+
     DEVICE = 0  # class information in the Interface Descriptor
     AUDIO = 1
     CDC = 2  # Communications & CDC Control
@@ -72,26 +76,29 @@ class FunctionClass(IntEnum):
     STILL_IMAGE = 6
     PRINTER = 7
     MASS_STORAGE = 8
-    CDC_DATA = 0x0a
-    CSCID = 0x0b
-    CONTENT_SEC = 0x0d
-    VIDEO = 0x0e
-    WIRELESS_CONTROLLER = 0xe0
+    CDC_DATA = 0x0A
+    CSCID = 0x0B
+    CONTENT_SEC = 0x0D
+    VIDEO = 0x0E
+    WIRELESS_CONTROLLER = 0xE0
 
 
 class MassStorageFunctionSubClass(IntEnum):
     """define our function subclasses"""
+
     UFI = 4  # usb floppies
     SCSI = 6
 
 
 class MassStorageProtocol(IntEnum):
     """protocols for Mass Storage devices"""
+
     CBI = 0x1
 
 
 class EndpointAttributesTransferType(IntEnum):
     """bits [0..1] of bmAttributes"""
+
     CONTROL = 0x0
     ISOCHRONOUS = 0x1
     BULK = 0x2
@@ -100,6 +107,7 @@ class EndpointAttributesTransferType(IntEnum):
 
 class EndpointAttributesSynchronizationType(IntEnum):
     """bits[3..2] of bmAttributes"""
+
     NO_SYNCHRONIZATION = 0x0
     ASYNCHRONOUS = 0x1
     ADAPTIVE = 0x2
@@ -108,6 +116,7 @@ class EndpointAttributesSynchronizationType(IntEnum):
 
 class EndpointAttributesUsageType(IntEnum):
     """bits[5..4] of bmAttributes"""
+
     DATA_ENDPOINT = 0x0
     FEEDBACK_ENDPOINT = 0x1
     EXPLICIT_FEEDBACK_DATA_ENDPOINT = 0x2
@@ -116,12 +125,14 @@ class EndpointAttributesUsageType(IntEnum):
 
 class BaseDescriptor(BaseProtocolPacket):
     """all descriptors share these properties"""
-    format: dict = {0: ('b', 'bLength'),
-                    1: ('b', 'bDescriptorType'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bLength"),
+        1: ("b", "bDescriptorType"),
+    }
+    fmt: str = ""
     args: list[str] = []
-    endianness: str = '<'  # data is little-endian, and not aligned!
+    endianness: str = "<"  # data is little-endian, and not aligned!
 
     def __init__(self, length: int = 0, descriptor_type: int = 0):
         """initialize descriptor common elements"""
@@ -129,33 +140,53 @@ class BaseDescriptor(BaseProtocolPacket):
         self.length = length
         self.descriptor_type = descriptor_type
         if not BaseDescriptor.fmt:
-            BaseDescriptor.fmt = BaseDescriptor.endianness + "".join([BaseDescriptor.format[item][0] for item in BaseDescriptor.format])
-            BaseDescriptor.args = [BaseDescriptor.format[item][1] for item in BaseDescriptor.format]
+            BaseDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [BaseDescriptor.format[item][0] for item in BaseDescriptor.format]
+            )
+            BaseDescriptor.args = [
+                BaseDescriptor.format[item][1] for item in BaseDescriptor.format
+            ]
 
 
 class DeviceDescriptor(BaseProtocolPacket):
     """URB device descriptor"""
-    format: dict = {0: ('b', 'bLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('H', 'bcdUSB'),
-                    4: ('b', 'bDeviceClass'),
-                    5: ('b', 'bDeviceSubClass'),
-                    6: ('b', 'bDevice Protocol'),
-                    7: ('b', 'bMaxPacketSize'),
-                    8: ('H', 'idVendor'),
-                    10: ('H', 'idProduct'),
-                    12: ('H', 'bcdDevice'),
-                    14: ('b', 'iManufacturer'),
-                    15: ('b', 'iProduct'),
-                    16: ('b', 'iSerialNumber'),
-                    17: ('b', 'bNumConfigurations')
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("H", "bcdUSB"),
+        4: ("b", "bDeviceClass"),
+        5: ("b", "bDeviceSubClass"),
+        6: ("b", "bDevice Protocol"),
+        7: ("b", "bMaxPacketSize"),
+        8: ("H", "idVendor"),
+        10: ("H", "idProduct"),
+        12: ("H", "bcdDevice"),
+        14: ("b", "iManufacturer"),
+        15: ("b", "iProduct"),
+        16: ("b", "iSerialNumber"),
+        17: ("b", "bNumConfigurations"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, length: int = 0, descriptor_type: int = 0, usb: int = 0, device_class: int = 0, device_subclass: int =0,
-                 device_protocol: int = 0, max_packet_size: int = 0, vid: int = 0, pid: int = 0, device: int = 0,
-                 manufacturer: int = 0, product: int = 0, serial_number: int = 0, num_configurations: int = 0):
+    def __init__(
+        self,
+        length: int = 0,
+        descriptor_type: int = 0,
+        usb: int = 0,
+        device_class: int = 0,
+        device_subclass: int = 0,
+        device_protocol: int = 0,
+        max_packet_size: int = 0,
+        vid: int = 0,
+        pid: int = 0,
+        device: int = 0,
+        manufacturer: int = 0,
+        product: int = 0,
+        serial_number: int = 0,
+        num_configurations: int = 0,
+    ):
         """initialize the device descriptor packet"""
         super().__init__()  # keep type checker happy
         self.length: int = length
@@ -173,26 +204,41 @@ class DeviceDescriptor(BaseProtocolPacket):
         self.serial_number: int = serial_number
         self.num_configurations: int = num_configurations
         if not DeviceDescriptor.fmt:
-            DeviceDescriptor.fmt = BaseDescriptor.endianness + "".join([DeviceDescriptor.format[item][0] for item in DeviceDescriptor.format])
-            DeviceDescriptor.args = [DeviceDescriptor.format[item][1] for item in DeviceDescriptor.format]
+            DeviceDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [DeviceDescriptor.format[item][0] for item in DeviceDescriptor.format]
+            )
+            DeviceDescriptor.args = [
+                DeviceDescriptor.format[item][1] for item in DeviceDescriptor.format
+            ]
 
 
 class ConfigurationDescriptor(BaseProtocolPacket):
     """URB configuration descriptor"""
-    format: dict = {0: ('b', 'bLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('H', 'wTotalLength'),
-                    4: ('b', 'bNumInterfaces'),
-                    5: ('b', 'bConfigurationValue'),
-                    6: ('b', 'iConfiguration'),
-                    7: ('b', 'bmAttributes'),
-                    8: ('b', 'bMaxPower'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("H", "wTotalLength"),
+        4: ("b", "bNumInterfaces"),
+        5: ("b", "bConfigurationValue"),
+        6: ("b", "iConfiguration"),
+        7: ("b", "bmAttributes"),
+        8: ("b", "bMaxPower"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, length: int = 0, descriptor_type: int = 0, total_length: int = 0, num_interfaces: int = 0,
-                 configuration_value: int = 0, configuration: int = 0, attributes: int = 0, max_power: int = 0):
+    def __init__(
+        self,
+        length: int = 0,
+        descriptor_type: int = 0,
+        total_length: int = 0,
+        num_interfaces: int = 0,
+        configuration_value: int = 0,
+        configuration: int = 0,
+        attributes: int = 0,
+        max_power: int = 0,
+    ):
         """initialize the configuration descriptor packet"""
         super().__init__()
         self.length: int = length
@@ -206,29 +252,48 @@ class ConfigurationDescriptor(BaseProtocolPacket):
         self.interfaces: list[InterfaceDescriptor] = []
 
         if not ConfigurationDescriptor.fmt:
-            ConfigurationDescriptor.fmt = BaseDescriptor.endianness + "".join([ConfigurationDescriptor.format[item][0] for item in ConfigurationDescriptor.format])
-            ConfigurationDescriptor.args = [ConfigurationDescriptor.format[item][1] for item in ConfigurationDescriptor.format]
+            ConfigurationDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [
+                    ConfigurationDescriptor.format[item][0]
+                    for item in ConfigurationDescriptor.format
+                ]
+            )
+            ConfigurationDescriptor.args = [
+                ConfigurationDescriptor.format[item][1]
+                for item in ConfigurationDescriptor.format
+            ]
 
 
 class InterfaceDescriptor(BaseProtocolPacket):
     """interface descriptor"""
-    format: dict = {0: ('b', 'bLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('b', 'bInterfaceNumber'),
-                    3: ('b', 'bAlternateSetting'),
-                    4: ('b', 'bNumEndpoints'),
-                    5: ('b', 'bInterfaceClass'),
-                    6: ('b', 'bInterfaceSubClass'),
-                    7: ('b', 'bInterfaceProtocol'),
-                    8: ('b', 'iInterface')
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("b", "bInterfaceNumber"),
+        3: ("b", "bAlternateSetting"),
+        4: ("b", "bNumEndpoints"),
+        5: ("b", "bInterfaceClass"),
+        6: ("b", "bInterfaceSubClass"),
+        7: ("b", "bInterfaceProtocol"),
+        8: ("b", "iInterface"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, length: int = 0, descriptor_type: int = 0, interface_number: int = 0, alternate_setting: int = 0,
-                 num_endpoints: int = 0, interface_class: int = 0,
-                 interface_subclass: int = 0, interface_protocol: int = 0, i_interface: int = 0):
-        """initialize interface descriptor """
+    def __init__(
+        self,
+        length: int = 0,
+        descriptor_type: int = 0,
+        interface_number: int = 0,
+        alternate_setting: int = 0,
+        num_endpoints: int = 0,
+        interface_class: int = 0,
+        interface_subclass: int = 0,
+        interface_protocol: int = 0,
+        i_interface: int = 0,
+    ):
+        """initialize interface descriptor"""
         super().__init__()  # keep linter happy
         self.length = length
         self.descriptor_type = descriptor_type
@@ -241,28 +306,35 @@ class InterfaceDescriptor(BaseProtocolPacket):
         self.i_interface = i_interface
         self.descriptors: list[EndPointDescriptor | FunctionalDescriptor] = []
 
-        if not InterfaceDescriptor.fmt:
-            InterfaceDescriptor.fmt = BaseDescriptor.endianness + "".join([InterfaceDescriptor.format[item][0] for item in InterfaceDescriptor.format])
-            InterfaceDescriptor.args = [InterfaceDescriptor.format[item][1] for item in InterfaceDescriptor.format]
-
 
 class InterfaceAssociation(BaseProtocolPacket):
     """interface descriptor"""
-    format: dict = {0: ('b', 'bLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('b', 'bFirstInterface'),
-                    3: ('b', 'bInterfaceCount'),
-                    4: ('b', 'bFunctionClass'),
-                    5: ('b', 'bFunctionSubClass'),
-                    6: ('b', 'bFunctionProtocol'),
-                    7: ('b', 'iFunction'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("b", "bFirstInterface"),
+        3: ("b", "bInterfaceCount"),
+        4: ("b", "bFunctionClass"),
+        5: ("b", "bFunctionSubClass"),
+        6: ("b", "bFunctionProtocol"),
+        7: ("b", "iFunction"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, length: int = 0, descriptor_type: int = 0, first_interface: int = 0, interface_count: int = 0, function_class: int = 0,
-                 function_subclass: int = 0, function_protocol: int = 0, function: int = 0):
-        """initialize interface descriptor """
+    def __init__(
+        self,
+        length: int = 0,
+        descriptor_type: int = 0,
+        first_interface: int = 0,
+        interface_count: int = 0,
+        function_class: int = 0,
+        function_subclass: int = 0,
+        function_protocol: int = 0,
+        function: int = 0,
+    ):
+        """initialize interface descriptor"""
         super().__init__()  # keep linter happy
         self.length = length
         self.descriptor_type = descriptor_type
@@ -274,43 +346,74 @@ class InterfaceAssociation(BaseProtocolPacket):
         self.function = function
 
         if not InterfaceAssociation.fmt:
-            InterfaceAssociation.fmt = BaseDescriptor.endianness + "".join([InterfaceAssociation.format[item][0] for item in InterfaceAssociation.format])
-            InterfaceAssociation.args = [InterfaceAssociation.format[item][1] for item in InterfaceAssociation.format]
+            InterfaceAssociation.fmt = BaseDescriptor.endianness + "".join(
+                [
+                    InterfaceAssociation.format[item][0]
+                    for item in InterfaceAssociation.format
+                ]
+            )
+            InterfaceAssociation.args = [
+                InterfaceAssociation.format[item][1]
+                for item in InterfaceAssociation.format
+            ]
 
 
 class FunctionalDescriptor(BaseProtocolPacket):
     """interface descriptor base"""
-    format: dict = {0: ('b', 'bFunctionLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('b', 'bDescriptorSubType'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bFunctionLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("b", "bDescriptorSubType"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, function_length: int = 0, descriptor_type: int = 0, descriptor_subtype: int = 0):
+    def __init__(
+        self,
+        function_length: int = 0,
+        descriptor_type: int = 0,
+        descriptor_subtype: int = 0,
+    ):
         """initialize the interface descriptor packet"""
         super().__init__()  # keep type checker happy
         self.function_length: int = function_length
         self.descriptor_type: int = descriptor_type
         self.descriptor_subtype: int = descriptor_subtype
         if not FunctionalDescriptor.fmt:
-            FunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join([FunctionalDescriptor.format[item][0] for item in FunctionalDescriptor.format])
-            FunctionalDescriptor.args = [FunctionalDescriptor.format[item][1] for item in FunctionalDescriptor.format]
+            FunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [
+                    FunctionalDescriptor.format[item][0]
+                    for item in FunctionalDescriptor.format
+                ]
+            )
+            FunctionalDescriptor.args = [
+                FunctionalDescriptor.format[item][1]
+                for item in FunctionalDescriptor.format
+            ]
 
 
 class UnionFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
-    format: dict = {0: ('b', 'bFunctionLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('b', 'bDescriptorSubType'),
-                    3: ('b', 'bControllerInterface'),
-                    4: ('b', 'bSubordinateInterface')
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bFunctionLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("b", "bDescriptorSubType"),
+        3: ("b", "bControllerInterface"),
+        4: ("b", "bSubordinateInterface"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, function_length: int = 0, descriptor_type: int = 0, descriptor_subtype: int = 0,  # pylint: disable=too-many-arguments
-                 controller_interface: int = 0, subordinate_interface: int = 0):
+    def __init__(
+        self,
+        function_length: int = 0,
+        descriptor_type: int = 0,
+        descriptor_subtype: int = 0,  # pylint: disable=too-many-arguments
+        controller_interface: int = 0,
+        subordinate_interface: int = 0,
+    ):
         """initialize the interface descriptor packet"""
         super().__init__()  # keep type checker happy
         self.function_length: int = function_length
@@ -319,21 +422,37 @@ class UnionFunctionalDescriptor(FunctionalDescriptor):
         self.controller_interface: int = controller_interface
         self.subordinate_interface: int = subordinate_interface
         if not UnionFunctionalDescriptor.fmt:
-            UnionFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join([UnionFunctionalDescriptor.format[item][0] for item in UnionFunctionalDescriptor.format])
-            UnionFunctionalDescriptor.args = [UnionFunctionalDescriptor.format[item][1] for item in UnionFunctionalDescriptor.format]
+            UnionFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [
+                    UnionFunctionalDescriptor.format[item][0]
+                    for item in UnionFunctionalDescriptor.format
+                ]
+            )
+            UnionFunctionalDescriptor.args = [
+                UnionFunctionalDescriptor.format[item][1]
+                for item in UnionFunctionalDescriptor.format
+            ]
 
 
 class ACMFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
-    format: dict = {0: ('b', 'bFunctionLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('b', 'bDescriptorSubType'),
-                    3: ('b', 'bmCapabilities'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bFunctionLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("b", "bDescriptorSubType"),
+        3: ("b", "bmCapabilities"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, function_length: int = 0, descriptor_type: int = 0, descriptor_subtype: int = 0, capabilities: int = 0):
+    def __init__(
+        self,
+        function_length: int = 0,
+        descriptor_type: int = 0,
+        descriptor_subtype: int = 0,
+        capabilities: int = 0,
+    ):
         """initialize the interface descriptor packet"""
         super().__init__()  # keep type checker happy
         self.function_length: int = function_length
@@ -341,21 +460,37 @@ class ACMFunctionalDescriptor(FunctionalDescriptor):
         self.descriptor_subtype: int = descriptor_subtype
         self.capabilities: int = capabilities
         if not ACMFunctionalDescriptor.fmt:
-            ACMFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join([ACMFunctionalDescriptor.format[item][0] for item in ACMFunctionalDescriptor.format])
-            ACMFunctionalDescriptor.args = [ACMFunctionalDescriptor.format[item][1] for item in ACMFunctionalDescriptor.format]
+            ACMFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [
+                    ACMFunctionalDescriptor.format[item][0]
+                    for item in ACMFunctionalDescriptor.format
+                ]
+            )
+            ACMFunctionalDescriptor.args = [
+                ACMFunctionalDescriptor.format[item][1]
+                for item in ACMFunctionalDescriptor.format
+            ]
 
 
 class HeaderFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
-    format: dict = {0: ('b', 'bFunctionLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('b', 'bDescriptorSubType'),
-                    3: ('H', 'bcdCDC'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bFunctionLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("b", "bDescriptorSubType"),
+        3: ("H", "bcdCDC"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, function_length: int = 0, descriptor_type: int = 0, descriptor_subtype: int = 0, cdc: int = 0):
+    def __init__(
+        self,
+        function_length: int = 0,
+        descriptor_type: int = 0,
+        descriptor_subtype: int = 0,
+        cdc: int = 0,
+    ):
         """initialize the interface descriptor packet"""
         super().__init__()  # keep type checker happy
         self.function_length: int = function_length
@@ -363,22 +498,39 @@ class HeaderFunctionalDescriptor(FunctionalDescriptor):
         self.descriptor_subtype: int = descriptor_subtype
         self.cdc: int = cdc
         if not HeaderFunctionalDescriptor.fmt:
-            HeaderFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join([HeaderFunctionalDescriptor.format[item][0] for item in HeaderFunctionalDescriptor.format])
-            HeaderFunctionalDescriptor.args = [HeaderFunctionalDescriptor.format[item][1] for item in HeaderFunctionalDescriptor.format]
+            HeaderFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [
+                    HeaderFunctionalDescriptor.format[item][0]
+                    for item in HeaderFunctionalDescriptor.format
+                ]
+            )
+            HeaderFunctionalDescriptor.args = [
+                HeaderFunctionalDescriptor.format[item][1]
+                for item in HeaderFunctionalDescriptor.format
+            ]
 
 
 class CallManagementFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
-    format: dict = {0: ('B', 'bFunctionLength'),
-                    1: ('B', 'bDescriptorType'),
-                    2: ('B', 'bDescriptorSubType'),
-                    3: ('B', 'bmCapabilities'),
-                    4: ('B', 'bDataInterface'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("B", "bFunctionLength"),
+        1: ("B", "bDescriptorType"),
+        2: ("B", "bDescriptorSubType"),
+        3: ("B", "bmCapabilities"),
+        4: ("B", "bDataInterface"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, function_length: int = 0, descriptor_type: int = 0, descriptor_subtype: int = 0, capabilities: int = 0, data_interface = 0):
+    def __init__(
+        self,
+        function_length: int = 0,
+        descriptor_type: int = 0,
+        descriptor_subtype: int = 0,
+        capabilities: int = 0,
+        data_interface=0,
+    ):
         """initialize the interface descriptor packet"""
         super().__init__()  # keep type checker happy
         self.function_length: int = function_length
@@ -387,24 +539,44 @@ class CallManagementFunctionalDescriptor(FunctionalDescriptor):
         self.capabilities: int = capabilities
         self.data_interface: int = data_interface
         if not CallManagementFunctionalDescriptor.fmt:
-            CallManagementFunctionalDescriptor.fmt = BaseDescriptor.endianness + "".join([CallManagementFunctionalDescriptor.format[item][0] for item in CallManagementFunctionalDescriptor.format])
-            CallManagementFunctionalDescriptor.args = [CallManagementFunctionalDescriptor.format[item][1] for item in CallManagementFunctionalDescriptor.format]
+            CallManagementFunctionalDescriptor.fmt = (
+                BaseDescriptor.endianness
+                + "".join(
+                    [
+                        CallManagementFunctionalDescriptor.format[item][0]
+                        for item in CallManagementFunctionalDescriptor.format
+                    ]
+                )
+            )
+            CallManagementFunctionalDescriptor.args = [
+                CallManagementFunctionalDescriptor.format[item][1]
+                for item in CallManagementFunctionalDescriptor.format
+            ]
 
 
 class EndPointDescriptor(BaseProtocolPacket):
     """Endpoint descriptor packet"""
-    format: dict = {0: ('b', 'bLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('b', 'bEndpointAddress'),
-                    3: ('b', 'bmAttributes'),
-                    4: ('H', 'wMaxPacketSize'),
-                    6: ('b', 'bInterval'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("b", "bEndpointAddress"),
+        3: ("b", "bmAttributes"),
+        4: ("H", "wMaxPacketSize"),
+        6: ("b", "bInterval"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
-    def __init__(self, length: int = 0, descriptor_type: int = 0, endpoint_address: int = 0,
-                 attributes: int = 0, max_packet_size: int = 0, interval: int = 0):
+    def __init__(
+        self,
+        length: int = 0,
+        descriptor_type: int = 0,
+        endpoint_address: int = 0,
+        attributes: int = 0,
+        max_packet_size: int = 0,
+        interval: int = 0,
+    ):
         """initialize the endpoint descriptor"""
         super().__init__()
         self.length: int = length
@@ -415,8 +587,15 @@ class EndPointDescriptor(BaseProtocolPacket):
         self.bInterval: int = interval
 
         if not EndPointDescriptor.fmt:
-            EndPointDescriptor.fmt = BaseDescriptor.endianness + "".join([EndPointDescriptor.format[item][0] for item in EndPointDescriptor.format])
-            EndPointDescriptor.args = [EndPointDescriptor.format[item][1] for item in EndPointDescriptor.format]
+            EndPointDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [
+                    EndPointDescriptor.format[item][0]
+                    for item in EndPointDescriptor.format
+                ]
+            )
+            EndPointDescriptor.args = [
+                EndPointDescriptor.format[item][1] for item in EndPointDescriptor.format
+            ]
 
     def transfer_type(self) -> EndpointAttributesTransferType:
         """determine the transfer type from the bitfield"""
@@ -430,16 +609,18 @@ class EndPointDescriptor(BaseProtocolPacket):
     @property
     def number(self) -> int:
         """return the endpoint address"""
-        return self.endpoint_address & 0xf
+        return self.endpoint_address & 0xF
 
 
 class StringDescriptor(BaseDescriptor):
     """handle string descriptors"""
-    format: dict = {0: ('b', 'bLength'),
-                    1: ('b', 'bDescriptorType'),
-                    2: ('w', 'wLanguage'),
-                    }
-    fmt: str = ''
+
+    format: dict = {
+        0: ("b", "bLength"),
+        1: ("b", "bDescriptorType"),
+        2: ("w", "wLanguage"),
+    }
+    fmt: str = ""
     args: list[str] = []
 
     def __init__(self, length: int = 0, descriptor_type: int = 0, language: int = 0):
@@ -450,12 +631,17 @@ class StringDescriptor(BaseDescriptor):
         self.language: int = language
 
         if not EndPointDescriptor.fmt:
-            StringDescriptor.fmt = BaseDescriptor.endianness + "".join([StringDescriptor.format[item][0] for item in StringDescriptor.format])
-            StringDescriptor.args = [StringDescriptor.format[item][1] for item in StringDescriptor.format]
+            StringDescriptor.fmt = BaseDescriptor.endianness + "".join(
+                [StringDescriptor.format[item][0] for item in StringDescriptor.format]
+            )
+            StringDescriptor.args = [
+                StringDescriptor.format[item][1] for item in StringDescriptor.format
+            ]
 
 
 class GenericDescriptor:
     """handle a generic descriptor and return correct type"""
+
     def __init__(self):
         """initialize all instance data we need"""
         self._handlers: dict[DescriptorType, Callable] = {
@@ -467,9 +653,13 @@ class GenericDescriptor:
             DescriptorType.INTERFACE_ASSOCIATION: self._interface_assoc_handler,
         }
 
-    def _configuration_handler(self, data: bytes, length: int) -> ConfigurationDescriptor:
+    def _configuration_handler(
+        self, data: bytes, length: int
+    ) -> ConfigurationDescriptor:
         """handle Configuration descriptors"""
-        configuration_desc: ConfigurationDescriptor = ConfigurationDescriptor.new(data[0:length])
+        configuration_desc: ConfigurationDescriptor = ConfigurationDescriptor.new(
+            data[0:length]
+        )
         offset: int = configuration_desc.size
         interface_desc_size: int = InterfaceDescriptor().size
         idx_interface: int = 0
@@ -482,11 +672,17 @@ class GenericDescriptor:
             elif desc_type == DescriptorType.INTERFACE_DESCRIPTOR:
                 idx_interface += 1
                 if len(data[offset:]) >= interface_desc_size:
-                    interface_desc: InterfaceDescriptor = self._interface_handler(data[offset:], length=interface_desc_size)
+                    interface_desc: InterfaceDescriptor = self._interface_handler(
+                        data[offset:], length=interface_desc_size
+                    )
                     configuration_desc.interfaces.append(interface_desc)
-                    offset += interface_desc.size + sum(item.size for item in interface_desc.descriptors)
+                    offset += interface_desc.size + sum(
+                        item.size for item in interface_desc.descriptors
+                    )
             elif desc_type == DescriptorType.STRING_DESCRIPTOR:
-                base_desc: BaseDescriptor = BaseDescriptor.new(data[offset:offset+BaseDescriptor().size])
+                base_desc: BaseDescriptor = BaseDescriptor.new(
+                    data[offset : offset + BaseDescriptor().size]
+                )
                 offset += base_desc.length
 
         return configuration_desc
@@ -513,44 +709,75 @@ class GenericDescriptor:
     def _descriptor_type(data: bytes) -> DescriptorType:
         """Determine the descriptor type"""
         try:
-            base_desc: BaseDescriptor = BaseDescriptor.new(data[:BaseDescriptor().size])
+            base_desc: BaseDescriptor = BaseDescriptor.new(
+                data[: BaseDescriptor().size]
+            )
             return DescriptorType(base_desc.descriptor_type)
-        except ValueError as v_error:  # pylint: disable=unused-variable, try-except-raise
+        except (
+            ValueError
+        ) as v_error:  # pylint: disable=unused-variable, try-except-raise
             raise
 
-    def _interface_handler(self, data: bytes, length) -> InterfaceDescriptor | InterfaceAssociation:
+    def _interface_handler(
+        self, data: bytes, length
+    ) -> InterfaceDescriptor | InterfaceAssociation:
         """handle interface descriptors"""
         interface_desc: InterfaceDescriptor = InterfaceDescriptor.new(data[0:length])
         offset: int = interface_desc.size
         for _ in range(0, interface_desc.num_endpoints):
             endpoint: bool = False
             while not endpoint:
-                base_desc: BaseDescriptor = BaseDescriptor.new(data[offset:offset+BaseDescriptor().size])
-                descriptor_type: DescriptorType = DescriptorType(base_desc.descriptor_type)
+                base_desc: BaseDescriptor = BaseDescriptor.new(
+                    data[offset : offset + BaseDescriptor().size]
+                )
+                descriptor_type: DescriptorType = DescriptorType(
+                    base_desc.descriptor_type
+                )
                 if descriptor_type == DescriptorType.ENDPOINT_DESCRIPTOR:
-                    endpoint_desc: EndPointDescriptor = self._endpoint_handler(data[offset:], length=base_desc.length)
+                    endpoint_desc: EndPointDescriptor = self._endpoint_handler(
+                        data[offset:], length=base_desc.length
+                    )
                     interface_desc.descriptors.append(endpoint_desc)
                     offset += endpoint_desc.size
                     endpoint = True
                 elif descriptor_type == DescriptorType.CS_INTERFACE:
-                    functional_desc: FunctionalDescriptor = self._functional_handler(data[offset:], base_desc.length)
+                    functional_desc: FunctionalDescriptor = self._functional_handler(
+                        data[offset:], base_desc.length
+                    )
                     interface_desc.descriptors.append(functional_desc)
                     offset += base_desc.length
 
         return interface_desc
 
     @staticmethod
-    def _functional_handler(data: bytes, length: int) -> FunctionalDescriptor:  # pylint: disable=unused-argument
+    def _functional_handler(
+        data: bytes, length: int
+    ) -> FunctionalDescriptor:  # pylint: disable=unused-argument
         """handle functional descriptors"""
-        func_desc: FunctionalDescriptor = FunctionalDescriptor.new(data[:FunctionalDescriptor().size])
-        if func_desc.descriptor_subtype == CDCDescriptorSubType.AbstractControlManagement:
-            func_desc = ACMFunctionalDescriptor.new(data[:func_desc.function_length])
-        elif func_desc.descriptor_subtype == CDCDescriptorSubType.FeatureUnit:  # union functional descriptor
-            func_desc = UnionFunctionalDescriptor.new(data[:func_desc.function_length])
-        elif func_desc.descriptor_subtype == CDCDescriptorSubType.Header:  # header functional descriptor
-            func_desc = HeaderFunctionalDescriptor.new(data[:func_desc.function_length])
-        elif func_desc.descriptor_subtype == CDCDescriptorSubType.CallManagement:  # Call Management descriptor
-            func_desc = CallManagementFunctionalDescriptor.new(data[:func_desc.function_length])
+        func_desc: FunctionalDescriptor = FunctionalDescriptor.new(
+            data[: FunctionalDescriptor().size]
+        )
+        if (
+            func_desc.descriptor_subtype
+            == CDCDescriptorSubType.AbstractControlManagement
+        ):
+            func_desc = ACMFunctionalDescriptor.new(data[: func_desc.function_length])
+        elif (
+            func_desc.descriptor_subtype == CDCDescriptorSubType.FeatureUnit
+        ):  # union functional descriptor
+            func_desc = UnionFunctionalDescriptor.new(data[: func_desc.function_length])
+        elif (
+            func_desc.descriptor_subtype == CDCDescriptorSubType.Header
+        ):  # header functional descriptor
+            func_desc = HeaderFunctionalDescriptor.new(
+                data[: func_desc.function_length]
+            )
+        elif (
+            func_desc.descriptor_subtype == CDCDescriptorSubType.CallManagement
+        ):  # Call Management descriptor
+            func_desc = CallManagementFunctionalDescriptor.new(
+                data[: func_desc.function_length]
+            )
         else:
             pass
         return func_desc
