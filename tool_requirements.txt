@@ -1,0 +1,6 @@
+# these are packages only used when running tests, not required in final release
+pytest==8.3.1
+pytest-xdist==3.6.1
+coverage==7.6.0
+pylint==3.2.6
+pip-tools==7.4.1
