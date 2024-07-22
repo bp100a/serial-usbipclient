@@ -13,6 +13,7 @@ from typing import Callable, Any, Optional
 
 from usbip_defs import BaseProtocolPacket
 
+
 # Define h/w structures that don't conform to pylint's defaults
 # pylint: disable=too-many-instance-attributes, too-many-arguments, invalid-name
 
@@ -523,6 +524,7 @@ class StringDescriptor(BaseDescriptor):
         self.descriptor_type: int = descriptor_type
         self.language: int = language
 
+
 class GenericDescriptor:
     """handle a generic descriptor and return correct type"""
 
@@ -592,15 +594,8 @@ class GenericDescriptor:
     @staticmethod
     def _descriptor_type(data: bytes) -> DescriptorType:
         """Determine the descriptor type"""
-        try:
-            base_desc: BaseDescriptor = BaseDescriptor.new(
-                data[: BaseDescriptor().size]
-            )
-            return DescriptorType(base_desc.descriptor_type)
-        except (
-            ValueError
-        ) as v_error:  # pylint: disable=unused-variable, try-except-raise
-            raise
+        base_desc: BaseDescriptor = BaseDescriptor.new(data[: BaseDescriptor().size])
+        return DescriptorType(base_desc.descriptor_type)
 
     def _interface_handler(
         self, data: bytes, length
@@ -635,8 +630,8 @@ class GenericDescriptor:
 
     @staticmethod
     def _functional_handler(
-        data: bytes, length: int
-    ) -> FunctionalDescriptor:  # pylint: disable=unused-argument
+        data: bytes, length: int  # pylint: disable=unused-argument
+    ) -> FunctionalDescriptor:
         """handle functional descriptors"""
         func_desc: FunctionalDescriptor = FunctionalDescriptor.new(
             data[: FunctionalDescriptor().size]
