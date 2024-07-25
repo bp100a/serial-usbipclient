@@ -24,6 +24,11 @@ class BasicCommands(IntEnum):
     RET_SUBMIT = 0x03
     CMD_UNLINK = 0x02
     RET_UNLINK = 0x04
+    UNDEFINED = 0x00
+
+    REQ_DEVLIST = 0x8005
+    REP_DEVLIST = 0x0005
+    REQ_IMPORT = 0x8003
 
 
 class Direction(IntEnum):
@@ -49,6 +54,13 @@ class Status(IntEnum):
     SUCCESS = 0x0
     ERROR = 0x1
     BUSY = 0x2  # attempting to attach to a device that is ready attached
+
+
+class CDCControl(IntEnum):
+    """control types specific to CDC devices for SetControlLineState()"""
+
+    USB_CDC_CTRL_DTR = 1 << 0
+    USB_CDC_CTRL_RTS = 1 << 1
 
 
 class ErrorCodes:  # pylint: disable=line-too-long
@@ -79,7 +91,7 @@ class ErrorCodes:  # pylint: disable=line-too-long
     }
 
     @staticmethod
-    def str_errno(err_no: int) -> str:
+    def readable_errno(err_no: int) -> str:
         """return a user readable version of the error code"""
         return ErrorCodes.ERRNO.get(err_no, strerror(err_no))
 
