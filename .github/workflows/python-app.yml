@@ -28,5 +28,5 @@ jobs:
         pylint *.py
     - name: Test with pytest
       run: |
-        echo PYTHONPATH=$PYTHONPATH
+        export PYTHONPATH=./
         pytest
