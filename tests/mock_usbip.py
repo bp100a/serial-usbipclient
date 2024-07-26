@@ -52,8 +52,7 @@ class MockUSBIP:
         self.server_socket.bind((self.host, self.port))
         self.server_socket.settimeout(None)  # so our accept() will block
 
-        # configure how many clients the server can listen simultaneously
-        self.server_socket.listen(2)
+        self.server_socket.listen(1)  # only allow one connection (testing)
         self.event.set()
         self.logger.info("\nmock USBIP server started @%s:%s", self.host, self.port)
         try:
