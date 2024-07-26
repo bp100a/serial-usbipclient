@@ -4,7 +4,7 @@ from time import time
 
 from tests.common_test_base import CommonTestBase
 from usbip_defs import BasicCommands, Direction
-from protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE
+from protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, OP_REP_DEVLIST_HEADER
 
 
 class TestPacketGeneration(CommonTestBase):
@@ -108,3 +108,5 @@ class TestPacketGeneration(CommonTestBase):
         self.assertEqual(48, CMD_SUBMIT(transfer_buffer_length=0).size)
         self.assertEqual(8, OP_REQ_DEVLIST().size)
         self.assertEqual(4, OP_REP_DEV_INTERFACE().size)
+
+        self.assertEqual(12, OP_REP_DEVLIST_HEADER.size)

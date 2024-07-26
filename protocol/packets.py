@@ -44,7 +44,7 @@ class BaseStruct(DataStruct, metaclass=MetaStruct):
     @classmethod
     def new(cls, data: bytes):
         """Create (and return) a new instance based on the binary data"""
-        return cls().unpack(data)
+        return cls.unpack(data)
 
     @property
     def size(self) -> int:

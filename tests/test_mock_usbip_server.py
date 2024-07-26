@@ -6,6 +6,7 @@ import logging
 from tests.common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
 
+from usbip_client import USBIPClient
 
 logger = logging.getLogger(__name__)
 
@@ -37,3 +38,18 @@ class TestMockUSBIPServer(CommonTestBase):
             client.close()
         except OSError:  # safe to ignore
             pass
+
+    def test_mocked_response(self):
+        """test against mocked data responses"""
+        host: str = 'localhost'
+        port: int = 3243
+        server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
+
+        client: USBIPClient = USBIPClient(remote=(host, port), logger=self.logger)
+        client.connect_server()
+        published = client.list_published()
+        self.assertTrue(published.paths)
+        self.assertEqual(len(published.paths), 2)  # should be 2 paths
+
+        client.shutdown()
+        server.shutdown()

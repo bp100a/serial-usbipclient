@@ -55,8 +55,6 @@ from usb_descriptors import (
 )
 from performance_stats import USBStats, USBStatsManager
 
-logger = logging.getLogger(__name__)
-
 PAYLOAD_TIMEOUT: float = (
     0.050  # maximum time (seconds) we'll wait for pieces of our payload
 )
@@ -471,9 +469,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     URB_QUEUE_MIN: int = 10
     URB_QUEUE_MAX: int = 50
 
-    def __init__(
-        self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT
-    ):
+    def __init__(self, remote: tuple[str, int],
+                 command_timeout: float = PAYLOAD_TIMEOUT,
+                 logger: logging.Logger = None):
         """establish connection to server for devices"""
         # Note: in docker the host/port will most likely be `host.docker.internal:3420`
         self._host: str = remote[0]
@@ -485,6 +483,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
         self._stats: USBStats = USBStats()
         self._command_timeout: float = command_timeout
+        self._logger: Optional[logging.Logger] = logger if logger else logging.getLogger(__name__)
 
     @property
     def command_timeout(self) -> float:
@@ -607,25 +606,20 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self.connect_server()  # connect to usbipd service is required
         request: bytes = OP_REQ_DEVLIST().packet()
         self.usbipd.sendall(request)
-        data: bytes = self.readall(
-            OP_REP_DEVLIST_HEADER().size, self.usbipd, timeout=self.USBIP_TIMEOUT
-        )
+        data: bytes = self.readall(OP_REP_DEVLIST_HEADER.size, self.usbipd)
+        self._logger.info(f"OP_REP_DEVLIST_HEADER: {data.hex()}")
         response_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.new(data=data)
-        for _ in range(0, response_header.num_exported_devices):
+        for idx in range(0, response_header.num_exported_devices):
             # read a device path
-            data = self.readall(
-                OP_REP_DEV_PATH().size, self.usbipd, timeout=self.USBIP_TIMEOUT
-            )
+            data = self.readall(OP_REP_DEV_PATH.size, self.usbipd)
+            self._logger.info(f"OP_REP_DEV_PATH[{idx}]: {data.hex()}")
             device_path: OP_REP_DEV_PATH = OP_REP_DEV_PATH.new(data=data)
             response_header.paths.append(device_path)
             for _ in range(0, device_path.bNumInterfaces):
                 # read an interface associated with the device
-                interface_data: bytes = self.readall(
-                    OP_REP_DEV_INTERFACE().size, self.usbipd
-                )
-                interface: OP_REP_DEV_INTERFACE = OP_REP_DEV_INTERFACE.new(
-                    data=interface_data
-                )
+                interface_data: bytes = self.readall(OP_REP_DEV_INTERFACE.size, self.usbipd)
+                self._logger.info(f"OP_REP_DEV_INTERFACE: {interface_data.hex()}")
+                interface: OP_REP_DEV_INTERFACE = OP_REP_DEV_INTERFACE.new(data=interface_data)
                 device_path.interfaces.append(interface)
         return response_header
 

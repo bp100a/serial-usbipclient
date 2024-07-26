@@ -1,11 +1,17 @@
 """mock USBIP server"""
 
+import os
+import json
 import platform
 import socket
 from threading import Thread, Event
 from time import time, sleep
 from queue import Queue
 import logging
+from typing import Optional
+
+from protocol.packets import CommonHeader
+from usbip_defs import BasicCommands
 
 
 class MockUSBIP:
@@ -20,6 +26,8 @@ class MockUSBIP:
         self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run, daemon=True)
         self.event: Event = Event()
         self._is_windows: bool = platform.system() == 'Windows'
+        self._protocol_responses: dict[str, list[str]] = {}
+        self.setup()
         self.event.clear()
         self.thread.start()
         start_time: float = time()
@@ -29,6 +37,12 @@ class MockUSBIP:
             sleep(0.010)  # allow thread time to start
 
         raise TimeoutError(f"Timed out waiting for USBIP server to start, waited {round(time() - start_time, 2)} seconds")
+
+    def setup(self):
+        """setup our instance"""
+        data_path: str = os.path.join(os.getcwd(), 'usbip_packets.json')
+        with open(file=data_path, mode='r') as recording:
+            self._protocol_responses = json.loads(recording.read())
 
     def shutdown(self):
         """shutdown the USBIP server thread"""
@@ -45,6 +59,14 @@ class MockUSBIP:
                 return
             raise TimeoutError(f"Timed out waiting for USBIP server to acknowledge shutdown")
 
+    def process_message(self, client: socket.socket, message: bytes) -> None:
+        """process the message sent"""
+        header: CommonHeader = CommonHeader.unpack(message)
+        if header.command == BasicCommands.REQ_DEVLIST:
+            for output in self._protocol_responses['OP_REP_DEVLIST']:
+                data: bytes = bytes.fromhex(output)
+                client.sendall(data)
+
     def run(self):
         """standup the server, start listening"""
         self.server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
@@ -56,14 +78,22 @@ class MockUSBIP:
         self.event.set()
         self.logger.info("\nmock USBIP server started @%s:%s", self.host, self.port)
         try:
-            conn, address = self.server_socket.accept()  # accept new connection
-            self.logger.info(f"Client @{address} connected")
+            conn: Optional[socket.socket] = None
             while self.event.is_set():
-                sleep(0.010)  # faux processing data
+                conn, address = self.server_socket.accept()  # accept new connection
+                self.logger.info(f"Client @{address} connected")
+                while conn and self.event.is_set():
+                    message: bytes = conn.recv(1024)
+                    if not message:
+                        conn.shutdown(socket.SHUT_RDWR)
+                        conn.close()
+                        conn = None
+                    else:
+                        self.process_message(conn, message)
 
-            if conn:
-                conn.shutdown(socket.SHUT_RDWR)
-                conn.close()  # close the connection
+                if conn:
+                    conn.shutdown(socket.SHUT_RDWR)
+                    conn.close()  # close the connection
         except OSError as os_error:
             pass
         finally:
