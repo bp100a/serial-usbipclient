@@ -2,12 +2,12 @@
 from time import time
 
 
-from tests.test_base import TestBase
+from tests.common_test_base import CommonTestBase
 from usbip_defs import BasicCommands, Direction
 from protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE
 
 
-class TestPacketGeneration(TestBase):
+class TestPacketGeneration(CommonTestBase):
     """test packet generation using py-datastruct"""
     def test_request_devlist(self):
         """test requesting the device list"""

@@ -1,9 +1,9 @@
 
-from tests.test_base import TestBase
+from tests.common_test_base import CommonTestBase
 import usb_descriptors
 
 
-class TestInterfaceDescriptor(TestBase):
+class TestInterfaceDescriptor(CommonTestBase):
     """test the formatting of the interface descriptor"""
     def test_descriptors(self):
         """test the descriptors"""

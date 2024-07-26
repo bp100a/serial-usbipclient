@@ -58,11 +58,13 @@ class MockUSBIP:
         try:
             conn, address = self.server_socket.accept()  # accept new connection
             logger.info(f"Client @{address} connected")
-            while self.event.is_set():
+            while conn and self.event.is_set():
                 sleep(0.010)  # faux processing data
 
             if conn:
                 conn.shutdown(socket.SHUT_RDWR)
                 conn.close()  # close the connection
+        except OSError:
+            pass
         finally:
             self.event.set()  # indicate we are exiting

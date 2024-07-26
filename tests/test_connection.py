@@ -1,9 +1,9 @@
-from tests.test_base import TestBase
+from tests.common_test_base import CommonTestBase
 
 from usbip_client import USBIPClient
 
 
-class TestUSBIPConnection(TestBase):
+class TestUSBIPConnection(CommonTestBase):
     """test connections to a USBIP service"""
     def test_connection(self):
         """test simple connection"""

@@ -3,11 +3,11 @@
 # Author: Harry Collins
 #
 
-from tests.test_base import TestBase
+from tests.common_test_base import CommonTestBase
 from usbip_defs import BaseProtocolPacket
 
 
-class TestDefinitions(TestBase):
+class TestDefinitions(CommonTestBase):
     """test base behavior of our definitions"""
     def test_protocol_formatting(self):
         """test the generation of the protocol format string"""
