@@ -28,5 +28,4 @@ jobs:
         pylint *.py
     - name: Test with pytest
       run: |
-        export PYTHONPATH=./
-        pytest
+        ./run_pytest.sh
