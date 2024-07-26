@@ -61,7 +61,7 @@ class MockUSBIP:
                 sleep(0.010)  # faux processing data
 
             if conn:
-                conn.shutdown(__how=socket.SHUT_RDWR)
+                conn.shutdown(socket.SHUT_RDWR)
                 conn.close()  # close the connection
         finally:
             self.event.set()  # indicate we are exiting
