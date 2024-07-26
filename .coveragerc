@@ -4,11 +4,11 @@ omit =
     */venv*/*
     */tests.py
     */test*.py
-    */tests/*.py
+    */tests/common_test_base.py
 
 [report]
 omit =
     */venv*/*
     */tests.py
     */test*.py
-    */tests/*.py
+    */tests/common_test_base.py
