@@ -16,7 +16,7 @@ class MockUSBIP:
         self.logger: logging.Logger = logger
         self.queue: Queue = Queue()
         self.server_socket: socket.socket | None = None
-        self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run)
+        self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run, daemon=True)
         self.event: Event = Event()
         self.event.clear()
         self.thread.start()
