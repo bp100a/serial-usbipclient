@@ -1,5 +1,6 @@
 """mock USBIP server"""
 
+import platform
 import socket
 from threading import Thread, Event
 from time import time, sleep
@@ -18,6 +19,7 @@ class MockUSBIP:
         self.server_socket: socket.socket | None = None
         self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run, daemon=True)
         self.event: Event = Event()
+        self._is_windows: bool = platform.system() == 'Windows'
         self.event.clear()
         self.thread.start()
         start_time: float = time()
@@ -34,7 +36,8 @@ class MockUSBIP:
             print(f"[{self.thread.name}] self.event.clear()!, {time()=}")
             self.event.clear()  # -> 0, thread will exit loop if we aren't blocking on accept()
             if self.server_socket:
-                self.server_socket.shutdown(socket.SHUT_RDWR)
+                if not self._is_windows:  # in linux-land, need to shut down as well
+                    self.server_socket.shutdown(socket.SHUT_RDWR)
                 self.server_socket.close()  # if we are waiting for accept(), should unblock
 
             if self.event.wait(timeout=5.0):
