@@ -32,5 +32,8 @@ class TestMockUSBIPServer(CommonTestBase):
         client.connect((host, port))
         server.shutdown()
         # shutdown the dangling client connection for clean exit
-        client.shutdown(SHUT_RDWR)
-        client.close()
+        try:
+            client.shutdown(SHUT_RDWR)
+            client.close()
+        except OSError:  # safe to ignore
+            pass
