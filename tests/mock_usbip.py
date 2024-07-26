@@ -49,6 +49,7 @@ class MockUSBIP:
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.settimeout(None)  # so our accept() will block
+
         # configure how many clients the server can listen simultaneously
         self.server_socket.listen(2)
         self.event.set()
@@ -62,7 +63,7 @@ class MockUSBIP:
             if conn:
                 conn.shutdown(socket.SHUT_RDWR)
                 conn.close()  # close the connection
-        except OSError as os_error:  # shutdown while blocking on accept()
+        except Exception as os_error:  # pylint: disable=broad-exception
             print(f"[{self.thread.name}]mock USBIP server exception {str(os_error)}, {time()=}")
         finally:
             self.event.set()  # indicate we are exiting
