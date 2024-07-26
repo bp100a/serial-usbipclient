@@ -34,6 +34,7 @@ class MockUSBIP:
             print(f"[{self.thread.name}] self.event.clear()!, {time()=}")
             self.event.clear()  # -> 0, thread will exit loop if we aren't blocking on accept()
             if self.server_socket:
+                self.server_socket.shutdown(socket.SHUT_RDWR)
                 self.server_socket.close()  # if we are waiting for accept(), should unblock
 
             if self.event.wait(timeout=5.0):
