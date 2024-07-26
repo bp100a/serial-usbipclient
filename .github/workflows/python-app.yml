@@ -28,4 +28,5 @@ jobs:
         pylint *.py
     - name: Test with pytest
       run: |
+        chmod +x run_pytest.sh
         ./run_pytest.sh
