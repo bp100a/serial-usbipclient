@@ -67,7 +67,7 @@ class MockUSBIP:
             if conn:
                 conn.shutdown(socket.SHUT_RDWR)
                 conn.close()  # close the connection
-        except Exception as os_error:  # pylint: disable=broad-exception
+        except OSError as os_error:
             print(f"[{self.thread.name}]mock USBIP server exception {str(os_error)}, {time()=}")
         finally:
             self.event.set()  # indicate we are exiting
