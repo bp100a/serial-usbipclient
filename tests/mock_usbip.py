@@ -48,6 +48,7 @@ class MockUSBIP:
     def run(self):
         """standup the server, start listening"""
         self.server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
 
         # configure how many clients the server can listen simultaneously
