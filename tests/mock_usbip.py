@@ -30,39 +30,41 @@ class MockUSBIP:
 
     def shutdown(self):
         """shutdown the USBIP server thread"""
-        if self.thread:
-            self.event.clear()  # -> 0, thread will exit loop
+        if self.thread and self.event.is_set():
+            print(f"[{self.thread.name}] self.event.clear()!, {time()=}")
+            self.event.clear()  # -> 0, thread will exit loop if we aren't blocking on accept()
             if self.server_socket:
                 self.server_socket.close()  # if we are waiting for accept(), should unblock
 
-            start_time: float = time()
-            while time() - start_time < 5.0:
-                if self.event.is_set():
-                    self.thread.join(timeout=5.0)
-                    self.thread = None
-                    return
-            raise TimeoutError(f"Timed out waiting for USBIP server to acknowledge shutdown, waited {round(time() - start_time, 2)} seconds")
+            if self.event.wait(timeout=5.0):
+                self.thread.join(timeout=1.0)
+                self.thread = None
+                return
+            print(f"[{self.thread.name}]shutdown has timed out, {self.event.is_set()=}, {time()=}")
+            raise TimeoutError(f"Timed out waiting for USBIP server to acknowledge shutdown")
 
     def run(self):
         """standup the server, start listening"""
         self.server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
+        self.server_socket.settimeout(None)  # so our accept() will block
 
         # configure how many clients the server can listen simultaneously
-        self.server_socket.listen(2)
+        self.server_socket.listen(1)
         self.event.set()
-        self.logger.info("mock USBIP server started @%s:%s", self.host, self.port)
+        self.logger.info("\nmock USBIP server started @%s:%s", self.host, self.port)
         try:
             conn, address = self.server_socket.accept()  # accept new connection
             self.logger.info(f"Client @{address} connected")
-            while conn and self.event.is_set():
+            while self.event.is_set():
                 sleep(0.010)  # faux processing data
 
             if conn:
                 conn.shutdown(socket.SHUT_RDWR)
                 conn.close()  # close the connection
-        except OSError:
+        except OSError as os_error:  # shutdown while blocking on accept()
             pass
         finally:
             self.event.set()  # indicate we are exiting
+            self.logger.info("mock USBIP server stopped @%s:%s", self.host, self.port)
