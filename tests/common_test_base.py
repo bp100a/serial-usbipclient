@@ -31,8 +31,7 @@ class CommonTestBase(TestCase):
             handler.setLevel(logging.DEBUG)
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.DEBUG)
-            self.logger.info("stdout handler setup")
         super().__init__(methodName)
 
         if methodName != 'runTest':
-            self.logger.debug(f"running {methodName}")
+            self.logger.info(f"running {methodName}")

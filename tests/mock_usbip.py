@@ -7,15 +7,13 @@ from queue import Queue
 import logging
 
 
-logger = logging.getLogger(__name__)
-
-
 class MockUSBIP:
     """mock USBIP server"""
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, logger: logging.Logger):
         """set up our instance"""
         self.host: str = host
         self.port: int = port
+        self.logger: logging.Logger = logger
         self.queue: Queue = Queue()
         self.server_socket: socket.socket | None = None
         self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run)
@@ -54,10 +52,10 @@ class MockUSBIP:
         # configure how many clients the server can listen simultaneously
         self.server_socket.listen(2)
         self.event.set()
-        logger.info("mock USBIP server started @%s:%s", self.host, self.port)
+        self.logger.info("mock USBIP server started @%s:%s", self.host, self.port)
         try:
             conn, address = self.server_socket.accept()  # accept new connection
-            logger.info(f"Client @{address} connected")
+            self.logger.info(f"Client @{address} connected")
             while conn and self.event.is_set():
                 sleep(0.010)  # faux processing data
 
