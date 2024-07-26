@@ -20,6 +20,7 @@ class MockUSBIP:
         self.server_socket: socket.socket | None = None
         self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run)
         self.event: Event = Event()
+        self.event.clear()
         self.thread.start()
         start_time: float = time()
         while time() - start_time < 5.0:
@@ -46,12 +47,13 @@ class MockUSBIP:
 
     def run(self):
         """standup the server, start listening"""
-        self.server_socket = socket.socket()
+        self.server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
         self.server_socket.bind((self.host, self.port))
 
         # configure how many clients the server can listen simultaneously
         self.server_socket.listen(2)
         self.event.set()
+        logger.info("mock USBIP server started @%s:%s", self.host, self.port)
         try:
             conn, address = self.server_socket.accept()  # accept new connection
             logger.info(f"Client @{address} connected")
@@ -59,6 +61,7 @@ class MockUSBIP:
                 sleep(0.010)  # faux processing data
 
             if conn:
+                conn.shutdown(__how=socket.SHUT_RDWR)
                 conn.close()  # close the connection
         finally:
             self.event.set()  # indicate we are exiting
