@@ -1,0 +1,11 @@
+[build-system]
+requires = ["pip-compile"]
+build-backend = "pip"
+
+[project]
+name = "usbip-cdc-client"
+version = "1.0"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest", "coverage", "pytest-xdist", "pylint"]
