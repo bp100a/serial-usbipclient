@@ -40,11 +40,12 @@ class USBStats:
         """display our states"""
         return "\n".join(
             [
-                f"{name} = {len(self._stats[name])} samples, min/max: {self.display_time(min(self._stats[name]))}/"
-                f"{self.display_time(max(self._stats[name]))}, "
-                f"avg: {self.display_time(mean(self._stats[name]))}, "
-                f"median: {self.display_time(median(self._stats[name]))}"
-                for name in self._stats
+                f"{name} = {len(value)} samples, min/max: "
+                f"{self.display_time(min(value))}/"
+                f"{self.display_time(max(value))}, "
+                f"avg: {self.display_time(mean(value))}, "
+                f"median: {self.display_time(median(value))}"
+                for name, value in self._stats.items()
             ]
         )
 

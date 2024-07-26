@@ -90,9 +90,11 @@ class URBCDCRequestType(IntEnum):
     """request types specific to CDC devices"""
 
     SET_LINE_CODING = (
-        0x20  # Configures baud rate, stop-bits, parity, and numberof-character bits.
+        0x20  # Configures baud rate, stop-bits, parity, and number-of-character bits.
     )
-    GET_LINE_CODING = 0x21  # Requests current DTE rate, stop-bits, parity, and number-of-character bits.
+    GET_LINE_CODING = (
+        0x21  # Requests current DTE rate, stop-bits, parity, and number-of-character bits.
+    )
     SET_CONTROL_LINE_STATE = (
         0x22  # RS232 signal used to tell the DCE device the DTE device is now present.
     )
