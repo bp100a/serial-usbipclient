@@ -1,16 +1,16 @@
 """test the mock usbip server for basic behavior"""
 
-from unittest import TestCase
 from socket import socket, AF_INET, SOCK_STREAM
 import logging
 
+from tests.test_base import TestBase
 from mock_usbip import MockUSBIP
 
 
 logger = logging.getLogger(__name__)
 
 
-class TestMockUSBIPServer(TestCase):
+class TestMockUSBIPServer(TestBase):
     """test the mock USBIP server"""
     def test_mock_usbip_server_startup(self):
         """standup a server and check it out"""

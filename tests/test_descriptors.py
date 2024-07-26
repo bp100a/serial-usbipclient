@@ -1,9 +1,9 @@
-from unittest import TestCase
 
+from tests.test_base import TestBase
 import usb_descriptors
 
 
-class TestInterfaceDescriptor(TestCase):
+class TestInterfaceDescriptor(TestBase):
     """test the formatting of the interface descriptor"""
     def test_descriptors(self):
         """test the descriptors"""

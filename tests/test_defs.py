@@ -2,12 +2,12 @@
 # Copyright (c) 2024 Altai Technologies, LLC
 # Author: Harry Collins
 #
-from unittest import TestCase
 
+from tests.test_base import TestBase
 from usbip_defs import BaseProtocolPacket
 
 
-class TestDefinitions(TestCase):
+class TestDefinitions(TestBase):
     """test base behavior of our definitions"""
     def test_protocol_formatting(self):
         """test the generation of the protocol format string"""
