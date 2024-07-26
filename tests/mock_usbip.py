@@ -33,7 +33,6 @@ class MockUSBIP:
     def shutdown(self):
         """shutdown the USBIP server thread"""
         if self.thread and self.event.is_set():
-            print(f"[{self.thread.name}] self.event.clear()!, {time()=}")
             self.event.clear()  # -> 0, thread will exit loop if we aren't blocking on accept()
             if self.server_socket:
                 if not self._is_windows:  # in linux-land, need to shut down as well
@@ -44,7 +43,6 @@ class MockUSBIP:
                 self.thread.join(timeout=1.0)
                 self.thread = None
                 return
-            print(f"[{self.thread.name}]shutdown has timed out, {self.event.is_set()=}, {time()=}")
             raise TimeoutError(f"Timed out waiting for USBIP server to acknowledge shutdown")
 
     def run(self):
@@ -68,8 +66,7 @@ class MockUSBIP:
                 conn.shutdown(socket.SHUT_RDWR)
                 conn.close()  # close the connection
         except OSError as os_error:
-            print(f"[{self.thread.name}]mock USBIP server exception {str(os_error)}, {time()=}")
+            pass
         finally:
             self.event.set()  # indicate we are exiting
-            print(f"[{self.thread.name}]mock USBIP server is exiting! {self.event.is_set()=}, {time()=}")
             self.logger.info("mock USBIP server stopped @%s:%s", self.host, self.port)
