@@ -49,6 +49,10 @@ class USBStats:
             ]
         )
 
+    def raw_data(self, key: str) -> list[float]:
+        """return the raw data"""
+        return self._stats.get(key, [])
+
 
 class USBStatsManager:
     """easily time things"""
