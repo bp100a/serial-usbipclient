@@ -79,9 +79,10 @@ class OP_REQ_IMPORT(CommonHeader):
     """import an usbipd published device"""
     busid: bytes = field("32s")
 
-    def __init__(self, command=BasicCommands.REQ_IMPORT, **kwargs):
-        """create a request"""
-        super().__init__(command=command, **kwargs)
+    def __post_init__(self):
+        """ensure command is set properly"""
+        if self.command == BasicCommands.UNDEFINED:
+            self.command = BasicCommands.REQ_IMPORT
 
 
 @dataclass

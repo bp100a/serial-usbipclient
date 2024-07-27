@@ -1,6 +1,6 @@
 from tests.common_test_base import CommonTestBase
 
-from usbip_client import USBIPClient
+from usbip_client import USBIPClient, HardwareID, MBIUSBAttachError
 
 
 class TestUSBIPConnection(CommonTestBase):
@@ -12,3 +12,11 @@ class TestUSBIPConnection(CommonTestBase):
         client.connect_server()
         published = client.list_published()
         self.assertTrue(published.paths)
+        vid: int = 0x525
+        pid: int = 0xA4A7
+
+        try:
+            client.attach(devices=[HardwareID(vid, pid)], published=published)
+        except MBIUSBAttachError as a_error:
+            self.logger.error(a_error.detail)
+            raise

@@ -156,11 +156,9 @@ class MBIUSBAttachError(USBIPError):
     def __init__(self, detail: str, an_errno: int):
         """details of the error"""
         self.errno: int = abs(an_errno)
-        super().__init__(
-            detail=detail
-            + f", {self.errno=}/{errno.errorcode[self.errno]}, "
-              f"{ErrorCodes.readable_errno(self.errno)}"
-        )
+        detail += (f", {self.errno=}/{errno.errorcode[self.errno]}, "
+                   f"{ErrorCodes.readable_errno(self.errno)}")
+        super().__init__(detail=detail)
 
 
 @dataclass
@@ -607,18 +605,15 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         request: bytes = OP_REQ_DEVLIST().packet()
         self.usbipd.sendall(request)
         data: bytes = self.readall(OP_REP_DEVLIST_HEADER.size, self.usbipd)
-        self._logger.info(f"OP_REP_DEVLIST_HEADER: {data.hex()}")
         response_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.new(data=data)
-        for idx in range(0, response_header.num_exported_devices):
+        for _ in range(0, response_header.num_exported_devices):
             # read a device path
             data = self.readall(OP_REP_DEV_PATH.size, self.usbipd)
-            self._logger.info(f"OP_REP_DEV_PATH[{idx}]: {data.hex()}")
             device_path: OP_REP_DEV_PATH = OP_REP_DEV_PATH.new(data=data)
             response_header.paths.append(device_path)
             for _ in range(0, device_path.bNumInterfaces):
                 # read an interface associated with the device
                 interface_data: bytes = self.readall(OP_REP_DEV_INTERFACE.size, self.usbipd)
-                self._logger.info(f"OP_REP_DEV_INTERFACE: {interface_data.hex()}")
                 interface: OP_REP_DEV_INTERFACE = OP_REP_DEV_INTERFACE.new(data=interface_data)
                 device_path.interfaces.append(interface)
         return response_header
@@ -877,14 +872,14 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         if published is None:
             published = self.list_published()  # get the list of devices
         self.disconnect_server()  # disconnect the socket
-        logger.debug("found %s paths published", len(published.paths))
+        self._logger.debug("found %s paths published", len(published.paths))
         for device in devices:
             for path in published.paths:
                 if path.idVendor == device.vid and path.idProduct == device.pid:
                     # attach to this device, the socket connection needs to go with it
                     try:
                         busid: str = path.busid.decode("utf-8").rstrip("\x00")
-                        logger.debug(
+                        self._logger.debug(
                             f"attaching to {device.vid=:04x}/{device.pid=:04x} at {busid=}"
                         )
                         response: OP_REP_IMPORT = self.import_device(busid=path.busid)
@@ -1045,7 +1040,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     return usb
                 except MBIUSBAttachError as device_error:
                     if device_error.errno in MBIUSBConnectionLost.USB_DISCONNECT:
-                        logger.warning("device error on re-attachment, try again...")
+                        self._logger.warning("device error on re-attachment, try again...")
                         self.disconnect_server()  # don't re-use this connection
                     return None
                 except ValueError as attach_error:
@@ -1053,5 +1048,5 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "
                         f"busid={path.busnum}-{path.devnum}"
                     ) from attach_error
-        logger.warning(f"timed out restoring connection {lost_usb.devid:04x}")
+        self._logger.warning(f"timed out restoring connection {lost_usb.devid:04x}")
         return None
