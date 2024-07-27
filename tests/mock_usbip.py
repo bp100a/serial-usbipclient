@@ -40,7 +40,7 @@ class MockUSBIP:
 
     def setup(self):
         """setup our instance"""
-        data_path: str = os.path.join(os.getcwd(), 'usbip_packets.json')
+        data_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'usbip_packets.json')
         with open(file=data_path, mode='r') as recording:
             self._protocol_responses = json.loads(recording.read())
 
