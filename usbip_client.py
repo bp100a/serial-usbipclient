@@ -641,8 +641,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 OP_REP_IMPORT().size - BaseProtocolPacket().size, self.usbipd
             )
 
-        response: OP_REP_IMPORT = OP_REP_IMPORT.new(data=data + more_data)
-        return response
+        return OP_REP_IMPORT.unpack(data + more_data)
 
     def get_descriptor(self, usb: USBIP_Connection) -> DeviceDescriptor:
         """get the descriptor for the underlying USB/URB"""
@@ -697,11 +696,11 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 if setup.direction == Direction.USBIP_DIR_IN
                 else 0x0
             ),
-            transfer_buffer_length=setup.length,
+            transfer_buffer_length=len(data) if data else 0,
             interval=0,
             setup=setup.packet(),
             direction=setup.direction,
-            transfer_buffer=data,
+            transfer_buffer=data if data else bytes(),
         )
         usb.socket.sendall(command.packet())
 
@@ -879,16 +878,10 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     # attach to this device, the socket connection needs to go with it
                     try:
                         busid: str = path.busid.decode("utf-8").rstrip("\x00")
-                        self._logger.debug(
-                            f"attaching to {device.vid=:04x}/{device.pid=:04x} at {busid=}"
-                        )
+                        self._logger.debug(f"attaching to {device.vid=:04x}/{device.pid=:04x} at {busid=}")
                         response: OP_REP_IMPORT = self.import_device(busid=path.busid)
-                        self._connections.append(
-                            self.create_connection(device, response)
-                        )
-                        self.setup(
-                            usb=self._connections[-1]
-                        )  # get configuration & all that
+                        self._connections.append(self.create_connection(device, response))
+                        self.setup(usb=self._connections[-1])  # get configuration & all that
                     except (ValueError, MBIUSBConnectionLost) as attach_error:
                         raise ValueError(
                             f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "

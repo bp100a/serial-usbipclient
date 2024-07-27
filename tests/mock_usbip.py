@@ -1,6 +1,7 @@
 """mock USBIP server"""
 
 import os
+import errno
 import json
 import platform
 import socket
@@ -10,7 +11,7 @@ from queue import Queue
 import logging
 from typing import Optional
 
-from protocol.packets import CommonHeader
+from protocol.packets import CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT
 from usbip_defs import BasicCommands
 
 
@@ -62,10 +63,39 @@ class MockUSBIP:
     def process_message(self, client: socket.socket, message: bytes) -> None:
         """process the message sent"""
         header: CommonHeader = CommonHeader.unpack(message)
+        if header.command == BasicCommands.CMD_SUBMIT:
+            raise NotImplementedError(f"Need to emulate USB/URB commands")
         if header.command == BasicCommands.REQ_DEVLIST:
+            # return the device list
             for output in self._protocol_responses['OP_REP_DEVLIST']:
                 data: bytes = bytes.fromhex(output)
                 client.sendall(data)
+        elif header.command == BasicCommands.REQ_IMPORT:
+            # return specifics for device import
+            req_import: OP_REQ_IMPORT = OP_REQ_IMPORT.unpack(message)
+            devlist: bytes = bytes.fromhex("".join([item for item in self._protocol_responses['OP_REP_DEVLIST']]))
+            header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])
+            devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]
+            paths: list[OP_REP_DEV_PATH] = []
+            for device_index in range(0, header.num_exported_devices):
+                paths.append(OP_REP_DEV_PATH.unpack(devices[device_index*OP_REP_DEV_PATH.size:]))
+
+            # find the busid we are looking for
+            for path in paths:
+                if path.busid == req_import.busid:
+                    rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=0, path=path.path, busid=req_import.busid, busnum=path.busnum,
+                                                              devnum=path.devnum, speed=path.speed, idVendor=path.idVendor,
+                                                              idProduct=path.idProduct, bcdDevice=path.bcdDevice,
+                                                              bDeviceClass=path.bDeviceClass, bDeviceSubClass=path.bDeviceSubClass,
+                                                              bDeviceProtocol=path.bDeviceProtocol, bConfigurationValue=path.bConfigurationValue,
+                                                              bNumConfigurations=path.bNumConfigurations, bNumInterfaces=path.bNumInterfaces)
+                    data: bytes = rep_import.pack()
+                    client.sendall(data)
+            else:
+                # device not found, return error
+                self.logger.warning(f"{req_import.busid} not found!")
+                failure: CommonHeader = CommonHeader(command=BasicCommands.RET_SUBMIT, status=errno.ENODEV)
+                client.sendall(failure.pack())
 
     def run(self):
         """standup the server, start listening"""

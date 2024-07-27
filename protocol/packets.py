@@ -69,9 +69,10 @@ class CommonHeader(BaseStruct):
 @dataclass
 class OP_REQ_DEVLIST(CommonHeader):
     """request the device list"""
-    def __init__(self, command=BasicCommands.REQ_DEVLIST, **kwargs):
-        """initialization"""
-        super().__init__(command=command, **kwargs)
+    def __post_init__(self):
+        """ensure command is set properly"""
+        if self.command == BasicCommands.UNDEFINED:
+            self.command = BasicCommands.REQ_DEVLIST
 
 
 @dataclass
@@ -88,13 +89,13 @@ class OP_REQ_IMPORT(CommonHeader):
 @dataclass
 class OP_REP_IMPORT(CommonHeader):
     """response from an import (attach) request"""
-    path: bytes = field("256s", default=None)  # 0x8
-    busid: bytes = field("32s", default=None)  # 0x108
+    path: bytes = field("256s", default=b'\0'*256)  # 0x8
+    busid: bytes = field("32s", default=b'\0'*32)  # 0x108
     busnum: int = field("i", default=0x0)  # 0x128
     devnum: int = field("i", default=0x0)  # 0x12C
     speed: int = field("i", default=0x0)  # 0x130
-    idVendor: int = field("h", default=0x0)  # 0x134
-    idProduct: int = field("h", default=0x0)  # 0x136
+    idVendor: int = field("H", default=0x0)  # 0x134
+    idProduct: int = field("H", default=0x0)  # 0x136
     bcdDevice: int = field("H", default=0x0)  # 0x138
     bDeviceClass: int = field("B", default=0x0)  # 0x139
     bDeviceSubClass: int = field("B", default=0x0)  # 0x13A
@@ -103,9 +104,10 @@ class OP_REP_IMPORT(CommonHeader):
     bNumConfigurations: int = field("B", default=0x0)  # 0x13D
     bNumInterfaces: int = field("B", default=0x0)  # 0x13E
 
-    def __init__(self, command=BasicCommands.RET_SUBMIT, **kwargs):
-        """create a request"""
-        super().__init__(command=command, **kwargs)
+    def __post_init__(self):
+        """ensure command is set property"""
+        if self.command == BasicCommands.UNDEFINED:
+            self.command = BasicCommands.RET_SUBMIT
 
 
 @dataclass
@@ -157,7 +159,7 @@ class HEADER_BASIC(BaseStruct):
 class CMD_SUBMIT(HEADER_BASIC):
     """submit a URB"""
     transfer_flags: int = field("i", default=0x0)  # 0x14, URB transfer flags
-    transfer_buffer_length: int = built("i", lambda ctx: len(ctx.transfer_buffer))  # 0x18
+    transfer_buffer_length: int = built("i", lambda ctx: len(ctx.transfer_buffer) if ctx.transfer_buffer else 0)  # 0x18
     start_frame: int = field("i", default=0x0)  # 0x1C, =0 if not ISO transfer
     number_of_packets: int = field("I", default=0xFFFFFFFF)  # 0x20, # of ISO packets, default it not ISO
     interval: int = field("i", default=0x0)  # 0x24,  maximum time for the request on the server-side host controller
