@@ -880,7 +880,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     # attach to this device, the socket connection needs to go with it
                     try:
                         busid: str = path.busid.decode("utf-8").rstrip("\x00")
-                        self._logger.debug(f"attaching to {device.vid=:04x}/{device.pid=:04x} at {busid=}")  # pylint: disable=line-too-long
+                        self._logger.debug(f"attaching to {device.vid=:04x}/{device.pid=:04x} at {busid=}")
                         response: OP_REP_IMPORT = self.import_device(busid=path.busid)
                         self._connections.append(self.create_connection(device, response))
                         self.setup(usb=self._connections[-1])  # get configuration & all that
