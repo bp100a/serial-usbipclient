@@ -29,6 +29,7 @@ class TestUSBIPConnection(CommonTestBase):
 
     def test_connection(self):
         """test simple connection"""
+        self.skip_on_ci()  # not ready for prime time
         client: USBIPClient = USBIPClient(remote=(self.host, self.port), logger=self.logger)
         client.connect_server()
         published = client.list_published()

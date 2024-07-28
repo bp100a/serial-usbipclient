@@ -182,7 +182,7 @@ class USBIP_RET_SUBMIT(HEADER_BASIC):
     """submit a URB"""
     status: int = field("i", default=0x0)  # 0x14
     actual_length: int = built("i", lambda ctx: len(ctx.transfer_buffer))   # 0x18
-    start_frame: int = field("i", default=0xFFFFFFFF)  # 0x1C
+    start_frame: int = field("I", default=0xFFFFFFFF)  # 0x1C
     number_of_packets: int = field("i", default=0x0)  # 0x20
     error_count: int = field("i", default=0x0)  # 0x24
     padding: bytes = field("8s", default=b'\0'*8)  # 0x28

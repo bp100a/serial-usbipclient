@@ -53,3 +53,10 @@ class TestMockUSBIPServer(CommonTestBase):
 
         client.shutdown()
         server.shutdown()
+
+    def test_reading_paths(self):
+        """test reading the path information from the json file"""
+        host: str = 'localhost'
+        port: int = 3245
+        server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
+        paths: list = server.read_paths()

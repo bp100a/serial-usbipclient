@@ -11,7 +11,8 @@ from queue import Queue
 import logging
 from typing import Optional
 
-from protocol.packets import CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT
+from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
+                              HEADER_BASIC, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
 from usbip_defs import BasicCommands
 
 
@@ -28,6 +29,7 @@ class MockUSBIP:
         self.event: Event = Event()
         self._is_windows: bool = platform.system() == 'Windows'
         self._protocol_responses: dict[str, list[str]] = {}
+        self._urb_traffic: bool = False
         self.setup()
         self.event.clear()
         self.thread.start()
@@ -62,40 +64,40 @@ class MockUSBIP:
 
     def process_message(self, client: socket.socket, message: bytes) -> None:
         """process the message sent"""
-        header: CommonHeader = CommonHeader.unpack(message)
-        if header.command == BasicCommands.CMD_SUBMIT:
-            raise NotImplementedError(f"Need to emulate USB/URB commands")
-        if header.command == BasicCommands.REQ_DEVLIST:
-            # return the device list
-            for output in self._protocol_responses['OP_REP_DEVLIST']:
-                data: bytes = bytes.fromhex(output)
-                client.sendall(data)
-        elif header.command == BasicCommands.REQ_IMPORT:
-            # return specifics for device import
-            req_import: OP_REQ_IMPORT = OP_REQ_IMPORT.unpack(message)
-            devlist: bytes = bytes.fromhex("".join([item for item in self._protocol_responses['OP_REP_DEVLIST']]))
-            header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])
-            devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]
-            paths: list[OP_REP_DEV_PATH] = []
-            for device_index in range(0, header.num_exported_devices):
-                paths.append(OP_REP_DEV_PATH.unpack(devices[device_index*OP_REP_DEV_PATH.size:]))
-
-            # find the busid we are looking for
-            for path in paths:
-                if path.busid == req_import.busid:
-                    rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=0, path=path.path, busid=req_import.busid, busnum=path.busnum,
-                                                              devnum=path.devnum, speed=path.speed, idVendor=path.idVendor,
-                                                              idProduct=path.idProduct, bcdDevice=path.bcdDevice,
-                                                              bDeviceClass=path.bDeviceClass, bDeviceSubClass=path.bDeviceSubClass,
-                                                              bDeviceProtocol=path.bDeviceProtocol, bConfigurationValue=path.bConfigurationValue,
-                                                              bNumConfigurations=path.bNumConfigurations, bNumInterfaces=path.bNumInterfaces)
-                    data: bytes = rep_import.pack()
+        self.logger.info(f"{self._urb_traffic=}, {message.hex()=}")
+        if self._urb_traffic:
+            urb_header: HEADER_BASIC = HEADER_BASIC.unpack(message)
+            if urb_header.command == BasicCommands.CMD_SUBMIT:
+                failure: bytes = USBIP_RET_SUBMIT(status=0, direction=0, transfer_buffer=bytes()).pack()
+                client.sendall(failure)
+        else:
+            header: CommonHeader = CommonHeader.unpack(message)
+            if header.command == BasicCommands.REQ_DEVLIST:
+                # return the device list
+                for output in self._protocol_responses['OP_REP_DEVLIST']:
+                    data: bytes = bytes.fromhex(output)
                     client.sendall(data)
-            else:
-                # device not found, return error
-                self.logger.warning(f"{req_import.busid} not found!")
-                failure: CommonHeader = CommonHeader(command=BasicCommands.RET_SUBMIT, status=errno.ENODEV)
-                client.sendall(failure.pack())
+            elif header.command == BasicCommands.REQ_IMPORT:
+                # return specifics for device import (find the busid we are looking for)
+                req_import: OP_REQ_IMPORT = OP_REQ_IMPORT.unpack(message)
+                for path in self.read_paths():
+                    if path.busid == req_import.busid:
+                        rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=0, path=path.path, busid=req_import.busid, busnum=path.busnum,
+                                                                  devnum=path.devnum, speed=path.speed, idVendor=path.idVendor,
+                                                                  idProduct=path.idProduct, bcdDevice=path.bcdDevice,
+                                                                  bDeviceClass=path.bDeviceClass, bDeviceSubClass=path.bDeviceSubClass,
+                                                                  bDeviceProtocol=path.bDeviceProtocol, bConfigurationValue=path.bConfigurationValue,
+                                                                  bNumConfigurations=path.bNumConfigurations, bNumInterfaces=path.bNumInterfaces)
+                        data: bytes = rep_import.pack()
+                        client.sendall(data)
+                        self._urb_traffic = True
+                        return
+                else:
+                    # device not found, return error
+                    self.logger.warning(f"busid not found: {req_import.busid.hex()}")
+                    failure: CommonHeader = CommonHeader(command=BasicCommands.RET_SUBMIT, status=errno.ENODEV)
+                    client.sendall(failure.pack())
+                    self._urb_traffic = False
 
     def run(self):
         """standup the server, start listening"""
@@ -111,21 +113,45 @@ class MockUSBIP:
             conn: Optional[socket.socket] = None
             while self.event.is_set():
                 conn, address = self.server_socket.accept()  # accept new connection
-                self.logger.info(f"Client @{address} connected")
-                while conn and self.event.is_set():
-                    message: bytes = conn.recv(1024)
-                    if not message:
+                self.logger.info(f"usbip-server, client @{address} connected")
+                try:
+                    while conn and self.event.is_set():
+                        message: bytes = conn.recv(1024)
+                        if not message:
+                            conn.shutdown(socket.SHUT_RDWR)
+                            conn.close()
+                            conn = None
+                        else:
+                            self.process_message(conn, message)
+
+                    if conn:
+                        conn.shutdown(socket.SHUT_RDWR)
+                        conn.close()  # close the connection
+                except OSError as os_error:
+                    self.logger.info(f"usbip-server, client @{address} disconnected: {os_error}")
+                    if conn:
                         conn.shutdown(socket.SHUT_RDWR)
                         conn.close()
                         conn = None
-                    else:
-                        self.process_message(conn, message)
-
-                if conn:
-                    conn.shutdown(socket.SHUT_RDWR)
-                    conn.close()  # close the connection
         except OSError as os_error:
             pass
         finally:
             self.event.set()  # indicate we are exiting
             self.logger.info("mock USBIP server stopped @%s:%s", self.host, self.port)
+
+    def read_paths(self) -> list[OP_REP_DEV_PATH]:
+        """read the paths from the JSON file"""
+        devlist: bytes = bytes.fromhex("".join([item for item in self._protocol_responses['OP_REP_DEVLIST']]))
+        devlist_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])
+        devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]
+        paths: list[OP_REP_DEV_PATH] = []
+        for device_index in range(0, devlist_header.num_exported_devices):
+            path: OP_REP_DEV_PATH = OP_REP_DEV_PATH.unpack(devices)
+            paths.append(path)
+            devices = devices[OP_REP_DEV_PATH.size:]
+            for _ in range(0, path.bNumInterfaces):
+                interface: OP_REP_DEV_INTERFACE = OP_REP_DEV_INTERFACE.unpack(devices)
+                path.interfaces.append(interface)
+                devices = devices[OP_REP_DEV_INTERFACE.size:]
+
+        return paths

@@ -503,6 +503,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             try:
                 self._socket.shutdown(socket.SHUT_RDWR)  # we are done
                 self._socket.close()
+                self._logger.info(f"usbip-client, disconnected from {self._host}:{self._port}")
             except OSError:
                 pass
             finally:
@@ -517,6 +518,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self._socket.connect((self._host, self._port))
                 self._socket.settimeout(self._socket_timeout)
+                self._logger.info(f"usbip-client connected to {self._host}:{self._port}")
             except socket.gaierror as gai_error:
                 raise USBIPConnectionError(
                     f"connection attempt to {self._host}:{self._port} '{str(gai_error)}'"
@@ -702,14 +704,14 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             direction=setup.direction,
             transfer_buffer=data if data else bytes(),
         )
-        usb.socket.sendall(command.packet())
+        usb.socket.sendall(command.pack())
 
     def request_descriptor(
         self, setup: UrbSetupPacket, usb: USBIP_Connection
     ) -> DeviceDescriptor | ConfigurationDescriptor | StringDescriptor:
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
-        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX().size, usb)
+        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb, timeout=30.0)
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
         if prefix.status != 0:
             raise ValueError(
