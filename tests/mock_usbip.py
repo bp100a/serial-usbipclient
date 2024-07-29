@@ -84,6 +84,7 @@ class MockUSBIP:
                 if ret_submit:
                     ret_submit.seqnum = cmd_submit.seqnum
                     response: bytes = ret_submit.pack()
+                    self.logger.info(f"ret_submit={response.hex()}")
                     client.sendall(response)
                     return
 

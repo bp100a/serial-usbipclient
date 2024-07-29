@@ -27,17 +27,17 @@ class CommonTestBase(TestCase):
         self.CI: bool = CommonTestBase.is_truthy('CI', False)
         self.logger: logging.Logger = logging.getLogger(__name__)
         formatter: logging.Formatter = logging.Formatter('%(asctime)s \t%(levelname)s \t%(name)s \t%(message)s')
-        if not self.logger.hasHandlers():
+        if not self.logger.handlers:
             handler: logging.Handler = logging.StreamHandler(sys.stdout)
             handler.setFormatter(formatter)
             handler.setLevel(logging.DEBUG)
             self.logger.addHandler(handler)
             self.logger.setLevel(logging.DEBUG)
-        elif not [item for item in self.logger.root.handlers if type(item) == logging.StreamHandler]:
-            self.logger.root.setLevel(level=logging.DEBUG)
-            handler = logging.StreamHandler(sys.stdout)
-            handler.setFormatter(formatter)
-            self.logger.root.addHandler(handler)
+        # elif not [item for item in self.logger.root.handlers if type(item) == logging.StreamHandler]:
+        #     self.logger.root.setLevel(level=logging.DEBUG)
+        #     handler = logging.StreamHandler(sys.stdout)
+        #     handler.setFormatter(formatter)
+        #     self.logger.root.addHandler(handler)
 
         super().__init__(methodName)
 
