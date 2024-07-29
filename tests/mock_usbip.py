@@ -72,9 +72,16 @@ class MockUSBIP:
             if urb_header.command == BasicCommands.CMD_SUBMIT:
                 cmd_submit: CMD_SUBMIT = CMD_SUBMIT.unpack(message)
                 urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
+                ret_submit: Optional[USBIP_RET_SUBMIT] = None
+                self.logger.info(f"Setup flags: {str(urb_setup)}")
                 if urb_setup.value == DescriptorType.DEVICE_DESCRIPTOR << 8:
                     # return descriptor for device
-                    ret_submit: USBIP_RET_SUBMIT = USBIP_RET_SUBMIT.unpack(bytes.fromhex("".join(self._protocol_responses['URB_SETUP'])))
+                    ret_submit = USBIP_RET_SUBMIT.unpack(bytes.fromhex(self._protocol_responses['URB_SETUP'][0]))
+                elif urb_setup.value == DescriptorType.CONFIGURATION_DESCRIPTOR << 8:
+                    ret_submit = USBIP_RET_SUBMIT.unpack(bytes.fromhex(self._protocol_responses['URB_SETUP'][1]))
+                elif urb_setup.value == DescriptorType.STRING_DESCRIPTOR << 8:
+                    ret_submit = USBIP_RET_SUBMIT.unpack(bytes.fromhex(self._protocol_responses['URB_SETUP'][2]))
+                if ret_submit:
                     ret_submit.seqnum = cmd_submit.seqnum
                     response: bytes = ret_submit.pack()
                     client.sendall(response)

@@ -3,6 +3,8 @@
 import sys
 from os import getenv
 import logging
+import os
+import re
 
 from unittest import TestCase
 
@@ -35,3 +37,6 @@ class CommonTestBase(TestCase):
 
         if methodName != 'runTest':
             self.logger.info(f"running {methodName}")
+
+        self.runner_instance: str = os.getenv('PYTEST_XDIST_WORKER', '1')
+        self.worker_id: int = int(re.findall(r"(\d+)$", self.runner_instance)[0]) if self.runner_instance else 0

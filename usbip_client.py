@@ -690,7 +690,8 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             )
 
         generic_handler: GenericDescriptor = GenericDescriptor()
-        descriptor = generic_handler.packet(data=self.readall(prefix.actual_length, usb))
+        data: bytes = self.readall(prefix.actual_length, usb)
+        descriptor = generic_handler.packet(data=data)
         return descriptor
 
     def set_line_coding(
@@ -775,9 +776,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             value=DescriptorType.CONFIGURATION_DESCRIPTOR.value << 8,
             length=ConfigurationDescriptor.size,
         )
-        config_desc: ConfigurationDescriptor = self.request_descriptor(
-            setup=setup, usb=usb
-        )
+        config_desc: ConfigurationDescriptor = self.request_descriptor(setup=setup, usb=usb)
 
         setup = UrbSetupPacket(
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,

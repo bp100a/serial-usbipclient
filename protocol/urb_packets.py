@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from datastruct.fields import field
 
 from protocol.packets import URBBase  # URBs are "little-endian"
-from usbip_protocol import Direction, URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest, URBCDCRequestType
+from usbip_protocol import (Direction, URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest,
+                            URBCDCRequestType, URBSetupRequestType, URBCDCRequestType)
 from usb_descriptors import DescriptorType, DeviceInterfaceClass, CDCDescriptorSubType, EndpointAttributesTransferType
 
 
@@ -51,7 +52,7 @@ class ConfigurationDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx
     bmAttributes: int = field("B", default=0x0)
     bMaxPower: int = field("B", default=0x0)
 
-    def __post__(self) -> None:
+    def __post_init__(self) -> None:
         """set up some instance variables"""
         self.interfaces: list[InterfaceDescriptor] = []
 
@@ -228,7 +229,7 @@ class GenericDescriptor:
         """handle interface descriptors"""
         interface_desc: InterfaceDescriptor = InterfaceDescriptor.new(data[0:length])
         offset: int = interface_desc.size
-        for _ in range(0, interface_desc.bNumEndPoints):
+        for _ in range(0, interface_desc.bNumEndpoints):
             endpoint: bool = False
             while not endpoint:
                 base_desc: BaseDescriptor = BaseDescriptor.new(
@@ -321,3 +322,51 @@ class UrbSetupPacket(URBBase):
         ]:
             return Direction.USBIP_DIR_OUT  # host -> device (WRITE)
         return Direction.USBIP_DIR_IN  # device -> host (READ)
+
+    @property
+    def bRequest(self) -> str:
+        """return a string representing the request this setup packet represents"""
+        try:
+            return URBStandardDeviceRequest(self.request).name
+        except ValueError:
+            try:
+                return URBCDCRequestType(self.request).name
+            except ValueError:
+                return f"0x{self.request:02x}"
+
+    @property
+    def wValue(self) -> str:
+        """return a string represent the value that is contextually aware"""
+        if self.bRequest == URBStandardDeviceRequest.GET_DESCRIPTOR.name:
+            # wValue = Descriptor Type & Index
+            descriptor: DescriptorType = DescriptorType((self.value & 0xFF00) >> 8)
+            index: int = self.value & 0xFF
+            return f"{descriptor.name}:{index}"
+        return f'{self.value:04x}'
+
+    @property
+    def device_type(self) -> str:
+        """return the recipient of the bmRequestType"""
+        device_type: int = (self.request_type & 0x70) >> 8
+        device_types: dict[int, str] = {0: 'Standard', 1: 'Class', 2: 'Vendor', 3: 'Reserved'}
+        return device_types[device_type]
+
+    @property
+    def recipient(self) -> str:
+        """return the recipient of the bmRequestType"""
+        recipient: int = (self.request_type & 0xF) >> 8
+        recipients: dict[int, str] =  {0: 'Device', 1: 'Interface', 2: 'Endpoint', 3: 'Other'}
+        return recipients[recipient]
+
+    def __str__(self):
+        """decode the setup"""
+        output: str = "\nSetup=" + self.pack().hex() + "\n"
+        output += f"...bmRequestType={self.request_type:02x}" + "\n"
+        output += "......Direction=" + URBSetupRequestType(self.request_type & URBSetupRequestType.DEVICE_TO_HOST).name + "\n"
+        output += "......Type=" + self.device_type + "\n"
+        output += "......Recipient=" + self.recipient + "\n"
+        output += f"...bRequest={self.bRequest}\n"
+        output += f"...wValue={self.wValue}\n"
+        output += f"...wLength={self.length}\n"
+
+        return output
