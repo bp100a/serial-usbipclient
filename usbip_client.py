@@ -682,12 +682,16 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
-        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
-        if prefix.status != 0:
-            raise ValueError(
-                f"request_descriptor failure! {prefix.status=} "
-                f"errno='{os.strerror(abs(prefix.status))}'"
-            )
+        try:
+            prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
+            if prefix.status != 0:
+                raise ValueError(
+                    f"request_descriptor failure! {prefix.status=} "
+                    f"errno='{os.strerror(abs(prefix.status))}'"
+                )
+        except struct.error as s_error:
+            self._logger.error(f"parsing packet error {str(s_error)}, for {prefix_data.hex()=}")
+            raise
 
         generic_handler: GenericDescriptor = GenericDescriptor()
         data: bytes = self.readall(prefix.actual_length, usb)
