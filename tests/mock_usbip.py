@@ -52,13 +52,15 @@ class MockUSBIP:
     def shutdown(self):
         """shutdown the USBIP server thread"""
         if self.thread and self.event.is_set():
+            self.logger.info("usbip-server: clear event, wait for thread to recognize exit condition")
             self.event.clear()  # -> 0, thread will exit loop if we aren't blocking on accept()
             if self.server_socket:
                 if not self._is_windows:  # in linux-land, need to shut down as well
                     self.server_socket.shutdown(socket.SHUT_RDWR)
                 self.server_socket.close()  # if we are waiting for accept(), should unblock
 
-            if self.event.wait(timeout=5.0):
+            self.logger.info("usbip-server: waiting for event to signal (0->1)")
+            if self.event.wait(timeout=10.0):
                 self.thread.join(timeout=1.0)
                 self.thread = None
                 return
