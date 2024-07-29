@@ -61,7 +61,7 @@ class InterfaceDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/mom
     """interface descriptor"""
     bInterfaceNumber: int = field("B", default=0x0)
     bAlternateSetting: int = field("B", default=0x0)
-    bNumEndPoints: int = field("B", default=0x0)
+    bNumEndpoints: int = field("B", default=0x0)
     bInterfaceClass: DeviceInterfaceClass = field("B", default=0x0)
     bInterfaceSubClass: int = field("B", default=0x0)
     bInterfaceProtocol: int = field("B", default=0x0)
@@ -148,7 +148,7 @@ class EndPointDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/mome
 @dataclass
 class StringDescriptor(BaseDescriptor):
     """handle string descriptors"""
-    wLanguage: int = field("w", default=0x0)
+    wLanguage: int = field("H", default=0x0)
 
 
 class GenericDescriptor:
