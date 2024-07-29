@@ -289,50 +289,21 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 detail="send_unlink() connection lost", connection=self
             ) from connection_error
 
-    def readall(
-        self,
-        size: int,
-        usb: USBIP_Connection | socket.socket,
-        timeout: float = PAYLOAD_TIMEOUT,
-    ) -> bytes:
+    def readall(self, size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
         with USBStatsManager(stats=self._stats, name="USBIPClient.readall"):
-            sock: socket.socket = (
-                usb.socket if isinstance(usb, USBIP_Connection) else usb
-            )
-            try:
-                data: bytes = bytes()
-                start: float = perf_counter()
-                while size > 0:
-                    try:
-                        just_read: bytes = sock.recv(size)
-                        if not just_read:  # nothing left in socket
-                            return data
-                        data += just_read
-                        size -= len(just_read)
-                    except TimeoutError:
-                        if perf_counter() - start > timeout:
-                            break
-                return data
-            except (ConnectionError, OSError) as connection_error:
-                raise MBIUSBConnectionLost(
-                    detail="USBIP_Connection.readall() connection lost", connection=usb
-                ) from connection_error
+            return USBIPClient.readall(size, usb, timeout)
 
     def wait_for_unlink(self) -> Optional[RET_UNLINK]:
         """wait for the unlink response"""
         start_time: float = time()
-        while (
-            time() - start_time < 10.0
-        ):  # wade through any residual packets to get the unlink response
+        while time() - start_time < 10.0:  # wade through any residual packets to get the unlink response
             header_data: bytes = USBIPClient.readall(HEADER_BASIC().size, self.socket)
             if not header_data:
                 return None
             header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
             if header.command == BasicCommands.RET_UNLINK:  # unlink command
-                unlink_data: bytes = header_data + USBIPClient.readall(
-                    RET_UNLINK().size - HEADER_BASIC().size, self
-                )
+                unlink_data: bytes = header_data + USBIPClient.readall(RET_UNLINK.size - HEADER_BASIC.size, self)
                 unlink: RET_UNLINK = RET_UNLINK.new(data=unlink_data)
                 return unlink
             if header.command == BasicCommands.RET_SUBMIT:  # response for a submit
@@ -539,11 +510,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
 
     @staticmethod
-    def readall(
-        size: int,
-        usb: USBIP_Connection | socket.socket,
-        timeout: float = PAYLOAD_TIMEOUT,
-    ) -> bytes:
+    def readall(size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
         sock: socket.socket = usb.socket if isinstance(usb, USBIP_Connection) else usb
         try:
@@ -561,15 +528,10 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         break
             return data
         except ConnectionError as connection_error:
-            raise MBIUSBConnectionLost(
-                detail="USBIPClient.readall() connection lost", connection=usb
-            ) from connection_error
+            raise MBIUSBConnectionLost(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
         except OSError as os_error:
-            raise MBIUSBConnectionLost(
-                detail=f"USBIPClient.readall() connection lost [{os_error.errno=}"
-                       f"{os.strerror(os_error.errno)}",
-                connection=usb,
-            ) from os_error
+            raise MBIUSBConnectionLost(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, {os.strerror(os_error.errno)}",
+                                       connection=usb) from os_error
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
         """get list of remote devices"""
@@ -640,7 +602,10 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             transfer_buffer=bytes(),
         )
         usb.socket.sendall(command.packet())
-        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX().size, usb.socket)
+        prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb.socket)
+        if not prefix_data:
+            raise MBIUSBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
+
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
         if prefix.status != 0:
             raise ValueError(
@@ -682,7 +647,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
-        self._logger.debug(f"{len(prefix_data)}, {prefix_data.hex()=}")
+        self._logger.debug(f"{len(prefix_data)=}, {prefix_data.hex()=}")
         try:
             prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
             if prefix.status != 0:
