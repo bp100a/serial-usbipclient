@@ -46,13 +46,17 @@ from usbip_protocol import (
 )
 from usb_descriptors import (
     DescriptorType,
+    DeviceInterfaceClass,
+)
+
+from protocol.urb_packets import (
     DeviceDescriptor,
     ConfigurationDescriptor,
     GenericDescriptor,
     StringDescriptor,
-    DeviceInterfaceClass,
     EndPointDescriptor,
 )
+
 from performance_stats import USBStats, USBStatsManager
 
 PAYLOAD_TIMEOUT: float = (
@@ -796,7 +800,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
             request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
             value=DescriptorType.DEVICE_DESCRIPTOR.value << 8,
-            length=DeviceDescriptor().size,
+            length=DeviceDescriptor.size,
         )
         usb.device_desc = self.request_descriptor(setup=setup, usb=usb)
 
@@ -805,7 +809,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
             request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
             value=DescriptorType.CONFIGURATION_DESCRIPTOR.value << 8,
-            length=ConfigurationDescriptor().size,
+            length=ConfigurationDescriptor.size,
         )
         config_desc: ConfigurationDescriptor = self.request_descriptor(
             setup=setup, usb=usb
@@ -815,7 +819,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
             request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
             value=DescriptorType.CONFIGURATION_DESCRIPTOR.value << 8,
-            length=config_desc.total_length,
+            length=config_desc.wTotalLength,
         )
         usb.configuration = self.request_descriptor(setup=setup, usb=usb)
 
