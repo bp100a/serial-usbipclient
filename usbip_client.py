@@ -642,13 +642,14 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
         usb.socket.sendall(command.pack())
 
-    def request_descriptor(
-        self, setup: UrbSetupPacket, usb: USBIP_Connection
+    def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection
     ) -> DeviceDescriptor | ConfigurationDescriptor | StringDescriptor:
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
         self._logger.debug(f"{len(prefix_data)=}, {prefix_data.hex()=}")
+        if not prefix_data:
+            raise MBIUSBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
         try:
             prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
             if prefix.status != 0:
