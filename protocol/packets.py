@@ -59,6 +59,18 @@ class BaseStruct(DataStruct, metaclass=MetaStruct):
 
 
 @dataclass
+class URBBase(BaseStruct):
+    """make our URBs little-endian"""
+    @classmethod
+    @lru_cache()
+    def config(cls) -> Config:
+        datastruct_config(endianness=Endianness.LITTLE)
+        config = Config(datastruct_get_config())
+        config.update(getattr(cls, "_CONFIG", {}))
+        return config
+
+
+@dataclass
 class CommonHeader(BaseStruct):
     """basic USBIP command header"""
     usbip_version: int = field("H", default=0x111)

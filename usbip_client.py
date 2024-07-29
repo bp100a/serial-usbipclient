@@ -14,54 +14,20 @@ from typing import Optional, cast
 from dataclasses import dataclass
 import logging
 
-from usbip_defs import (
-    BaseProtocolPacket,
-    BasicCommands,
-    Direction,
-    Status,
-    CDCControl,
-    ErrorCodes,
-)  # just the basics
-from protocol.packets import (
-    OP_REQ_DEVLIST,
-    OP_REQ_IMPORT,
-    CMD_SUBMIT,
-    CMD_UNLINK,
-    RET_UNLINK,
-    HEADER_BASIC,
-)
-from protocol.packets import (
-    OP_REP_DEVLIST_HEADER,
-    OP_REP_DEV_PATH,
-    OP_REP_DEV_INTERFACE,
-    OP_REP_IMPORT,
-    RET_SUBMIT_PREFIX,
-)
-from usbip_protocol import (
-    UrbSetupPacket,
-    URBSetupRequestType,
-    URBStandardDeviceRequest,
-    URBCDCRequestType,
-    URBTransferFlags,
-)
-from usb_descriptors import (
-    DescriptorType,
-    DeviceInterfaceClass,
-)
+# enums needed for USBIP and URBs
+from usb_descriptors import DescriptorType, DeviceInterfaceClass
+from usbip_defs import BaseProtocolPacket, BasicCommands, Direction, Status, CDCControl, ErrorCodes  # just the basics
+from usbip_protocol import URBSetupRequestType, URBTransferFlags
 
-from protocol.urb_packets import (
-    DeviceDescriptor,
-    ConfigurationDescriptor,
-    GenericDescriptor,
-    StringDescriptor,
-    EndPointDescriptor,
-)
+# USBIP & URB packet definitions
+from protocol.packets import OP_REQ_DEVLIST, OP_REQ_IMPORT, CMD_SUBMIT, CMD_UNLINK, RET_UNLINK, HEADER_BASIC
+from protocol.packets import OP_REP_DEVLIST_HEADER, OP_REP_DEV_PATH, OP_REP_DEV_INTERFACE, OP_REP_IMPORT, RET_SUBMIT_PREFIX
+from protocol.urb_packets import UrbSetupPacket, URBStandardDeviceRequest, URBCDCRequestType
+from protocol.urb_packets import DeviceDescriptor, ConfigurationDescriptor, GenericDescriptor, StringDescriptor, EndPointDescriptor
 
 from performance_stats import USBStats, USBStatsManager
 
-PAYLOAD_TIMEOUT: float = (
-    0.050  # maximum time (seconds) we'll wait for pieces of our payload
-)
+PAYLOAD_TIMEOUT: float = 0.050  # maximum time (seconds) we'll wait for pieces of our payload
 
 
 @dataclass
@@ -715,7 +681,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     ) -> DeviceDescriptor | ConfigurationDescriptor | StringDescriptor:
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
-        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb, timeout=30.0)
+        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
         if prefix.status != 0:
             raise ValueError(
@@ -724,9 +690,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             )
 
         generic_handler: GenericDescriptor = GenericDescriptor()
-        descriptor = generic_handler.packet(
-            data=self.readall(prefix.actual_length, usb)
-        )
+        descriptor = generic_handler.packet(data=self.readall(prefix.actual_length, usb))
         return descriptor
 
     def set_line_coding(

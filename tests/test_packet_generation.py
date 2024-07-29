@@ -3,8 +3,13 @@ from time import time
 
 
 from tests.common_test_base import CommonTestBase
+
 from usbip_defs import BasicCommands, Direction
+from usb_descriptors import DescriptorType
+from usbip_protocol import URBSetupRequestType, URBStandardDeviceRequest
+from protocol.urb_packets import DeviceDescriptor
 from protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, OP_REP_DEVLIST_HEADER
+from protocol.urb_packets import UrbSetupPacket
 
 
 class TestPacketGeneration(CommonTestBase):
@@ -110,3 +115,13 @@ class TestPacketGeneration(CommonTestBase):
         self.assertEqual(4, OP_REP_DEV_INTERFACE().size)
 
         self.assertEqual(12, OP_REP_DEVLIST_HEADER.size)
+
+    def test_urb_endianess(self):
+        """test packets generated for URBs have correct (little) endianess"""
+        setup: UrbSetupPacket = UrbSetupPacket(
+            request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
+            request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
+            value=DescriptorType.DEVICE_DESCRIPTOR.value << 8,
+            length=DeviceDescriptor.size)
+
+        self.assertEqual(setup.pack().hex(), '8006000100001200')

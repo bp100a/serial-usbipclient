@@ -12,8 +12,10 @@ import logging
 from typing import Optional
 
 from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
-                              HEADER_BASIC, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
+                              HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
+from protocol.urb_packets import UrbSetupPacket
 from usbip_defs import BasicCommands
+from usb_descriptors import DescriptorType
 
 
 class MockUSBIP:
@@ -68,6 +70,16 @@ class MockUSBIP:
         if self._urb_traffic:
             urb_header: HEADER_BASIC = HEADER_BASIC.unpack(message)
             if urb_header.command == BasicCommands.CMD_SUBMIT:
+                cmd_submit: CMD_SUBMIT = CMD_SUBMIT.unpack(message)
+                urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
+                if urb_setup.value == DescriptorType.DEVICE_DESCRIPTOR << 8:
+                    # return descriptor for device
+                    ret_submit: USBIP_RET_SUBMIT = USBIP_RET_SUBMIT.unpack(bytes.fromhex("".join(self._protocol_responses['URB_SETUP'])))
+                    ret_submit.seqnum = cmd_submit.seqnum
+                    response: bytes = ret_submit.pack()
+                    client.sendall(response)
+                    return
+
                 failure: bytes = USBIP_RET_SUBMIT(status=0, direction=0, transfer_buffer=bytes()).pack()
                 client.sendall(failure)
         else:

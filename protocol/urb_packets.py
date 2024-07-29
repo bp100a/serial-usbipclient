@@ -7,12 +7,13 @@ from dataclasses import dataclass
 
 from datastruct.fields import field
 
+from protocol.packets import URBBase  # URBs are "little-endian"
+from usbip_protocol import Direction, URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest, URBCDCRequestType
 from usb_descriptors import DescriptorType, DeviceInterfaceClass, CDCDescriptorSubType, EndpointAttributesTransferType
-from protocol.packets import BaseStruct
 
 
 @dataclass
-class BaseDescriptor(BaseStruct):
+class BaseDescriptor(URBBase):
     """all descriptors share these properties"""
     bLength: int = field("B", default=0x0)
     bDescriptorType: DescriptorType = field("B", default=0x0)
@@ -24,10 +25,10 @@ class BaseDescriptor(BaseStruct):
 
 
 @dataclass
-class DeviceDescriptor(BaseDescriptor):
+class DeviceDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_device_descriptor.html
     """URB device descriptor"""
     bcdUSB: int = field("H", default=0x0)
-    bDeviceClass: int = field("b", default=0x0)
+    bDeviceClass: int = field("B", default=0x0)
     bDeviceSubClass: int = field("B", default=0x0)
     bDeviceProtocol: int = field("B", default=0x0)
     bMaxPacketSize: int = field("B", default=0x0)
@@ -36,12 +37,12 @@ class DeviceDescriptor(BaseDescriptor):
     bcdDevice: int = field("H", default=0x0)
     iManufacturer: int = field("B", default=0x0)
     iProduct: int = field("B", default=0x0)
-    iSerialNumber: int = field("H", default=0x0)
+    iSerialNumber: int = field("B", default=0x0)
     bNumberConfigurations: int = field("B", default=0x0)
 
 
 @dataclass
-class ConfigurationDescriptor(BaseDescriptor):
+class ConfigurationDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_configuration_descriptor.html
     """URB configuration descriptor"""
     wTotalLength: int = field("H", default=0x0)
     bNumInterfaces: int = field("B", default=0x0)
@@ -56,7 +57,7 @@ class ConfigurationDescriptor(BaseDescriptor):
 
 
 @dataclass
-class InterfaceDescriptor(BaseDescriptor):
+class InterfaceDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_interface_descriptor.html
     """interface descriptor"""
     bInterfaceNumber: int = field("B", default=0x0)
     bAlternateSetting: int = field("B", default=0x0)
@@ -88,7 +89,7 @@ class InterfaceAssociation(BaseDescriptor):
 
 
 @dataclass
-class FunctionalDescriptor(BaseStruct):
+class FunctionalDescriptor(URBBase):
     """interface descriptor base"""
     bFunctionLength: int = field("B", default=0x0)
     bDescriptorType: DescriptorType = field("B", default=0x0)
@@ -122,16 +123,12 @@ class CallManagementFunctionalDescriptor(FunctionalDescriptor):
 
 
 @dataclass
-class EndPointDescriptor(BaseDescriptor):
+class EndPointDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_endpoint_descriptor.html
     """Endpoint descriptor packet"""
     bEndpointAddress: int = field("B", default=0x0)
     bmAttributes: int = field("B", default=0x0)
     wMaxPacketSize: int = field("H", default=0x0)
     bInterval: int = field("B", default=0x0)
-
-    def __post_init__(self) -> None:
-        """set up our variables"""
-        pass
 
     def transfer_type(self) -> EndpointAttributesTransferType:
         """determine the transfer type from the bitfield"""
@@ -300,3 +297,27 @@ class GenericDescriptor:
         if handler:
             return handler(data, descriptor.bLength)
         return None
+
+
+@dataclass
+class UrbSetupPacket(URBBase):
+    """URB setup packet structure"""
+    request_type: int = field("B", default=0)
+    request: int = field("B", default=0)
+    value: int = field("H", default=0)
+    index: int = field("H", default=0)
+    length: int = field("H", default=0)
+
+    @property
+    def direction(self) -> Direction:
+        """the direction of the request"""
+        if self.request in [
+            URBStandardEndpointRequest.SET_FEATURE.value,
+            URBStandardInterfaceRequest.SET_INTERFACE.value,
+            URBStandardDeviceRequest.SET_FEATURE.value,
+            URBStandardDeviceRequest.SET_CONFIGURATION.value,
+            URBStandardDeviceRequest.SET_DESCRIPTOR,
+            URBCDCRequestType.SET_LINE_CODING,
+        ]:
+            return Direction.USBIP_DIR_OUT  # host -> device (WRITE)
+        return Direction.USBIP_DIR_IN  # device -> host (READ)
