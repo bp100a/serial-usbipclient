@@ -1,3 +1,4 @@
+[![cov](https://bp100a.github.io/usbip/badges/coverage.svg)](https://github.com/bp100a/usbip/actions)
 # USBIP simple client
 USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
 

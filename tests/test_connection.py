@@ -29,6 +29,7 @@ class TestUSBIPConnection(CommonTestBase):
 
     def test_connection(self):
         """test simple connection"""
+        self.skip_on_ci()  # having issues running on GitHub Actions
         client: USBIPClient = USBIPClient(remote=(self.host, self.port), logger=self.logger)
         client.connect_server()
         published = client.list_published()
