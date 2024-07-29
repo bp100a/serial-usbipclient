@@ -1,0 +1,14 @@
+[run]
+omit =
+    # omit all the code in the virtual environment
+    */venv*/*
+    */tests.py
+    */test*.py
+    */tests/common_test_base.py
+
+[report]
+omit =
+    */venv*/*
+    */tests.py
+    */test*.py
+    */tests/common_test_base.py

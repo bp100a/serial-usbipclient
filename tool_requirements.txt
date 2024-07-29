@@ -1,0 +1,9 @@
+# these are packages only used when running tests, not required in final release
+pytest==8.3.1
+pytest-xdist==3.6.1
+coverage==7.6.0
+pylint==3.2.6
+pip-tools==7.4.1
+black==24.4.2
+pytest-cov==5.0.0
+pytest-timeout==2.3.1
