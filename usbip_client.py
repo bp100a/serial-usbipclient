@@ -27,7 +27,7 @@ from protocol.urb_packets import DeviceDescriptor, ConfigurationDescriptor, Gene
 
 from performance_stats import USBStats, USBStatsManager
 
-PAYLOAD_TIMEOUT: float = 0.050  # maximum time (seconds) we'll wait for pieces of our payload
+PAYLOAD_TIMEOUT: float = 0.250  # maximum time (seconds) we'll wait for pieces of our payload
 
 
 @dataclass
