@@ -530,7 +530,8 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         except ConnectionError as connection_error:
             raise MBIUSBConnectionLost(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
         except OSError as os_error:
-            raise MBIUSBConnectionLost(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, {os.strerror(os_error.errno)}",
+            raise MBIUSBConnectionLost(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, "
+                                              f"{os.strerror(os_error.errno)}",
                                        connection=usb) from os_error
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
