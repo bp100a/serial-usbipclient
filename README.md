@@ -1,8 +1,8 @@
-# USBIP simple client
+# USBIP CDC client
 ![workflow](https://github.com/bp100a/usbip/actions/workflows/python-app.yml/badge.svg?branch=develop)</br>
 ![coverage badge](./coverage.svg)</br>
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)</br>
-USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
+This package supports connecting to a CDC (serial) USB device exposed by a USBIPD server. USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
 
 There are some issues sharing USB devices to docker containers, a major one being if the USB connection is lost
 it is difficult to recover the connection between the docker container and the hosting server.
@@ -22,5 +22,5 @@ pip-compile requirements.in
 ```
 
 ## Useful Resources
-For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network, </br>
+For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network,
 there are usbipd-clients for Linux & [Windows](https://github.com/cezanne/usbip-win).
