@@ -22,5 +22,5 @@ pip-compile requirements.in
 ```
 
 ## Useful Resources
-For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network, there are usbipd-clients for Linux & Windows.
-
+For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network, </br>
+there are usbipd-clients for Linux & [Windows](https://github.com/cezanne/usbip-win).
