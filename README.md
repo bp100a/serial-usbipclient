@@ -1,5 +1,5 @@
 # USBIP simple client
-![workflow](https://github.com/bp100a/usbip/actions/workflows/python-app.yml/badge.svg)</br>
+![workflow](https://github.com/bp100a/usbip/actions/workflows/python-app.yml/badge.svg?branch=develop)</br>
 ![coverage badge](./coverage.svg)</br>
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)</br>
 USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
