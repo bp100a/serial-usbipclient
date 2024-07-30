@@ -26,7 +26,7 @@ jobs:
     - name: lint
       run: |
         pylint *.py
-    - name: Test with pytest
+    - name: Test & generate coverage
       run: |
         chmod +x run_pytest.sh
         ./run_pytest.sh
@@ -36,6 +36,7 @@ jobs:
       uses: tj-actions/verify-changed-files@v16
       id: verify-changed-files
       with:
+        # If this file has changed, we want to re-commit to the store
         files: coverage.svg
 
     - name: Commit files
@@ -44,7 +45,7 @@ jobs:
         git config --local user.email "github-actions[bot]@users.noreply.git
         git config --local user.name "github-actions[bot]"
         git add coverage.svg
-        git commit -m "Updated coverage.svg"
+        git commit -am "Updated coverage.svg"
 
     - name: Push changes
       if: steps.verify-changed-files.outputs.files_changed == 'true'
