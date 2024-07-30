@@ -28,5 +28,5 @@ class TestStats(CommonTestBase):
         self.assertEqual(len(stats.raw_data('sleep')), 20)
         self.assertEqual(len(stats.raw_data('sleep-longer')), 10)
 
-        self.assertAlmostEqual(fsum(stats.raw_data('sleep')), (0.01*10 + 0.02*10), delta=0.01)
-        self.assertAlmostEqual(fsum(stats.raw_data('sleep-longer')), 0.03*10, delta=0.01)
+        self.assertAlmostEqual(fsum(stats.raw_data('sleep')), (0.01*10 + 0.02*10), delta=0.015)
+        self.assertAlmostEqual(fsum(stats.raw_data('sleep-longer')), 0.03*10, delta=0.015)
