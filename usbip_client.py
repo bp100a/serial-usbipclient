@@ -238,11 +238,15 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             ]
         )
 
+    def sendall(self, data: bytes) -> None:
+        """wrapper for socket sendall"""
+        self.socket.sendall(data)
+
     def send_command(self, command: CMD_SUBMIT) -> int:
         """send the command"""
         try:
             with USBStatsManager(self._stats, name="USBIP_Connection.sendall"):
-                self.socket.sendall(command.packet())
+                self.sendall(command.packet())
             self._commands[command.seqnum] = command
 
             # If this is a *write* to the device, then wait for confirmation
@@ -279,7 +283,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     def send_unlink(self, command: CMD_UNLINK) -> bool:
         """send an unlink command"""
         try:
-            self.socket.sendall(command.packet())
+            self.sendall(command.packet())
             unlink_response: Optional[RET_UNLINK] = self.wait_for_unlink()
             if abs(unlink_response.status) in MBIUSBConnectionLost.USB_DISCONNECT:
                 return True
@@ -576,6 +580,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 OP_REP_IMPORT().size - BaseProtocolPacket().size, self.usbipd
             )
 
+        self._logger.debug(f"OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
         return OP_REP_IMPORT.unpack(data + more_data)
 
     def get_descriptor(self, usb: USBIP_Connection) -> DeviceDescriptor:
@@ -602,7 +607,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             direction=Direction.USBIP_DIR_IN,
             transfer_buffer=bytes(),
         )
-        usb.socket.sendall(command.packet())
+        usb.sendall(command.packet())
         prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb.socket)
         if not prefix_data:
             raise MBIUSBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
@@ -617,10 +622,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
         return dev_descriptor
 
-    @staticmethod
-    def send_setup(
-        setup: UrbSetupPacket, usb: USBIP_Connection, data: Optional[bytes] = None
-    ) -> None:
+    def send_setup(self, setup: UrbSetupPacket, usb: USBIP_Connection, data: Optional[bytes] = None) -> None:
         """send command to the device"""
         usb.seqnum += 1
         command: CMD_SUBMIT = CMD_SUBMIT(
@@ -640,7 +642,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             direction=setup.direction,
             transfer_buffer=data if data else bytes(),
         )
-        usb.socket.sendall(command.pack())
+        data: bytes = command.pack()
+        usb.sendall(data)
+        self._logger.debug(f"send_setup(): {str(setup)}\n{data.hex()=}")
 
     def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection
     ) -> DeviceDescriptor | ConfigurationDescriptor | StringDescriptor:
@@ -651,7 +655,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         if not prefix_data:
             raise MBIUSBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
         try:
-            prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
+            prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(prefix_data)
             if prefix.status != 0:
                 raise ValueError(
                     f"request_descriptor failure! {prefix.status=} "

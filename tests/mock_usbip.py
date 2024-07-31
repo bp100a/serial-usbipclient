@@ -112,6 +112,7 @@ class MockUSBIP:
                                                                   bNumConfigurations=path.bNumConfigurations, bNumInterfaces=path.bNumInterfaces)
                         data: bytes = rep_import.pack()
                         client.sendall(data)
+                        self.logger.info(f"OP_REP_IMPORT: {data.hex()}")
                         self._urb_traffic = True
                         return
                 else:

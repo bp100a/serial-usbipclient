@@ -14,6 +14,13 @@ The USBIP client implementation will only address USB devices that implemented t
 serial devices. This allows for a simple connection to the USBIP server without the need for mapping USB devices into
 the container.
 
+## SOUP
+| Module          | Version | comments                                    |
+|-----------------|---------|---------------------------------------------|
+| Python          | 3.12    | Python interpreter                          |
+| py-datastruct   | 1.0.0   | Serialization of binary to/from dataclasses |
+
+
 ## Build Process
 Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) package, read the docs [here](https://pip-tools.readthedocs.io/en/latest/)
 
