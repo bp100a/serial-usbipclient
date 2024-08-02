@@ -29,13 +29,18 @@ class TestUSBIPConnection(CommonTestBase):
 
     def test_connection(self):
         """test simple connection"""
-        self.port = self.port if self.CI else self.DEFAULT_USBIP_SERVER_PORT  # actual when running locally
+        if not self.CI:
+            # run against a "real" USBIPD service when not in the CI environment
+            self.port = self.DEFAULT_USBIP_SERVER_PORT
+
         client: USBIPClient = USBIPClient(remote=(self.host, self.port), logger=self.logger)
         client.connect_server()
         published = client.list_published()
         self.assertTrue(published.paths)
-        vid: int = 0x525
-        pid: int = 0xA4A7
+
+        # this is the 8.8 inch Turing smart screen (CPU monitor)
+        vid: int = 0x525  # Netchip Technology, Inc.
+        pid: int = 0xA4A7 # Linux-USB Serial Gadget (CDC ACM mode)
 
         try:
             client.attach(devices=[HardwareID(vid, pid)], published=published)
