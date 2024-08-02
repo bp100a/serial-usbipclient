@@ -640,7 +640,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             interval=0,
             setup=setup.packet(),
             direction=setup.direction,
-            transfer_buffer=data if data else bytes(),
+            transfer_buffer=data if data else bytes,
         )
         data: bytes = command.pack()
         usb.sendall(data)

@@ -37,7 +37,7 @@ class TestPacketGeneration(CommonTestBase):
         cmd_in: bytes = bytes.fromhex('00000001'  # command
                                       '00000d06'  # sequence #
                                       '0001000f'  # device/bus id (1-15)
-                                      '00000000'  # direction
+                                      '00000000'  # direction (USBIP_DIR_OUT)
                                       '00000001'  # endpoint
                                       '00000000'  # transfer_flags
                                       '00000040'  # transfer_buffer_length
@@ -49,7 +49,7 @@ class TestPacketGeneration(CommonTestBase):
                                       'ffffffff860008a784ce5ae21237630000000000000000000000000000000000'
                                       '0000000000000000000000000000000000000000000000000000000000000000')
 
-        submit: CMD_SUBMIT = CMD_SUBMIT.unpack(io=cmd_in)
+        submit: CMD_SUBMIT = CMD_SUBMIT.unpack(cmd_in)
         self.assertEqual(submit.command, BasicCommands.CMD_SUBMIT)
         self.assertEqual(submit.seqnum, 0xd06)
         self.assertEqual(submit.direction, Direction.USBIP_DIR_OUT)

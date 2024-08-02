@@ -170,13 +170,13 @@ class HEADER_BASIC(BaseStruct):
 @dataclass
 class CMD_SUBMIT(HEADER_BASIC):
     """submit a URB"""
-    transfer_flags: int = field("i", default=0x0)  # 0x14, URB transfer flags
-    transfer_buffer_length: int = built("i", lambda ctx: len(ctx.transfer_buffer) if ctx.transfer_buffer else ctx.transfer_buffer_length)  # 0x18
-    start_frame: int = field("i", default=0x0)  # 0x1C, =0 if not ISO transfer
+    transfer_flags: int = field("I", default=0x0)  # 0x14, URB transfer flags
+    transfer_buffer_length: int = built("I", lambda ctx: len(ctx.transfer_buffer) if ctx.transfer_buffer else ctx.transfer_buffer_length)  # 0x18
+    start_frame: int = field("I", default=0x0)  # 0x1C, =0 if not ISO transfer
     number_of_packets: int = field("I", default=0xFFFFFFFF)  # 0x20, # of ISO packets, default it not ISO
     interval: int = field("i", default=0x0)  # 0x24,  maximum time for the request on the server-side host controller
     setup: bytes = field("8s", default=b'\0\0\0\0\0\0\0\0')  # 0x28, data bytes for USB setup, filled with zeros if not used.
-    transfer_buffer: bytes = field(lambda ctx: ctx.transfer_buffer_length if ctx.transfer_buffer else 0)  # 0x30, -> HOST, data we are sending
+    transfer_buffer: bytes = field(lambda ctx: ctx.transfer_buffer_length)  # 0x30, -> HOST, data we are sending
 
     @property
     def iso_packet_descriptors(self) -> bytes:
