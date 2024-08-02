@@ -367,6 +367,8 @@ class UrbSetupPacket(URBBase):
         output += "......Recipient=" + self.recipient + "\n"
         output += f"...bRequest={self.bRequest}\n"
         output += f"...wValue={self.wValue}\n"
+        output += f"...wIndex={self.index} (0x{self.index:04x})\n"
         output += f"...wLength={self.length}\n"
+        output += f"...Direction={self.direction.name}\n"
 
         return output

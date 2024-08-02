@@ -1,7 +1,7 @@
 from typing import Optional
 from tests.common_test_base import CommonTestBase
 
-from usbip_client import USBIPClient, HardwareID, MBIUSBAttachError, USBIP_Connection
+from usbip_client import USBIPClient, HardwareID, USBAttachError, USBIP_Connection
 from tests.mock_usbip import MockUSBIP
 
 
@@ -42,6 +42,6 @@ class TestUSBIPConnection(CommonTestBase):
             client.attach(devices=[HardwareID(vid, pid)], published=published)
             connections: list[USBIP_Connection] = client.get_connection(device=HardwareID(vid, pid))
             self.assertEqual(len(connections), 1)  # should be a single connection
-        except MBIUSBAttachError as a_error:
+        except USBAttachError as a_error:
             self.logger.error(a_error.detail)
             raise
