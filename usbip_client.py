@@ -866,9 +866,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         with USBStatsManager(self._stats, "USBIPClient.pending_reads"):
             if usb.pending_reads < self.URB_QUEUE_MIN:
                 for _ in range(usb.pending_reads, self.URB_QUEUE_MAX):
-                    self.read(
-                        usb, size=0x1000
-                    )  # max expected data from Gener8 is ~269 bytes
+                    self.read(usb, size=0x1000)  # max expected data
 
     def send(self, usb: USBIP_Connection, data: bytes | str) -> int:
         """send data to the underlying device"""

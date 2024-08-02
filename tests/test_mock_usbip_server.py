@@ -1,5 +1,5 @@
 """test the mock usbip server for basic behavior"""
-
+import os
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR
 import logging
 
@@ -60,3 +60,13 @@ class TestMockUSBIPServer(CommonTestBase):
         port: int = 3245
         server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
         paths: list = server.read_paths()
+
+from tests.mock_usbip import Parse_lsusb
+
+
+class TestDeviceConfiguration(CommonTestBase):
+    """test setting up our device configuration"""
+    def test_lsusb_parsing(self):
+        """test parsing the lsusb output file"""
+        lsusb_out: str = os.path.join(os.path.dirname(__file__), 'lsusb.out')
+        lsusb_parsed: Parse_lsusb = Parse_lsusb(lsusb_out)

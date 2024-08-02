@@ -4,18 +4,129 @@ import os
 import errno
 import json
 import platform
+import re
 import socket
 from threading import Thread, Event
 from time import time, sleep
 from queue import Queue
 import logging
-from typing import Optional
+from typing import Optional, Any, cast
+from enum import EnumType
 
 from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
                               HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
-from protocol.urb_packets import UrbSetupPacket
+from usbip_protocol import Direction
+from protocol.urb_packets import (UrbSetupPacket, DeviceDescriptor, ConfigurationDescriptor,
+                                  URBBase, InterfaceDescriptor, InterfaceAssociation, EndPointDescriptor, HeaderFunctionalDescriptor,
+                                  CallManagementFunctionalDescriptor, ACMFunctionalDescriptor, UnionFunctionalDescriptor)
 from usbip_defs import BasicCommands
 from usb_descriptors import DescriptorType
+
+
+class Parse_lsusb:
+    """parse the output of a lsbusb command to get a USB device configuration"""
+    def __init__(self, lsusb_out: str):
+        """parse the data"""
+        self.file_path: str = lsusb_out
+        self.device_descriptor: DeviceDescriptor = DeviceDescriptor()
+        with open(self.file_path, "r") as usb:
+            line: str = ''
+            while not line.startswith('Device Descriptor:'):
+                line = usb.readline()
+            if line == 'Device Descriptor:\n':
+                self.parse_descriptor(usb, urb=self.device_descriptor)
+
+    def from_hex(self, hex: str) -> int:
+        """convert hex to integer"""
+        return int(hex[2:], 16)  # return as an integer
+
+    def to_bcd(self, bcd: str) -> int:
+        """convert a string to BCD int"""
+        # 2.00 -> 0x0200
+        hex: str = bcd.replace('.', '')  # now it's a hex string
+        return int(hex, 16)  # return as an integer
+
+    def set_attribute(self, urb: URBBase, name: str, value: str):
+        """set the attribute to the structure"""
+        if name == 'bMaxPacketSize0':  # indicates max packet size for default endpoint
+            name = 'bMaxPacketSize'
+
+        if name == 'MaxPower':
+            name = 'bMaxPower'
+            value = value.replace('mA', '')
+
+        for field in urb.fields():
+            if field[0].name == name:
+                if '.' in value:  # encoded, BCD
+                    value = self.to_bcd(bcd=value)
+                elif value.startswith('0x'):
+                    value = self.from_hex(value)
+
+                if type(field[0].type) == EnumType:
+                    value = int(value)
+                typed_value = field[0].type(value)
+                urb.__setattr__(name, typed_value)
+                return
+        raise NotImplementedError(f"{name=} was not found on {urb.__class__.__name__}")
+
+    def parse_descriptor(self, usb, urb: URBBase, parent: Optional[URBBase] = None):
+        """parse the device descriptor data"""
+        while True:
+            line: str = usb.readline()
+            if not line.endswith(':\n'):
+                parts: list[str] = re.split(r'\s+', line.strip())
+                attribute_name: str = parts[0]
+                attribute_value: str = parts[1]
+                if attribute_name not in ['Self', 'line', 'Transfer', 'Synch', 'Usage'] and attribute_value not in ['Powered', 'coding', 'Type']:
+                    self.set_attribute(urb, attribute_name, attribute_value)
+            else:
+                section: str = line.strip()
+                if section == 'Configuration Descriptor:':
+                    device_desc: DeviceDescriptor = cast(DeviceDescriptor, urb)
+                    device_desc.configurations.append(ConfigurationDescriptor())
+                    self.parse_descriptor(usb, device_desc.configurations[-1], parent=urb)
+                elif section == 'Interface Association:':
+                    use_parent: bool = isinstance(parent, ConfigurationDescriptor)
+                    config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb if not use_parent else parent)
+                    config_descriptor.interfaces.append(InterfaceAssociation())
+                    self.parse_descriptor(usb, config_descriptor.interfaces[-1], parent=urb if not use_parent else parent)
+                elif section == 'Interface Descriptor:':
+                    use_parent: bool = isinstance(parent, ConfigurationDescriptor)
+                    config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb if not use_parent else parent)
+                    config_descriptor.interfaces.append(InterfaceDescriptor())
+                    self.parse_descriptor(usb, config_descriptor.interfaces[-1], parent=urb if not use_parent else parent)
+                elif section == "Endpoint Descriptor:":
+                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    if_descriptor.descriptors.append(EndPointDescriptor())
+                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                elif section == 'CDC Header:':
+                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    if_descriptor.descriptors.append(HeaderFunctionalDescriptor())
+                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                elif section == 'CDC Call Management:':
+                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    if_descriptor.descriptors.append(CallManagementFunctionalDescriptor())
+                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                elif section == 'CDC ACM:':
+                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    if_descriptor.descriptors.append(ACMFunctionalDescriptor())
+                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                elif section == 'CDC Union:':
+                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    if_descriptor.descriptors.append(UnionFunctionalDescriptor())
+                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+
+
+class MockUSBDevice:
+    """emulate a USB device"""
+    def __init__(self):
+        """read the emulation data"""
+        config_path: str = os.path.join(os.path.dirname(__file__), "lsusb.out")
 
 
 class MockUSBIP:
@@ -32,6 +143,7 @@ class MockUSBIP:
         self._is_windows: bool = platform.system() == 'Windows'
         self._protocol_responses: dict[str, list[str]] = {}
         self._urb_traffic: bool = False
+        self.urb_queue: dict[int, Any] = {}  # pending read URBs, queued by seq #
         self.setup()
         self.event.clear()
         self.thread.start()
@@ -73,6 +185,9 @@ class MockUSBIP:
             urb_header: HEADER_BASIC = HEADER_BASIC.unpack(message)
             if urb_header.command == BasicCommands.CMD_SUBMIT:
                 cmd_submit: CMD_SUBMIT = CMD_SUBMIT.unpack(message)
+                if cmd_submit.ep and cmd_submit.direction == Direction.USBIP_DIR_IN:  # a read is being issued
+                    raise NotImplementedError("TBD, queueing URB packets")
+
                 urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
                 ret_submit: Optional[USBIP_RET_SUBMIT] = None
                 self.logger.info(f"Setup flags: {str(urb_setup)}")

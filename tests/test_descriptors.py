@@ -59,7 +59,7 @@ class TestInterfaceDescriptor(CommonTestBase):
                                                        'bcdDevice',
                                                        'iManufacturer',
                                                        'iProduct',
-                                                       'iSerialNumber',
+                                                       'iSerial',
                                                        'bNumberConfigurations']),
             (urb.HeaderFunctionalDescriptor, '<bbbH', ['bFunctionLength',
                                                        'bDescriptorType',

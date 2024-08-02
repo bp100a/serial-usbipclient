@@ -38,8 +38,12 @@ class DeviceDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/moment
     bcdDevice: int = field("H", default=0x0)
     iManufacturer: int = field("B", default=0x0)
     iProduct: int = field("B", default=0x0)
-    iSerialNumber: int = field("B", default=0x0)
-    bNumberConfigurations: int = field("B", default=0x0)
+    iSerial: int = field("B", default=0x0)
+    bNumConfigurations: int = field("B", default=0x0)
+
+    def __post_init__(self) -> None:
+        """set up some instance variables"""
+        self.configurations: list[ConfigurationDescriptor] = []
 
 
 @dataclass
@@ -100,8 +104,8 @@ class FunctionalDescriptor(URBBase):
 @dataclass
 class UnionFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
-    bControllerInterface: int = field("B", default=0x0)
-    bSubordinateInterface: int = field("B", default=0x0)
+    bMasterInterface: int = field("B", default=0x0)
+    bSlaveInterface: int = field("B", default=0x0)
 
 
 @dataclass
@@ -223,9 +227,7 @@ class GenericDescriptor:
         base_desc: BaseDescriptor = BaseDescriptor.new(data[: BaseDescriptor().size])
         return DescriptorType(base_desc.bDescriptorType)
 
-    def _interface_handler(
-        self, data: bytes, length
-    ) -> InterfaceDescriptor | InterfaceAssociation:
+    def _interface_handler(self, data: bytes, length) -> InterfaceDescriptor | InterfaceAssociation:
         """handle interface descriptors"""
         interface_desc: InterfaceDescriptor = InterfaceDescriptor.new(data[0:length])
         offset: int = interface_desc.size

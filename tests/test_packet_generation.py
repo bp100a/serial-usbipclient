@@ -1,6 +1,6 @@
 """test packet generation using py-datastruct"""
 from time import time
-
+from dataclasses import dataclass
 
 from tests.common_test_base import CommonTestBase
 
@@ -10,10 +10,31 @@ from usbip_protocol import URBSetupRequestType, URBStandardDeviceRequest
 from protocol.urb_packets import DeviceDescriptor
 from protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, OP_REP_DEVLIST_HEADER
 from protocol.urb_packets import UrbSetupPacket
+from usbip_client import USBIPClient, USBIP_Connection, USB_Endpoint
 
 
 class TestPacketGeneration(CommonTestBase):
     """test packet generation using py-datastruct"""
+
+    @dataclass
+    class MockUSBIP_Connection(USBIP_Connection):
+        """mock the USBIP Connection for testing"""
+
+        def __init__(self, **kwargs):
+            """set up instance variables"""
+            super().__init__(**kwargs)
+            self.command: CMD_SUBMIT | None = None
+
+        def __post__init__(self):
+            """some setup"""
+            super().__post_init__()
+            self.endpoint.input = USB_Endpoint()
+
+        def send_command(self, command: CMD_SUBMIT) -> int:
+            """get the command"""
+            self.command = command
+            return 0
+
     def test_request_devlist(self):
         """test requesting the device list"""
         start_time = time()
@@ -67,10 +88,20 @@ class TestPacketGeneration(CommonTestBase):
                             direction=Direction.USBIP_DIR_OUT,
                             ep=1,
                             transfer_flags=0, interval=4,
+                            transfer_buffer_length=len(cmd_in[-64:]),
                             transfer_buffer=cmd_in[-64:])
         self.assertEqual(submit.command, BasicCommands.CMD_SUBMIT)
         generated: bytes = submit.pack()
         self.assertEqual(cmd_in, generated)
+
+    def test_queue_urb(self):
+        """Test serialization of command to queue a URB read request"""
+
+        usb: TestPacketGeneration.MockUSBIP_Connection = TestPacketGeneration.MockUSBIP_Connection()
+        usb.endpoint.input = USB_Endpoint()
+        USBIPClient.read(usb=usb, size=1024)  # generate a command to queue up a read
+        # serialize the command that was generated
+        usb.command.pack()
 
     def test_cmd_response(self):
         """test command response parsing"""
