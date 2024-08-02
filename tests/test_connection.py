@@ -29,8 +29,7 @@ class TestUSBIPConnection(CommonTestBase):
 
     def test_connection(self):
         """test simple connection"""
-        self.skip_on_ci()  # having issues running on GitHub Actions
-        self.port = self.port if self.CI else 3240  # actual when running locally
+        self.port = self.port if self.CI else self.DEFAULT_USBIP_SERVER_PORT  # actual when running locally
         client: USBIPClient = USBIPClient(remote=(self.host, self.port), logger=self.logger)
         client.connect_server()
         published = client.list_published()

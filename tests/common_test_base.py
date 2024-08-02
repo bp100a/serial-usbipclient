@@ -11,6 +11,8 @@ from unittest import TestCase
 
 class CommonTestBase(TestCase):
     """base class for common behavior to all unit tests"""
+    DEFAULT_USBIP_SERVER_PORT: int = 3240
+
     @staticmethod
     def is_truthy(key: str, default: bool) -> bool:
         """read environment variable, return boolean response"""
