@@ -4,7 +4,7 @@ from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR
 import logging
 
 from tests.common_test_base import CommonTestBase
-from mock_usbip import MockUSBIP
+from tests.mock_usbip import MockUSBIP, Parse_lsusb
 
 from usbip_client import USBIPClient
 
@@ -61,8 +61,6 @@ class TestMockUSBIPServer(CommonTestBase):
         server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
         paths: list = server.read_paths()
 
-from tests.mock_usbip import Parse_lsusb
-
 
 class TestDeviceConfiguration(CommonTestBase):
     """test setting up our device configuration"""
@@ -70,3 +68,5 @@ class TestDeviceConfiguration(CommonTestBase):
         """test parsing the lsusb output file"""
         lsusb_out: str = os.path.join(os.path.dirname(__file__), 'lsusb.out')
         lsusb_parsed: Parse_lsusb = Parse_lsusb(lsusb_out)
+        self.assertTrue(lsusb_parsed)
+        self.assertTrue(lsusb_parsed.device_descriptor)  # we have a device descriptor

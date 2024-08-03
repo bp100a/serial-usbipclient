@@ -12,6 +12,7 @@ from queue import Queue
 import logging
 from typing import Optional, Any, cast
 from enum import EnumType
+from io import TextIOBase
 
 from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
                               HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
@@ -29,12 +30,20 @@ class Parse_lsusb:
         """parse the data"""
         self.file_path: str = lsusb_out
         self.device_descriptor: DeviceDescriptor = DeviceDescriptor()
-        with open(self.file_path, "r") as usb:
-            line: str = ''
-            while not line.startswith('Device Descriptor:'):
-                line = usb.readline()
-            if line == 'Device Descriptor:\n':
-                self.parse_descriptor(usb, urb=self.device_descriptor)
+        usb_configuration: list[str] = self.read_file(self.file_path)
+        for pos in range(len(usb_configuration)):
+            if usb_configuration[pos].startswith('Device Descriptor:'):
+                self.parse_descriptor(usb_configuration, pos, urb=self.device_descriptor)
+                return  # we have completed parsed things
+
+    @staticmethod
+    def read_file(file_path: str) -> list[str]:
+        """read in the entire file"""
+        usb_config_lines: list[str] = []
+        with open(file_path, "r") as usb:
+            while line := usb.readline():
+                usb_config_lines.append(line.strip())  # remove leading & trailing whitespace
+            return usb_config_lines
 
     def from_hex(self, hex: str) -> int:
         """convert hex to integer"""
@@ -69,57 +78,75 @@ class Parse_lsusb:
                 return
         raise NotImplementedError(f"{name=} was not found on {urb.__class__.__name__}")
 
-    def parse_descriptor(self, usb, urb: URBBase, parent: Optional[URBBase] = None):
+    def parse_descriptor(self, usb: list[str], offset: int, urb: URBBase) -> int:
         """parse the device descriptor data"""
-        while True:
-            line: str = usb.readline()
-            if not line.endswith(':\n'):
+        end_offset: int = len(usb) - 1
+        while offset < end_offset:
+            offset += 1
+            line: str = usb[offset]
+            if not line.endswith(':'):
                 parts: list[str] = re.split(r'\s+', line.strip())
                 attribute_name: str = parts[0]
                 attribute_value: str = parts[1]
                 if attribute_name not in ['Self', 'line', 'Transfer', 'Synch', 'Usage'] and attribute_value not in ['Powered', 'coding', 'Type']:
                     self.set_attribute(urb, attribute_name, attribute_value)
             else:
-                section: str = line.strip()
+                section: str = line
                 if section == 'Configuration Descriptor:':
                     device_desc: DeviceDescriptor = cast(DeviceDescriptor, urb)
                     device_desc.configurations.append(ConfigurationDescriptor())
-                    self.parse_descriptor(usb, device_desc.configurations[-1], parent=urb)
+                    offset = self.parse_descriptor(usb, offset, device_desc.configurations[-1])
                 elif section == 'Interface Association:':
-                    use_parent: bool = isinstance(parent, ConfigurationDescriptor)
-                    config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb if not use_parent else parent)
+                    recurse: bool = isinstance(urb, ConfigurationDescriptor)
+                    if not recurse:
+                        return offset - 1
+                    config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb)
                     config_descriptor.interfaces.append(InterfaceAssociation())
-                    self.parse_descriptor(usb, config_descriptor.interfaces[-1], parent=urb if not use_parent else parent)
+                    offset = self.parse_descriptor(usb, offset, config_descriptor.interfaces[-1])
                 elif section == 'Interface Descriptor:':
-                    use_parent: bool = isinstance(parent, ConfigurationDescriptor)
-                    config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb if not use_parent else parent)
+                    recurse: bool = isinstance(urb, ConfigurationDescriptor)
+                    if not recurse:
+                        return offset - 1
+                    config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb)
                     config_descriptor.interfaces.append(InterfaceDescriptor())
-                    self.parse_descriptor(usb, config_descriptor.interfaces[-1], parent=urb if not use_parent else parent)
+                    offset = self.parse_descriptor(usb, offset, config_descriptor.interfaces[-1])
                 elif section == "Endpoint Descriptor:":
-                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    recurse: bool = isinstance(urb, InterfaceDescriptor)
+                    if not recurse:
+                        return offset - 1
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(EndPointDescriptor())
-                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                    offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC Header:':
-                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    recurse: bool = isinstance(urb, InterfaceDescriptor)
+                    if not recurse:
+                        return offset - 1
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(HeaderFunctionalDescriptor())
-                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                    offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC Call Management:':
-                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    recurse: bool = isinstance(urb, InterfaceDescriptor)
+                    if not recurse:
+                        return offset - 1
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(CallManagementFunctionalDescriptor())
-                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                    offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC ACM:':
-                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    recurse: bool = isinstance(urb, InterfaceDescriptor)
+                    if not recurse:
+                        return offset - 1
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(ACMFunctionalDescriptor())
-                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                    offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC Union:':
-                    use_parent: bool = isinstance(parent, InterfaceDescriptor)
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb if not use_parent else parent)
+                    recurse: bool = isinstance(urb, InterfaceDescriptor)
+                    if not recurse:
+                        return offset - 1
+                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(UnionFunctionalDescriptor())
-                    self.parse_descriptor(usb, if_descriptor.descriptors[-1], parent=urb if not use_parent else parent)
+                    offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
+
+        return offset
 
 
 class MockUSBDevice:
