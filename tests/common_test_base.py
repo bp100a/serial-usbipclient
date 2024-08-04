@@ -19,10 +19,10 @@ class CommonTestBase(TestCase):
         value: str = getenv(key, default=str(default)).upper()
         return value in ['TRUE', '1', '1.0']
 
-    def skip_on_ci(self):
+    def skip_on_ci(self, reason='incompatible with CI'):
         """skip the test if running on a CI/CD system"""
         if self.CI:
-            self.skipTest(reason='incompatible with CI')
+            self.skipTest(reason=reason)
 
     def __init__(self, methodName):
         """need some special variables"""

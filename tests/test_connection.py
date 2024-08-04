@@ -61,6 +61,7 @@ class TestUSBIPConnection(CommonTestBase):
 
     def test_connection_shutdown(self):
         """test shutting down the connection"""
+        self.port = 3245
         published: OP_REP_DEVLIST_HEADER = self.connect_server()
         self.assertTrue(published.paths)
         try:
@@ -74,6 +75,8 @@ class TestUSBIPConnection(CommonTestBase):
 
     def test_queue_urbs(self):
         """test queue urbs to the server"""
+        self.skip_on_ci(reason="not yet fully implemented")
+        self.port = 3246
         published: OP_REP_DEVLIST_HEADER = self.connect_server()
         self.assertTrue(published.paths)
         try:

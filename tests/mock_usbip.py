@@ -8,7 +8,6 @@ import re
 import socket
 from threading import Thread, Event
 from time import time, sleep
-from queue import Queue
 import logging
 from typing import Optional, Any, cast
 from enum import EnumType
@@ -215,7 +214,6 @@ class MockUSBIP:
         self.host: str = host
         self.port: int = port
         self.logger: logging.Logger = logger
-        self.queue: Queue = Queue()
         self.server_socket: socket.socket | None = None
         self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run, daemon=True)
         self.event: Event = Event()
@@ -223,6 +221,7 @@ class MockUSBIP:
         self._protocol_responses: dict[str, list[str]] = {}
         self._urb_traffic: bool = False
         self.urb_queue: dict[int, Any] = {}  # pending read URBs, queued by seq #
+        self.usb_devices: Optional[MockUSBDevice] = None
         self.setup()
         self.event.clear()
         self.thread.start()
@@ -239,6 +238,10 @@ class MockUSBIP:
         data_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'usbip_packets.json')
         with open(file=data_path, mode='r') as recording:
             self._protocol_responses = json.loads(recording.read())
+
+        parser: Parse_lsusb = Parse_lsusb()
+        self.usb_devices = MockUSBDevice(parser.device_descriptors)
+        self.usb_devices.setup()  # now we have binary for the USB devices we can emulate
 
     def shutdown(self):
         """shutdown the USBIP server thread"""
