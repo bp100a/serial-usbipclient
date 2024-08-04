@@ -13,6 +13,7 @@ import logging
 from typing import Optional, Any, cast
 from enum import EnumType
 import glob
+from dataclasses import dataclass
 
 from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
                               HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
@@ -24,12 +25,24 @@ from usbip_defs import BasicCommands
 from usb_descriptors import DescriptorType
 
 
+@dataclass
+class MockDevice:
+    """URB information for a device"""
+    vendor: int = 0
+    product: int = 0
+    device: Optional[DeviceDescriptor] = None
+
+    def __hash__(self):
+        """return the hash of this device"""
+        return hash((self.vendor, self.product))
+
+
 class Parse_lsusb:
     """parse the output of a lsusb command to get a USB device configuration"""
     def __init__(self):
         """parse the data"""
         self.root: str = os.path.join(os.path.dirname(__file__), '*.lsusb')
-        self.device_descriptors: dict[tuple[int, int], DeviceDescriptor] = {}
+        self.device_descriptors: list[MockDevice] = []
         for file_path in glob.glob(self.root):
             self.file_path: str = file_path
             device_descriptor: DeviceDescriptor = DeviceDescriptor()
@@ -37,7 +50,7 @@ class Parse_lsusb:
             for offset in range(len(usb_configuration)):
                 if usb_configuration[offset].startswith('Device Descriptor:'):
                     self.parse_descriptor(usb_configuration, offset, urb=device_descriptor)
-                    self.device_descriptors[device_descriptor.idProduct, device_descriptor.idVendor] = device_descriptor
+                    self.device_descriptors.append(MockDevice(device_descriptor.idVendor, device_descriptor.idProduct, device_descriptor))
                     break
 
     @staticmethod
@@ -58,8 +71,8 @@ class Parse_lsusb:
     def to_bcd(bcd_value: str) -> int:
         """convert a string to BCD int"""
         # 2.00 -> 0x0200
-        hex: str = bcd_value.replace('.', '')  # now it's a hex string
-        return int(hex, 16)  # return as an integer
+        hex_value: str = bcd_value.replace('.', '')  # now it's a hex string
+        return int(hex_value, 16)  # return as an integer
 
     def set_attribute(self, urb: URBBase, name: str, value: str):
         """set the attribute to the structure"""
@@ -148,10 +161,51 @@ class Parse_lsusb:
 
 
 class MockUSBDevice:
-    """emulate a USB device"""
-    def __init__(self):
-        """read the emulation data"""
-        config_path: str = os.path.join(os.path.dirname(__file__), "lsusb.out")
+    """wrapper for devices we'll be mocking"""
+    def __init__(self, devices: list[MockDevice]):
+        """set up the devices we'll be mocking"""
+        self.devices: list[MockDevice] = devices
+        self.usbip: Optional[OP_REP_DEVLIST_HEADER] = None
+
+    def setup(self):
+        """create the USBIP device list"""
+        busnum: int = 1
+        devnum: int = 0
+        usbip_dev_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER()
+        usbip_dev_header.num_exported_devices = len(self.devices)
+
+        for usb in self.devices:
+            devnum += 1
+            devid: bytes = f"{busnum}-{devnum}".encode('utf-8')
+            busid: bytes = devid + (b'\0' * (32-len(devid)))
+            root_dev_path: bytes = f"/sys/devices/pci0000.0/0000:00.1d1/usb2/{busnum}-{devnum}".encode('utf-8')
+            dev_path: bytes = root_dev_path + (b'\0' * (256 - len(root_dev_path)))
+
+            path: OP_REP_DEV_PATH = OP_REP_DEV_PATH(busid=busid, path=dev_path, busnum=busnum, devnum=devnum,
+                                                    idVendor=usb.vendor, idProduct=usb.product,
+                                                    bcdDevice=usb.device.bcdDevice, bDeviceClass=usb.device.bDeviceClass,
+                                                    bDeviceSubClass=usb.device.bDeviceSubClass, bDeviceProtocol=usb.device.bDeviceProtocol,
+                                                    bConfigurationValue=0x0, bNumConfigurations=len(usb.device.configurations),
+                                                    bNumInterfaces=sum([len(item.interfaces) for item in usb.device.configurations]),
+                                                    )
+            usbip_dev_header.paths.append(path)
+            for configuration in usb.device.configurations:
+                for interface in configuration.interfaces:
+                    usbip_interface: OP_REP_DEV_INTERFACE = OP_REP_DEV_INTERFACE(bInterfaceClass=interface.bInterfaceClass,
+                                                                                 bInterfaceSubClass=interface.bInterfaceSubClass,
+                                                                                 bInterfaceProtocol=interface.bInterfaceProtocol)
+                    path.interfaces.append(usbip_interface)
+
+        self.usbip = usbip_dev_header
+
+    def pack(self) -> bytes:  # create the byte representation of the data
+        """walk the USBIP representation and create the byte stream"""
+        response: bytes = self.usbip.pack()
+        for path in self.usbip.paths:
+            response += path.pack()
+            for interface in path.interfaces:
+                response += interface.pack()
+        return response
 
 
 class MockUSBIP:

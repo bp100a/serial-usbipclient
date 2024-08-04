@@ -4,7 +4,7 @@ from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR
 import logging
 
 from tests.common_test_base import CommonTestBase
-from tests.mock_usbip import MockUSBIP, Parse_lsusb
+from tests.mock_usbip import MockUSBIP, Parse_lsusb, MockDevice, MockUSBDevice
 
 from usbip_client import USBIPClient
 
@@ -70,9 +70,17 @@ class TestDeviceConfiguration(CommonTestBase):
         lsusb_parsed: Parse_lsusb = Parse_lsusb()
         self.assertTrue(lsusb_parsed)
         self.assertTrue(lsusb_parsed.device_descriptors)  # we have a device descriptor
-        for vendor, product in lsusb_parsed.device_descriptors:
-            for configuration in lsusb_parsed.device_descriptors[vendor, product].configurations:
+        for usb in lsusb_parsed.device_descriptors:
+            for configuration in usb.device.configurations:
                 if configuration.bNumInterfaces != len(configuration.interfaces):
-                    error.append(f"[0x{vendor:0x4x}:0x{product:0x4x}] Incorrect # interfaces {configuration.descriptor_type.name=}")
+                    error.append(f"[0x{usb.vendor:0x4x}:0x{usb.product:0x4x}] Incorrect # interfaces {configuration.descriptor_type.name=}")
 
         self.assertFalse(error)
+
+    def test_usbip_path(self):
+        """test we generate a USBIP path for our devices"""
+        parsed_devices: Parse_lsusb = Parse_lsusb()
+        devices: MockUSBDevice = MockUSBDevice(parsed_devices.device_descriptors)
+        devices.setup()  # create our USBIP protocol image
+        response: bytes = devices.pack()
+        print(f"{response.hex()=}")

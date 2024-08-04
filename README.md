@@ -35,3 +35,4 @@ there are usbipd-clients for Linux & [Windows](https://github.com/cezanne/usbip-
 
 ## Testing
 A `MockUSBIP` service reads configuration information from the output of `lsusb` (e.g `lsusb -d 1f46:1b01 -v`). **MockUSBIP** will then play back this configuration.
+Just capture the output of the `lsusb` command and save with the `.lsusb` suffix in the test folder.
