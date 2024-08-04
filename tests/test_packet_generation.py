@@ -147,7 +147,7 @@ class TestPacketGeneration(CommonTestBase):
 
         self.assertEqual(12, OP_REP_DEVLIST_HEADER.size)
 
-    def test_urb_endianess(self):
+    def test_urb_endianness(self):
         """test packets generated for URBs have correct (little) endianess"""
         setup: UrbSetupPacket = UrbSetupPacket(
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
