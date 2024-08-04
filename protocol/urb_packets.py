@@ -59,6 +59,7 @@ class ConfigurationDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx
     def __post_init__(self) -> None:
         """set up some instance variables"""
         self.interfaces: list[InterfaceDescriptor] = []
+        self.associations: list[InterfaceAssociation] = []
 
 
 @dataclass

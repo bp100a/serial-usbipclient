@@ -12,7 +12,7 @@ from queue import Queue
 import logging
 from typing import Optional, Any, cast
 from enum import EnumType
-from io import TextIOBase
+import glob
 
 from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
                               HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
@@ -25,16 +25,20 @@ from usb_descriptors import DescriptorType
 
 
 class Parse_lsusb:
-    """parse the output of a lsbusb command to get a USB device configuration"""
-    def __init__(self, lsusb_out: str):
+    """parse the output of a lsusb command to get a USB device configuration"""
+    def __init__(self):
         """parse the data"""
-        self.file_path: str = lsusb_out
-        self.device_descriptor: DeviceDescriptor = DeviceDescriptor()
-        usb_configuration: list[str] = self.read_file(self.file_path)
-        for pos in range(len(usb_configuration)):
-            if usb_configuration[pos].startswith('Device Descriptor:'):
-                self.parse_descriptor(usb_configuration, pos, urb=self.device_descriptor)
-                return  # we have completed parsed things
+        self.root: str = os.path.join(os.path.dirname(__file__), '*.lsusb')
+        self.device_descriptors: dict[tuple[int, int], DeviceDescriptor] = {}
+        for file_path in glob.glob(self.root):
+            self.file_path: str = file_path
+            device_descriptor: DeviceDescriptor = DeviceDescriptor()
+            usb_configuration: list[str] = self.read_file(self.file_path)
+            for offset in range(len(usb_configuration)):
+                if usb_configuration[offset].startswith('Device Descriptor:'):
+                    self.parse_descriptor(usb_configuration, offset, urb=device_descriptor)
+                    self.device_descriptors[device_descriptor.idProduct, device_descriptor.idVendor] = device_descriptor
+                    break
 
     @staticmethod
     def read_file(file_path: str) -> list[str]:
@@ -45,14 +49,16 @@ class Parse_lsusb:
                 usb_config_lines.append(line.strip())  # remove leading & trailing whitespace
             return usb_config_lines
 
-    def from_hex(self, hex: str) -> int:
+    @staticmethod
+    def from_hex(hex_value: str) -> int:
         """convert hex to integer"""
-        return int(hex[2:], 16)  # return as an integer
+        return int(hex_value[2:], 16)  # return as an integer
 
-    def to_bcd(self, bcd: str) -> int:
+    @staticmethod
+    def to_bcd(bcd_value: str) -> int:
         """convert a string to BCD int"""
         # 2.00 -> 0x0200
-        hex: str = bcd.replace('.', '')  # now it's a hex string
+        hex: str = bcd_value.replace('.', '')  # now it's a hex string
         return int(hex, 16)  # return as an integer
 
     def set_attribute(self, urb: URBBase, name: str, value: str):
@@ -67,7 +73,7 @@ class Parse_lsusb:
         for field in urb.fields():
             if field[0].name == name:
                 if '.' in value:  # encoded, BCD
-                    value = self.to_bcd(bcd=value)
+                    value = self.to_bcd(bcd_value=value)
                 elif value.startswith('0x'):
                     value = self.from_hex(value)
 
@@ -83,64 +89,56 @@ class Parse_lsusb:
         end_offset: int = len(usb) - 1
         while offset < end_offset:
             offset += 1
-            line: str = usb[offset]
-            if not line.endswith(':'):
-                parts: list[str] = re.split(r'\s+', line.strip())
+            section: str = usb[offset]
+            if not section.endswith(':'):
+                parts: list[str] = re.split(r'\s+', section)
                 attribute_name: str = parts[0]
                 attribute_value: str = parts[1]
                 if attribute_name not in ['Self', 'line', 'Transfer', 'Synch', 'Usage'] and attribute_value not in ['Powered', 'coding', 'Type']:
                     self.set_attribute(urb, attribute_name, attribute_value)
             else:
-                section: str = line
                 if section == 'Configuration Descriptor:':
                     device_desc: DeviceDescriptor = cast(DeviceDescriptor, urb)
                     device_desc.configurations.append(ConfigurationDescriptor())
                     offset = self.parse_descriptor(usb, offset, device_desc.configurations[-1])
                 elif section == 'Interface Association:':
-                    recurse: bool = isinstance(urb, ConfigurationDescriptor)
-                    if not recurse:
+                    if not isinstance(urb, ConfigurationDescriptor):
                         return offset - 1
                     config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb)
-                    config_descriptor.interfaces.append(InterfaceAssociation())
-                    offset = self.parse_descriptor(usb, offset, config_descriptor.interfaces[-1])
+                    config_descriptor.associations.append(InterfaceAssociation())
+                    offset = self.parse_descriptor(usb, offset, config_descriptor.associations[-1])
                 elif section == 'Interface Descriptor:':
-                    recurse: bool = isinstance(urb, ConfigurationDescriptor)
-                    if not recurse:
+                    if not isinstance(urb, ConfigurationDescriptor):
                         return offset - 1
                     config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb)
                     config_descriptor.interfaces.append(InterfaceDescriptor())
                     offset = self.parse_descriptor(usb, offset, config_descriptor.interfaces[-1])
                 elif section == "Endpoint Descriptor:":
-                    recurse: bool = isinstance(urb, InterfaceDescriptor)
-                    if not recurse:
+                    if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
                     if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(EndPointDescriptor())
                     offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC Header:':
-                    recurse: bool = isinstance(urb, InterfaceDescriptor)
-                    if not recurse:
+                    if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
                     if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(HeaderFunctionalDescriptor())
                     offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC Call Management:':
-                    recurse: bool = isinstance(urb, InterfaceDescriptor)
-                    if not recurse:
+                    if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
                     if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(CallManagementFunctionalDescriptor())
                     offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC ACM:':
-                    recurse: bool = isinstance(urb, InterfaceDescriptor)
-                    if not recurse:
+                    if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
                     if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(ACMFunctionalDescriptor())
                     offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC Union:':
-                    recurse: bool = isinstance(urb, InterfaceDescriptor)
-                    if not recurse:
+                    if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
                     if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(UnionFunctionalDescriptor())

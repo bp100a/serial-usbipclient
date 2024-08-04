@@ -66,7 +66,13 @@ class TestDeviceConfiguration(CommonTestBase):
     """test setting up our device configuration"""
     def test_lsusb_parsing(self):
         """test parsing the lsusb output file"""
-        lsusb_out: str = os.path.join(os.path.dirname(__file__), 'lsusb.out')
-        lsusb_parsed: Parse_lsusb = Parse_lsusb(lsusb_out)
+        error: list[str] = []
+        lsusb_parsed: Parse_lsusb = Parse_lsusb()
         self.assertTrue(lsusb_parsed)
-        self.assertTrue(lsusb_parsed.device_descriptor)  # we have a device descriptor
+        self.assertTrue(lsusb_parsed.device_descriptors)  # we have a device descriptor
+        for vendor, product in lsusb_parsed.device_descriptors:
+            for configuration in lsusb_parsed.device_descriptors[vendor, product].configurations:
+                if configuration.bNumInterfaces != len(configuration.interfaces):
+                    error.append(f"[0x{vendor:0x4x}:0x{product:0x4x}] Incorrect # interfaces {configuration.descriptor_type.name=}")
+
+        self.assertFalse(error)

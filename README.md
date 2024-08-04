@@ -31,3 +31,7 @@ pip-compile requirements.in
 ## Useful Resources
 For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network,
 there are usbipd-clients for Linux & [Windows](https://github.com/cezanne/usbip-win).
+
+
+## Testing
+A `MockUSBIP` service reads configuration information from the output of `lsusb` (e.g `lsusb -d 1f46:1b01 -v`). **MockUSBIP** will then play back this configuration.
