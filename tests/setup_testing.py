@@ -26,6 +26,7 @@ class TestGeneratePortAssignments(CommonTestBase):
         test_case: str = ''
         module: str = ''
         unambiguous_names: list[str] = []
+        dirname: str = ''
         for line in pytest_output:
             if 'Module' in line:
                 module = line.strip('<>').replace('Module', '').strip(' ')
@@ -35,8 +36,10 @@ class TestGeneratePortAssignments(CommonTestBase):
                 package = line.strip('<>').replace('Package', '').strip(' ')
             elif 'TestCaseFunction' in line:
                 test_function: str = line.strip('<>').replace('TestCaseFunction', '').strip(' ')
-                unambiguous_name: str = f"{package}.{module}.{test_case}.{test_function}"
+                unambiguous_name: str = f"{package}.{dirname}.{module}.{test_case}.{test_function}"
                 unambiguous_names.append(unambiguous_name)
+            elif 'Dir' in line:
+                dirname = line.strip('<>').replace('Dir', '').strip(' ')
 
         file_path: str = os.path.join(base_dir, 'tests', 'list_of_tests.json')
         with open(file_path, mode='w+', encoding='utf-8') as json_file:

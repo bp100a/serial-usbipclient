@@ -1,7 +1,6 @@
 from typing import Optional
 from tests.common_test_base import CommonTestBase
-from time import sleep
-
+import os
 
 from protocol.packets import OP_REP_DEVLIST_HEADER
 from usbip_client import USBIPClient, HardwareID, USBAttachError, USBIP_Connection
@@ -26,6 +25,7 @@ class TestUSBIPConnection(CommonTestBase):
     def setUp(self):
         """set up our connection test"""
         super().setUp()
+        self.port += self.get_test_index(name=os.path.join(__file__, __class__.__name__, self._testMethodName))
         self.mock_usbip = MockUSBIP(host=self.host, port=self.port, logger=self.logger)
 
     def tearDown(self):
