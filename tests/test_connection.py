@@ -25,7 +25,7 @@ class TestUSBIPConnection(CommonTestBase):
     def setUp(self):
         """set up our connection test"""
         super().setUp()
-        self.port += self.get_test_index(name=os.path.join(__file__, __class__.__name__, self._testMethodName))
+        self.port += self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
         self.mock_usbip = MockUSBIP(host=self.host, port=self.port, logger=self.logger)
 
     def tearDown(self):
