@@ -1,6 +1,4 @@
-#
-# Definitions for USBIP protocol packets
-#
+"""Definitions for USBIP protocol packets"""
 import struct
 from functools import lru_cache
 from dataclasses import dataclass

@@ -16,15 +16,14 @@ from dataclasses import dataclass
 import traceback
 
 
+from usbip_defs import BasicCommands, Direction
+from usb_descriptors import DescriptorType
 from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
                               HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
-from usbip_protocol import Direction
 from protocol.urb_packets import (UrbSetupPacket, DeviceDescriptor, ConfigurationDescriptor,
                                   URBBase, InterfaceDescriptor, InterfaceAssociation, EndPointDescriptor, HeaderFunctionalDescriptor,
                                   CallManagementFunctionalDescriptor, ACMFunctionalDescriptor, UnionFunctionalDescriptor, StringDescriptor,
                                   URBStandardDeviceRequest, URBCDCRequestType)
-from usbip_defs import BasicCommands
-from usb_descriptors import DescriptorType
 
 
 @dataclass

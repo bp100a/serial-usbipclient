@@ -1,15 +1,13 @@
-#
-# definitions for URB packets
-#
+"""definitions for URB packets"""
 
 from typing import Optional, Any
 from dataclasses import dataclass
 
 from datastruct.fields import field
 
+from usbip_defs import Direction
 from protocol.packets import URBBase  # URBs are "little-endian"
-from usbip_protocol import (Direction, URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest,
-                            URBCDCRequestType, URBSetupRequestType, URBCDCRequestType)
+from usbip_protocol import URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest, URBSetupRequestType, URBCDCRequestType
 from usb_descriptors import DescriptorType, DeviceInterfaceClass, CDCDescriptorSubType, EndpointAttributesTransferType
 
 

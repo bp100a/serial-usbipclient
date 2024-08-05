@@ -1,7 +1,3 @@
-#
-# Copyright (c) 2024 Altai Technologies, LLC
-# Author: Harry Collins
-#
 """handling of USB/URB descriptors"""
 
 # Protocol can be found here:

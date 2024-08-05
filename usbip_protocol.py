@@ -1,8 +1,3 @@
-#
-# Mobilion Acorn REST API services
-# Copyright (c) 2024 MOBILion Systems, Inc.
-# Author: Harry Collins
-#
 """full implementation of a python-only client to connect to usbipd servers"""
 
 # Protocol can be found here:
@@ -10,9 +5,6 @@
 #
 from __future__ import annotations
 from enum import IntEnum
-
-from usbip_defs import BaseProtocolPacket
-from usbip_defs import Direction
 
 
 class URBTransferFlags(IntEnum):
@@ -42,7 +34,6 @@ class URBTransferFlags(IntEnum):
 
 class URBSetupRequestType(IntEnum):
     """define bitfields for the request_type field in the setup"""
-
     HOST_TO_DEVICE = 0 << 7  # for readability
     DEVICE_TO_HOST = 1 << 7
     TYPE_STANDARD = 0 << 5
@@ -57,7 +48,6 @@ class URBSetupRequestType(IntEnum):
 
 class URBStandardDeviceRequest(IntEnum):
     """device requests"""
-
     GET_STATUS = 0x0
     CLEAR_FEATURE = 0x1
     SET_FEATURE = 0x3
@@ -70,7 +60,6 @@ class URBStandardDeviceRequest(IntEnum):
 
 class URBStandardInterfaceRequest(IntEnum):
     """device requests"""
-
     GET_STATUS = 0x0
     CLEAR_FEATURE = 0x1
     GET_INTERFACE = 0x0A
@@ -78,8 +67,7 @@ class URBStandardInterfaceRequest(IntEnum):
 
 
 class URBStandardEndpointRequest(IntEnum):
-    """device requests"""
-
+    """endpoint requests"""
     GET_STATUS = 0x0
     CLEAR_FEATURE = 0x1
     SET_FEATURE = 0x3
@@ -88,58 +76,6 @@ class URBStandardEndpointRequest(IntEnum):
 
 class URBCDCRequestType(IntEnum):
     """request types specific to CDC devices"""
-
-    SET_LINE_CODING = (
-        0x20  # Configures baud rate, stop-bits, parity, and number-of-character bits.
-    )
-    GET_LINE_CODING = (
-        0x21  # Requests current DTE rate, stop-bits, parity, and number-of-character bits.
-    )
-    SET_CONTROL_LINE_STATE = (
-        0x22  # RS232 signal used to tell the DCE device the DTE device is now present.
-    )
-
-
-class UrbSetupPacket(BaseProtocolPacket):
-    """URB setup packet structure"""
-
-    format: dict = {
-        0: ("B", "request_type"),
-        1: ("B", "request"),
-        2: ("H", "value"),
-        4: ("H", "index"),
-        6: ("H", "length"),
-    }
-    fmt: str = ""
-    args: list[str] = []
-    endianness: str = "<"  # this portion of the URB is little-endian
-
-    def __init__(
-        self,
-        request_type: int = 0,
-        request: int = 0,
-        value: int = 0,
-        index: int = 0,
-        length: int = 0,
-    ):
-        """initialize the setup packet"""
-        self.request_type: int = request_type
-        self.request: int = request
-        self.value: int = value
-        self.index: int = index
-        self.length: int = length
-        super().__init__()  # just to keep type checker happy
-
-    @property
-    def direction(self) -> Direction:
-        """the direction of the request"""
-        if self.request in [
-            URBStandardEndpointRequest.SET_FEATURE.value,
-            URBStandardInterfaceRequest.SET_INTERFACE.value,
-            URBStandardDeviceRequest.SET_FEATURE.value,
-            URBStandardDeviceRequest.SET_CONFIGURATION.value,
-            URBStandardDeviceRequest.SET_DESCRIPTOR,
-            URBCDCRequestType.SET_LINE_CODING,
-        ]:
-            return Direction.USBIP_DIR_OUT  # host -> device (WRITE)
-        return Direction.USBIP_DIR_IN  # device -> host (READ)
+    SET_LINE_CODING = 0x20  # Configures baud rate, stop-bits, parity, and number-of-character bits.
+    GET_LINE_CODING = 0x21  # Requests current DTE rate, stop-bits, parity, and number-of-character bits.
+    SET_CONTROL_LINE_STATE = 0x22  # RS232 signal used to tell the DCE device the DTE device is now present.

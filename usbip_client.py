@@ -251,34 +251,22 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
             # If this is a *write* to the device, then wait for confirmation
             # it was successful
-            if (
-                command.ep in [self.output.number, self.control.number]
-                and command.direction == Direction.USBIP_DIR_OUT
-            ):
-                with USBStatsManager(
-                    self._stats, name="USBIP_Connection.wait_for_response"
-                ):
+            if command.ep in [self.output.number, self.control.number] and command.direction == Direction.USBIP_DIR_OUT:
+                with USBStatsManager(self._stats, name="USBIP_Connection.wait_for_response"):
                     timeout: float = 5.0  # pretty large for testing
                     start_time: float = perf_counter()
-                    while (
-                        command.seqnum not in self._responses
-                        and perf_counter() - start_time < timeout
-                    ):
+                    while command.seqnum not in self._responses and perf_counter() - start_time < timeout:
                         self.wait_for_response()
 
                 # if we got a response, then pop it off and return the size of data
                 #  the send operation successfully sent
                 if command.seqnum in self._responses:
-                    response: tuple[RET_SUBMIT_PREFIX, bytes] = self._responses.pop(
-                        command.seqnum
-                    )
+                    response: tuple[RET_SUBMIT_PREFIX, bytes] = self._responses.pop(command.seqnum)
                     self._commands.pop(command.seqnum)
                     return response[0].actual_length  # how much data was sent
             return 0
         except ConnectionError as connection_error:
-            raise USBConnectionLost(
-                detail="send_command() connection lost", connection=self
-            ) from connection_error
+            raise USBConnectionLost(detail="send_command() connection lost", connection=self) from connection_error
 
     def send_unlink(self, command: CMD_UNLINK) -> bool:
         """send an unlink command"""
@@ -632,6 +620,22 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         if prefix.status != 0:
             raise ValueError(f"set_line_coding failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
 
+    def set_line_control_state(self, usb: USBIP_Connection) -> None:
+        """set the line control state (DCE/DTE)"""
+        setup: UrbSetupPacket = UrbSetupPacket(request_type=URBSetupRequestType.HOST_TO_DEVICE.value
+                                                            | URBSetupRequestType.TYPE_CLASS.value
+                                                            | URBSetupRequestType.RECIPIENT_INTERFACE.value,
+                                               request=URBCDCRequestType.SET_CONTROL_LINE_STATE,
+                                               value=(CDCControl.USB_CDC_CTRL_RTS | CDCControl.USB_CDC_CTRL_DTR) << 8,
+                                               index=0,
+                                               length=0,
+                                               )
+        self.send_setup(setup=setup, usb=usb)
+        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)
+        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(data=prefix_data)
+        if prefix.status != 0:
+            raise ValueError(f"set_line_control_state failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
+
     def set_configuration(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> None:
         """set the configuration"""
         self.send_setup(setup=setup, usb=usb)
@@ -751,17 +755,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             length=len(line_coding_data),
         )
         self.set_line_coding(setup=setup, data=line_coding_data, usb=usb)
-
-        setup = UrbSetupPacket(
-            request_type=URBSetupRequestType.HOST_TO_DEVICE.value
-            | URBSetupRequestType.TYPE_CLASS.value
-            | URBSetupRequestType.RECIPIENT_INTERFACE.value,
-            request=URBCDCRequestType.SET_CONTROL_LINE_STATE.value,
-            value=(CDCControl.USB_CDC_CTRL_RTS | CDCControl.USB_CDC_CTRL_DTR) << 8,
-            index=0,
-            length=0,
-        )
-        self.send_setup(setup=setup, usb=usb)
+        self.set_line_control_state(usb=usb)
 
     def attach(self, devices: list[HardwareID], published: Optional[OP_REP_DEVLIST_HEADER] = None) -> None:
         """attach to the specified devices"""
