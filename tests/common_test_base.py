@@ -58,6 +58,6 @@ class CommonTestBase(TestCase):
 
         for i in range(len(all_tests)):
             if qualified_name.endswith(all_tests[i]):
-                return i
+                return i + 1
 
         return 0

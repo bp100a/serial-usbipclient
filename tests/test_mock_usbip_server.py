@@ -43,7 +43,7 @@ class TestMockUSBIPServer(CommonTestBase):
     def test_mocked_response(self):
         """test against mocked data responses"""
         host: str = 'localhost'
-        port: int = 3243
+        port: int = 3240 + self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
         server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
 
         client: USBIPClient = USBIPClient(remote=(host, port), logger=self.logger)
@@ -58,7 +58,7 @@ class TestMockUSBIPServer(CommonTestBase):
     def test_reading_paths(self):
         """test reading the path information from the json file"""
         host: str = 'localhost'
-        port: int = 3245
+        port: int = 3240 + self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
         server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
         paths: list = server.read_paths()
 

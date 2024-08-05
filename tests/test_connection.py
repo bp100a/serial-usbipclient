@@ -13,7 +13,7 @@ class TestUSBIPConnection(CommonTestBase):
         """set up local variables"""
         super().__init__(methodName)
         self.host: str = 'localhost'
-        self.port: int = 3244
+        self.port: int = 3240
         self.mock_usbip: Optional[MockUSBIP] = None
         self.client: Optional[USBIPClient] = None
 
@@ -70,7 +70,6 @@ class TestUSBIPConnection(CommonTestBase):
 
     def test_connection_shutdown(self):
         """test shutting down the connection"""
-        self.port = self.port + 1
         published: OP_REP_DEVLIST_HEADER = self.connect_server()
         self.assertTrue(published.paths)
         try:
@@ -85,7 +84,6 @@ class TestUSBIPConnection(CommonTestBase):
     def test_queue_urbs(self):
         """test queue urbs to the server"""
         self.skip_on_ci(reason="not yet fully implemented")
-        self.port = self.port + 2
         published: OP_REP_DEVLIST_HEADER = self.connect_server()
         self.assertTrue(published.paths)
         try:
