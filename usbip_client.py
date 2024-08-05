@@ -569,58 +569,15 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
         base_response: BaseProtocolPacket = BaseProtocolPacket.new(data=data)
         if base_response.status != Status.SUCCESS:
-            raise USBAttachError(
-                "Error attaching to device", an_errno=base_response.status
-            )
+            raise USBAttachError("Error attaching to device", an_errno=base_response.status)
 
         more_data: bytes = bytes()
         start_time: float = time()
         while not more_data and time() - start_time < 1.0:
-            more_data += self.readall(
-                OP_REP_IMPORT().size - BaseProtocolPacket().size, self.usbipd
-            )
+            more_data += self.readall(OP_REP_IMPORT().size - BaseProtocolPacket().size, self.usbipd)
 
         self._logger.debug(f"OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
         return OP_REP_IMPORT.unpack(data + more_data)
-
-    def get_descriptor(self, usb: USBIP_Connection) -> DeviceDescriptor:
-        """get the descriptor for the underlying USB/URB"""
-        usb.seqnum += 1
-        descriptor_size: int = DeviceDescriptor().size
-        setup: bytes = UrbSetupPacket(
-            request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
-            request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
-            value=DescriptorType.DEVICE_DESCRIPTOR.value,
-            length=descriptor_size,
-        ).packet()
-
-        command: CMD_SUBMIT = CMD_SUBMIT(
-            seqnum=usb.seqnum,
-            devid=usb.devid,
-            start_frame=0,
-            ep=usb.control.number,
-            number_of_packets=0,
-            transfer_flags=URBTransferFlags.URB_DIR_IN,
-            transfer_buffer_length=descriptor_size,
-            interval=0,
-            setup=setup,
-            direction=Direction.USBIP_DIR_IN,
-            transfer_buffer=bytes(),
-        )
-        usb.sendall(command.packet())
-        prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb.socket)
-        if not prefix_data:
-            raise USBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
-
-        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
-        if prefix.status != 0:
-            raise ValueError(
-                f"get_descriptor() returned non-zero status={prefix.status}"
-            )
-        dev_descriptor: DeviceDescriptor = DeviceDescriptor.new(
-            data=self.readall(descriptor_size, usb)
-        )
-        return dev_descriptor
 
     def send_setup(self, setup: UrbSetupPacket, usb: USBIP_Connection, data: Optional[bytes] = None) -> None:
         """send command to the device"""
@@ -656,10 +613,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         try:
             prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(prefix_data)
             if prefix.status != 0:
-                raise ValueError(
-                    f"request_descriptor failure! {prefix.status=} "
-                    f"errno='{os.strerror(abs(prefix.status))}'"
-                )
+                raise ValueError(f"request_descriptor failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
         except struct.error as s_error:
             self._logger.error(f"parsing packet error {str(s_error)}, for {prefix_data.hex()=}")
             raise
@@ -669,45 +623,23 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         descriptor = generic_handler.packet(data=data)
         return descriptor
 
-    def set_line_coding(
-        self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection
-    ):
+    def set_line_coding(self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection) -> None:
         """set line coding"""
         self.send_setup(setup=setup, usb=usb, data=data)
         prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX().size, usb)
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
         if prefix.status != 0:
-            raise ValueError(
-                f"set_line_coding failure! {prefix.status=} "
-                f"errno='{os.strerror(abs(prefix.status))}'"
-            )
+            raise ValueError(f"set_line_coding failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
 
     def set_configuration(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> None:
         """set the configuration"""
         self.send_setup(setup=setup, usb=usb)
+        prefix_data: bytes = bytes()
         try:
-            prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)
+            prefix_data = self.readall(RET_SUBMIT_PREFIX.size, usb)
             prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
             if prefix.status != 0:
-                raise ValueError(
-                    f"set_descriptor failure! {prefix.status=} "
-                    f"errno='{os.strerror(abs(prefix.status))}'"
-                )
-        except struct.error as s_error:
-            self._logger.error(f"RET_SUBMIT_PREFIX failure on {RET_SUBMIT_PREFIX.size=}, {prefix_data.hex()=}")
-            raise s_error
-
-    def get_configuration(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> None:
-        """get the configuration"""
-        self.send_setup(setup=setup, usb=usb)
-        try:
-            prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)
-            prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
-            if prefix.status != 0:
-                raise ValueError(
-                    f"set_descriptor failure! {prefix.status=} "
-                    f"errno='{os.strerror(abs(prefix.status))}'"
-                )
+                raise ValueError(f"set_descriptor failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
         except struct.error as s_error:
             self._logger.error(f"RET_SUBMIT_PREFIX failure on {RET_SUBMIT_PREFIX.size=}, {prefix_data.hex()=}")
             raise s_error
@@ -830,11 +762,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
         self.send_setup(setup=setup, usb=usb)
 
-    def attach(
-        self,
-        devices: list[HardwareID],
-        published: Optional[OP_REP_DEVLIST_HEADER] = None,
-    ) -> None:
+    def attach(self, devices: list[HardwareID], published: Optional[OP_REP_DEVLIST_HEADER] = None) -> None:
         """attach to the specified devices"""
         # find the 'busid' for devices we want to attach to
         self.disconnect_server()  # ensure we start with a clean connection
@@ -971,18 +899,13 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         # will change, but it's pid/vid will not. Since its possible (probable in our case) to have
         # multiple devices with the same pid/vid, discard paths that map existing connections.
         for current_connection in self._connections:
-            if (
-                current_connection.busnum == path.busnum
-                and current_connection.devnum == path.devnum
-            ):
+            if current_connection.busnum == path.busnum and current_connection.devnum == path.devnum:
                 return False  # path matches an existing connection
 
         # if this path is not in use, and it matches our product, then we should connect to it
         return usb.device.vid == path.idVendor and usb.device.pid == path.idProduct
 
-    def restore_connection(
-        self, lost_usb: USBIP_Connection
-    ) -> Optional[USBIP_Connection]:
+    def restore_connection(self, lost_usb: USBIP_Connection) -> Optional[USBIP_Connection]:
         """A USB connection has been lost, attempt to restore it"""
         # get the list of published devices from the USBIPD server
         if lost_usb in self._connections:

@@ -21,7 +21,8 @@ from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT
 from usbip_protocol import Direction
 from protocol.urb_packets import (UrbSetupPacket, DeviceDescriptor, ConfigurationDescriptor,
                                   URBBase, InterfaceDescriptor, InterfaceAssociation, EndPointDescriptor, HeaderFunctionalDescriptor,
-                                  CallManagementFunctionalDescriptor, ACMFunctionalDescriptor, UnionFunctionalDescriptor, StringDescriptor)
+                                  CallManagementFunctionalDescriptor, ACMFunctionalDescriptor, UnionFunctionalDescriptor, StringDescriptor,
+                                  URBStandardDeviceRequest, URBCDCRequestType)
 from usbip_defs import BasicCommands
 from usb_descriptors import DescriptorType
 
@@ -296,25 +297,31 @@ class MockUSBIP:
             for device in self.usb_devices.devices:
                 if device.busid == busid:
                     transfer_buffer: Optional[bytes] = None
-                    if urb_setup.value == DescriptorType.DEVICE_DESCRIPTOR << 8:
+                    if urb_setup.descriptor_type == DescriptorType.DEVICE_DESCRIPTOR:
                         transfer_buffer = device.device.pack()
-                    elif urb_setup.value == DescriptorType.CONFIGURATION_DESCRIPTOR << 8:
-                        configuration: ConfigurationDescriptor = device.device.configurations[urb_setup.index]
-                        transfer_buffer = configuration.pack()
-                        interface_idx: int = 0
-                        for association in configuration.associations:
-                            transfer_buffer += association.pack()
-                            for i in range(0, association.bInterfaceCount):
-                                interface: InterfaceDescriptor = configuration.interfaces[i+interface_idx]
-                                transfer_buffer += interface.pack()
-                                for descriptor in interface.descriptors:
-                                    transfer_buffer += descriptor.pack()
-                            interface_idx += association.bInterfaceCount
+                    elif urb_setup.descriptor_type == DescriptorType.CONFIGURATION_DESCRIPTOR:
+                        if urb_setup.request == URBStandardDeviceRequest.GET_DESCRIPTOR:
+                            configuration: ConfigurationDescriptor = device.device.configurations[urb_setup.index]
+                            transfer_buffer = configuration.pack()
+                            interface_idx: int = 0
+                            for association in configuration.associations:
+                                transfer_buffer += association.pack()
+                                for i in range(0, association.bInterfaceCount):
+                                    interface: InterfaceDescriptor = configuration.interfaces[i+interface_idx]
+                                    transfer_buffer += interface.pack()
+                                    for descriptor in interface.descriptors:
+                                        transfer_buffer += descriptor.pack()
+                                interface_idx += association.bInterfaceCount
 
-                        self.logger.info(f"[mock_urb_response] {urb_setup.length=}, {len(transfer_buffer)=}")
-                        transfer_buffer = transfer_buffer[:urb_setup.length]  # restrict response to length requested
+                            self.logger.info(f"[mock_urb_response] {urb_setup.length=}, {len(transfer_buffer)=}")
+                            transfer_buffer = transfer_buffer[:urb_setup.length]  # restrict response to length requested
                     elif urb_setup.value == DescriptorType.STRING_DESCRIPTOR << 8:
                         transfer_buffer = StringDescriptor(wLanguage=0x409).pack()
+                    elif urb_setup.request == URBStandardDeviceRequest.SET_CONFIGURATION:
+                        transfer_buffer = bytes()
+                    elif urb_setup.request == URBCDCRequestType.SET_LINE_CODING:
+                        transfer_buffer = bytes()
+
                     if transfer_buffer is not None:
                         ret_submit = USBIP_RET_SUBMIT(status=0, transfer_buffer=transfer_buffer)
                         ret_submit.seqnum = cmd_submit.seqnum
@@ -324,7 +331,8 @@ class MockUSBIP:
 
             # device not found, return error
             busid: str = self._urb_traffic.strip(b'\0').decode('utf-8') if self._urb_traffic else 'None'
-            self.logger.warning(f"busid not found: {busid}")
+            devices: str = ",".join([device.busid.strip(b'\0').decode('utf-8') for device in self.usb_devices.devices])
+            self.logger.warning(f"operation not recognized: {urb_setup.descriptor_type.name=}, {busid=}, {devices=}")
             failure: CommonHeader = CommonHeader(command=BasicCommands.RET_SUBMIT, status=errno.ENODEV)
             self._urb_traffic = None
             return failure.pack()
@@ -335,6 +343,7 @@ class MockUSBIP:
         self.logger.info(f"[mock_response] {busid=}, {message.hex()=}")
         if self._urb_traffic is not None:  # we have imported a device
             response: bytes = self.mock_urb_responses(message, busid=self._urb_traffic)
+            self.logger.info(f"[mock_response] client.sendall {response.hex()=}")
             client.sendall(response)
             
         header: CommonHeader = CommonHeader.unpack(message)

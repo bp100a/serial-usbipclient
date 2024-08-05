@@ -338,6 +338,14 @@ class UrbSetupPacket(URBBase):
                 return f"0x{self.request:02x}"
 
     @property
+    def descriptor_type(self) -> DescriptorType:
+        """return the descriptor type"""
+        if self.bRequest in [URBStandardDeviceRequest.GET_DESCRIPTOR.name, URBStandardDeviceRequest.SET_CONFIGURATION.name]:
+            return DescriptorType(self.value >> 8)
+        else:
+            return DescriptorType.INVALID_DESCRIPTOR
+
+    @property
     def wValue(self) -> str:
         """return a string represent the value that is contextually aware"""
         if self.bRequest == URBStandardDeviceRequest.GET_DESCRIPTOR.name:
