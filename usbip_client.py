@@ -532,10 +532,10 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         raise timeout_error
             return data
         except ConnectionError as connection_error:
-            raise USBConnectionLost(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
+            raise USBConnectionLost(detail=f"USBIPClient.readall() connection lost", connection=usb) from connection_error
         except OSError as os_error:
             raise USBConnectionLost(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, "
-                                              f"{os.strerror(os_error.errno)}",
+                                           f"{os.strerror}",
                                     connection=usb) from os_error
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
@@ -646,8 +646,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         usb.sendall(data)
         self._logger.debug(f"send_setup(): {str(setup)}\n{data.hex()=}")
 
-    def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection
-    ) -> DeviceDescriptor | ConfigurationDescriptor | StringDescriptor:
+    def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> DeviceDescriptor | ConfigurationDescriptor | StringDescriptor:
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
@@ -773,6 +772,12 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
         config_desc: ConfigurationDescriptor = self.request_descriptor(setup=setup, usb=usb)
 
+        # now that we know the Configuration Descriptor's total length, read it all in:
+        #   Configuration Descriptor
+        #       - associations
+        #       - interfaces
+        #           - endpoints, descriptors
+        #
         setup = UrbSetupPacket(
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
             request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
