@@ -60,5 +60,4 @@ class CommonTestBase(TestCase):
             if qualified_name.endswith(all_tests[i]):
                 return i + 1
 
-        self.logger.warning(f"{name=}, {qualified_name=}, {all_tests=}")
-        return 0
+        raise ValueError(f"{name=}, {qualified_name=}, {all_tests=}")
