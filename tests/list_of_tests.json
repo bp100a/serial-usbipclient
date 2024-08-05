@@ -1,1 +1,22 @@
-["USBIP.tests.test_connection.py.TestUSBIPConnection.test_connection", "USBIP.tests.test_connection.py.TestUSBIPConnection.test_connection_shutdown", "USBIP.tests.test_connection.py.TestUSBIPConnection.test_queue_urbs", "USBIP.tests.test_defs.py.TestDefinitions.test_protocol_formatting", "USBIP.tests.test_descriptors.py.TestInterfaceDescriptor.test_descriptors", "USBIP.tests.test_mock_usbip_server.py.TestMockUSBIPServer.test_mock_usbip_server_connection", "USBIP.tests.test_mock_usbip_server.py.TestMockUSBIPServer.test_mock_usbip_server_startup", "USBIP.tests.test_mock_usbip_server.py.TestMockUSBIPServer.test_mocked_response", "USBIP.tests.test_mock_usbip_server.py.TestMockUSBIPServer.test_reading_paths", "USBIP.tests.test_mock_usbip_server.py.TestDeviceConfiguration.test_lsusb_parsing", "USBIP.tests.test_mock_usbip_server.py.TestDeviceConfiguration.test_usbip_path", "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_cmd_response", "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_cmd_submit", "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_queue_urb", "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_request_devlist", "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_sizing", "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_urb_endianness", "USBIP.tests.test_stats.py.TestStats.test_context_management", "USBIP.tests.test_urb_packets.py.TestURBPackets.test_configuration_descriptor", "USBIP.tests.test_urb_packets.py.TestURBPackets.test_generate_configuration"]
+[
+  "USBIP.tests.test_connection.py.TestUSBIPConnection.test_connection",
+  "USBIP.tests.test_connection.py.TestUSBIPConnection.test_connection_shutdown",
+  "USBIP.tests.test_connection.py.TestUSBIPConnection.test_queue_urbs",
+  "USBIP.tests.test_defs.py.TestDefinitions.test_protocol_formatting",
+  "USBIP.tests.test_descriptors.py.TestInterfaceDescriptor.test_descriptors",
+  "USBIP.tests.test_mock_usbip_server.py.TestMockUSBIPServer.test_mock_usbip_server_connection",
+  "USBIP.tests.test_mock_usbip_server.py.TestMockUSBIPServer.test_mock_usbip_server_startup",
+  "USBIP.tests.test_mock_usbip_server.py.TestMockUSBIPServer.test_mocked_response",
+  "USBIP.tests.test_mock_usbip_server.py.TestMockUSBIPServer.test_reading_paths",
+  "USBIP.tests.test_mock_usbip_server.py.TestDeviceConfiguration.test_lsusb_parsing",
+  "USBIP.tests.test_mock_usbip_server.py.TestDeviceConfiguration.test_usbip_path",
+  "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_cmd_response",
+  "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_cmd_submit",
+  "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_queue_urb",
+  "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_request_devlist",
+  "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_sizing",
+  "USBIP.tests.test_packet_generation.py.TestPacketGeneration.test_urb_endianness",
+  "USBIP.tests.test_stats.py.TestStats.test_context_management",
+  "USBIP.tests.test_urb_packets.py.TestURBPackets.test_configuration_descriptor",
+  "USBIP.tests.test_urb_packets.py.TestURBPackets.test_generate_configuration"
+]

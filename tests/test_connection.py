@@ -32,7 +32,10 @@ class TestUSBIPConnection(CommonTestBase):
     def tearDown(self):
         """clean up after test"""
         if self.mock_usbip:
-            self.mock_usbip.shutdown()
+            try:
+                self.mock_usbip.shutdown()
+            except TimeoutError:
+                pass
             self.mock_usbip = None
 
         super().tearDown()
