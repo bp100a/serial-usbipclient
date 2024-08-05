@@ -532,7 +532,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         raise timeout_error
             return data
         except ConnectionError as connection_error:
-            raise USBConnectionLost(detail=f"USBIPClient.readall() connection lost", connection=usb) from connection_error
+            raise USBConnectionLost(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
         except OSError as os_error:
             raise USBConnectionLost(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, "
                                            f"{os.strerror}",
@@ -603,7 +603,8 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         usb.sendall(data)
         self._logger.debug(f"send_setup(): {str(setup)}\n{data.hex()=}")
 
-    def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> DeviceDescriptor | ConfigurationDescriptor | StringDescriptor:
+    def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> (
+            DeviceDescriptor | ConfigurationDescriptor | StringDescriptor):
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
