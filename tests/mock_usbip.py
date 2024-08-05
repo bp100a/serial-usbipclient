@@ -321,6 +321,8 @@ class MockUSBIP:
                         transfer_buffer = bytes()
                     elif urb_setup.request == URBCDCRequestType.SET_LINE_CODING:
                         transfer_buffer = bytes()
+                    elif urb_setup.request == URBCDCRequestType.SET_CONTROL_LINE_STATE:
+                        transfer_buffer = bytes()
 
                     if transfer_buffer is not None:
                         ret_submit = USBIP_RET_SUBMIT(status=0, transfer_buffer=transfer_buffer)

@@ -52,7 +52,7 @@ class CommonTestBase(TestCase):
 
     def get_test_index(self, name: str) -> int:
         """get index of test, can be used as offset for port assignments"""
-        qualified_name: str = name.replace(os.sep, '.')
+        qualified_name: str = name.replace(os.sep, '.').lower()
         with open(os.path.join(os.path.dirname(__file__), 'list_of_tests.json'), 'r') as tests:
             all_tests: dict = json.load(tests)
 
