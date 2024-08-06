@@ -3,7 +3,8 @@ from typing import Optional
 
 from tests.common_test_base import CommonTestBase
 from tests.mock_usbip import MockUSBIP
-from protocol.urb_packets import GenericDescriptor, ConfigurationDescriptor, InterfaceDescriptor, CDCDescriptorSubType, EndPointDescriptor
+from protocol.urb_packets import (GenericDescriptor, ConfigurationDescriptor, InterfaceDescriptor,
+                                  CDCDescriptorSubType, EndPointDescriptor, StringDescriptor)
 from protocol.packets import RET_SUBMIT_PREFIX
 
 class TestURBPackets(CommonTestBase):
@@ -47,3 +48,10 @@ class TestURBPackets(CommonTestBase):
 
                     interface_offset += association.bInterfaceCount
         print(output)
+
+    def test_descriptor_handlers(self):
+        """test handling the descriptors"""
+        string_desc: bytes = b'\x04\x03\t\x04'  # bLength=4, bDescriptorType=3, wLanguage=0x0904 (supports only english)
+        generic_handler: GenericDescriptor = GenericDescriptor()
+        descriptor = generic_handler.packet(data=string_desc)
+        self.assertTrue(isinstance(descriptor, StringDescriptor))

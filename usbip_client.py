@@ -290,7 +290,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         """wait for the unlink response"""
         start_time: float = time()
         while time() - start_time < 10.0:  # wade through any residual packets to get the unlink response
-            header_data: bytes = USBIPClient.readall(HEADER_BASIC.size, self.socket)
+            header_data: bytes = USBIPClient.readall(HEADER_BASIC.size, self.socket, timeout=1.0)
             if not header_data:
                 return None
             header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)

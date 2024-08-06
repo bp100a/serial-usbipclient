@@ -158,6 +158,11 @@ class EndPointDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/mome
     wMaxPacketSize: int = field("H", default=0x0)
     bInterval: int = field("B", default=0x0)
 
+    def __post_init__(self) -> None:
+        """fill out the endpoint"""
+        self.bLength = 0x7  # size in bytes
+        self.bDescriptorType = DescriptorType.ENDPOINT_DESCRIPTOR
+
     def transfer_type(self) -> EndpointAttributesTransferType:
         """determine the transfer type from the bitfield"""
         return EndpointAttributesTransferType(self.bmAttributes & 0x3)
@@ -186,6 +191,11 @@ class StringDescriptor(BaseDescriptor):
     """handle string descriptors"""
     wLanguage: int = field("H", default=0x0)
 
+    def __post_init__(self) -> None:
+        """set the size of the string descriptor"""
+        self.bLength = BaseDescriptor.size + 2  # for now, support a single language
+        self.bDescriptorType = DescriptorType.STRING_DESCRIPTOR
+
 
 class GenericDescriptor:
     """handle a generic descriptor and return correct type"""
@@ -198,6 +208,7 @@ class GenericDescriptor:
             DescriptorType.CS_INTERFACE: self._functional_handler,
             DescriptorType.DEVICE_DESCRIPTOR: self._device_handler,
             DescriptorType.INTERFACE_ASSOCIATION: self._interface_assoc_handler,
+            DescriptorType.STRING_DESCRIPTOR: self._string_handler,
         }
 
     def _configuration_handler(
@@ -290,10 +301,12 @@ class GenericDescriptor:
 
     def _string_handler(self, data: bytes, length: int) -> StringDescriptor:
         """handle string descriptors"""
+        str_desc: StringDescriptor = StringDescriptor.unpack(data)
+        return str_desc
 
     def packet(self, data: bytes) -> Any:
         """given a stream of bytes, create appropriate descriptor"""
-        descriptor: BaseDescriptor = BaseDescriptor.new(data[0:2])
+        descriptor: BaseDescriptor = BaseDescriptor.unpack(data)
         descriptor_type = DescriptorType(descriptor.bDescriptorType)
         handler: Optional[callable] = self._handlers.get(descriptor_type, None)
         if handler:

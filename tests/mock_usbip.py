@@ -302,7 +302,7 @@ class MockUSBIP:
 
             raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} to start, waited {round(time() - start_time, 2)} seconds")
         else:
-            logger.info("MockUSBIP server not started")
+            logger.info("[usbip-server] MockUSBIP server not started")
 
     def setup(self):
         """setup our instance"""
@@ -317,14 +317,14 @@ class MockUSBIP:
     def shutdown(self):
         """shutdown the USBIP server thread"""
         if self.thread and self.event.is_set():
-            self.logger.info("usbip-server: clear event, wait for thread to recognize exit condition")
+            self.logger.info("[usbip-server] clear event, wait for thread to recognize exit condition")
             self.event.clear()  # -> 0, thread will exit loop if we aren't blocking on accept()
             if self.server_socket:
                 if not self._is_windows:  # in linux-land, need to shut down as well
                     self.server_socket.shutdown(socket.SHUT_RDWR)
                 self.server_socket.close()  # if we are waiting for accept(), should unblock
 
-            self.logger.info("usbip-server: waiting for event to signal (0->1)")
+            self.logger.info("[usbip-server] waiting for event to signal (0->1)")
             if self.event.wait(timeout=10.0):
                 self.thread.join(timeout=1.0)
                 self.thread = None
@@ -339,7 +339,7 @@ class MockUSBIP:
         unlinked_command: CMD_SUBMIT = usb.dequeue_read(seq=cmd_unlink.unlink_seqnum)
         status: int = ~errno.ECONNRESET if not unlinked_command else 0
         ret_unlink: RET_UNLINK = RET_UNLINK(status=status, seqnum=cmd_unlink.seqnum, devid=cmd_unlink.devid)
-        self.logger.info(f"unlink #{cmd_unlink.unlink_seqnum} for {busnum}-{devnum}")
+        self.logger.info(f"[usbip-server]unlink #{cmd_unlink.unlink_seqnum} for {busnum}-{devnum}")
         return ret_unlink.pack()
 
     def mock_urb_responses(self, message: bytes, busid: bytes) -> bytes:
@@ -358,7 +358,7 @@ class MockUSBIP:
                 return bytes()  # there is no response (yet!)
 
             urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
-            self.logger.info(f"[mock_urb_responses] Setup flags: {str(urb_setup)}")
+            self.logger.info(f"[usbip-server] Setup flags: {str(urb_setup)}\n{busid.hex()=}")
             for device in self.usb_devices.devices:
                 if device.busid == busid:
                     transfer_buffer: Optional[bytes] = None
@@ -378,17 +378,19 @@ class MockUSBIP:
                                         transfer_buffer += descriptor.pack()
                                 interface_idx += association.bInterfaceCount
 
-                            self.logger.info(f"[mock_urb_response] {urb_setup.length=}, {len(transfer_buffer)=}")
+                            self.logger.info(f"[usbip-server] {urb_setup.length=}, {len(transfer_buffer)=}")
                             transfer_buffer = transfer_buffer[:urb_setup.length]  # restrict response to length requested
-                    elif urb_setup.value == DescriptorType.STRING_DESCRIPTOR << 8:
+                    elif urb_setup.descriptor_type == DescriptorType.STRING_DESCRIPTOR:
                         transfer_buffer = StringDescriptor(wLanguage=0x409).pack()
                     elif urb_setup.request == URBStandardDeviceRequest.SET_CONFIGURATION:
                         to_enable: DescriptorType = DescriptorType(urb_setup.value & 0xFF)
-                        self.logger.info(f"[mock_urb_response] Setting configuration: {to_enable.name}")
+                        self.logger.info(f"[usbip-server] Setting configuration: {to_enable.name}")
                         transfer_buffer = bytes()
                     elif urb_setup.request == URBCDCRequestType.SET_LINE_CODING:
+                        self.logger.info(f"[usbip-server] Setting line coding")
                         transfer_buffer = bytes()
                     elif urb_setup.request == URBCDCRequestType.SET_CONTROL_LINE_STATE:
+                        self.logger.info(f"[usbip-server] Setting control line state")
                         transfer_buffer = bytes()
 
                     if transfer_buffer is not None:
@@ -409,21 +411,23 @@ class MockUSBIP:
     def mock_response(self, client: socket.socket, message: bytes) -> None:
         """use the lsusb devices to mock a response"""
         busid: str = self._urb_traffic.strip(b'\0').decode('utf-8') if self._urb_traffic else 'None'
-        self.logger.info(f"[mock_response] {busid=}, {message.hex()=}")
+        self.logger.info(f"[usbip-server] {busid=}, {message.hex()=}")
         if self._urb_traffic is not None:  # we have imported a device
             response: bytes = self.mock_urb_responses(message, busid=self._urb_traffic)
-            client.sendall(response)
-            self.logger.info(f"[mock_response] client.sendall {response.hex()=}")
+            if response:
+                client.sendall(response)
+            self.logger.info(f"[usbip-server] client.sendall {response.hex()=}")
 
         header: CommonHeader = CommonHeader.unpack(message)
         if header.command == BasicCommands.REQ_DEVLIST:
             response: bytes = self.usb_devices.pack()
-            self.logger.info(f"[mock_response] REP_DEVLIST: {response.hex()=}")
-            client.sendall(response)
+            self.logger.info(f"[usbip-server] REP_DEVLIST: {response.hex()=}")
+            if response:
+                client.sendall(response)
             return
         elif header.command == BasicCommands.REQ_IMPORT:
             req_import: OP_REQ_IMPORT = OP_REQ_IMPORT.unpack(message)
-            self.logger.info(f"[mock_response] REQ_IMPORT {req_import.busid}")
+            self.logger.info(f"[usbip-server] REQ_IMPORT {req_import.busid}")
             for path in self.usb_devices.usbip.paths:
                 if path.busid == req_import.busid:
                     device: MockDevice = self.usb_devices.device(busnum=path.busnum, devnum=path.devnum)
@@ -456,7 +460,7 @@ class MockUSBIP:
         try:
             while self.event.is_set():
                 conn, address = self.server_socket.accept()  # accept new connection
-                self.logger.info(f"usbip-server, client @{address} connected")
+                self.logger.info(f"[usbip-server] client @{address} connected")
                 try:
                     while conn and self.event.is_set():
                         message: bytes = conn.recv(1024)
@@ -471,7 +475,7 @@ class MockUSBIP:
                         conn.shutdown(socket.SHUT_RDWR)
                         conn.close()  # close the connection
                 except OSError as os_error:
-                    self.logger.info(f"usbip-server, client @{address} disconnected: {os_error}")
+                    self.logger.info(f"[usbip-server] client @{address} disconnected: {os_error}")
                     if conn:
                         conn.shutdown(socket.SHUT_RDWR)
                         conn.close()
@@ -481,7 +485,7 @@ class MockUSBIP:
             self.logger.error(f"Exception {str(os_error)}\n{failure=}")
         finally:
             self.event.set()  # indicate we are exiting
-            self.logger.info("mock USBIP server stopped @%s:%s", self.host, self.port)
+            self.logger.info("[usbip-server] server stopped @%s:%s", self.host, self.port)
 
     def read_paths(self) -> list[OP_REP_DEV_PATH]:
         """read the paths from the JSON file"""
