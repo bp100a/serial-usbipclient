@@ -1,6 +1,7 @@
 from typing import Optional
 from tests.common_test_base import CommonTestBase
 import os
+from time import sleep
 
 from protocol.packets import OP_REP_DEVLIST_HEADER
 from usbip_client import USBIPClient, HardwareID, USBAttachError, USBIP_Connection
@@ -94,6 +95,7 @@ class TestUSBIPConnection(CommonTestBase):
             connections: list[USBIP_Connection] = self.client.get_connection(device=self.hardware_id)
             self.assertEqual(len(connections), 1)  # should be a single connection
             self.client.queue_urbs(usb=connections[0])
+            sleep(1.0)
             self.client.shutdown()  # shut it all down
         except USBAttachError as a_error:
             self.logger.error(a_error.detail)

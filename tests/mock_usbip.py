@@ -339,7 +339,7 @@ class MockUSBIP:
         unlinked_command: CMD_SUBMIT = usb.dequeue_read(seq=cmd_unlink.unlink_seqnum)
         status: int = ~errno.ECONNRESET if not unlinked_command else 0
         ret_unlink: RET_UNLINK = RET_UNLINK(status=status, seqnum=cmd_unlink.seqnum, devid=cmd_unlink.devid)
-        self.logger.info(f"[usbip-server]unlink #{cmd_unlink.unlink_seqnum} for {busnum}-{devnum}")
+        self.logger.info(f"[usbip-server] unlink #{cmd_unlink.unlink_seqnum} for {busnum}-{devnum}")
         return ret_unlink.pack()
 
     def mock_urb_responses(self, message: bytes, busid: bytes) -> bytes:
@@ -397,7 +397,7 @@ class MockUSBIP:
                         ret_submit = USBIP_RET_SUBMIT(status=0, transfer_buffer=transfer_buffer)
                         ret_submit.seqnum = cmd_submit.seqnum
                         response: bytes = ret_submit.pack()
-                        self.logger.info(f"[#{ret_submit.seqnum}]{ret_submit.actual_length=}, {response.hex()=}")
+                        self.logger.info(f"[usbip-server] #{ret_submit.seqnum},{ret_submit.actual_length=}, {len(response)=} {response.hex()=}")
                         return response
 
             # device not found, return error
@@ -416,7 +416,7 @@ class MockUSBIP:
             response: bytes = self.mock_urb_responses(message, busid=self._urb_traffic)
             if response:
                 client.sendall(response)
-                self.logger.info(f"[usbip-server] client.sendall {response.hex()=}")
+                self.logger.info(f"[usbip-server] client.sendall {len(response)=}, {response.hex()=}")
 
         header: CommonHeader = CommonHeader.unpack(message)
         if header.command == BasicCommands.REQ_DEVLIST:
