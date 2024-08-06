@@ -18,7 +18,7 @@ from pathlib import Path
 from usbip_defs import BasicCommands, Direction
 from usb_descriptors import DescriptorType
 from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
-                              HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE)
+                              HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, CMD_UNLINK, RET_UNLINK)
 from protocol.urb_packets import (UrbSetupPacket, DeviceDescriptor, ConfigurationDescriptor,
                                   URBBase, InterfaceDescriptor, InterfaceAssociation, EndPointDescriptor, HeaderFunctionalDescriptor,
                                   CallManagementFunctionalDescriptor, ACMFunctionalDescriptor, UnionFunctionalDescriptor, StringDescriptor,
@@ -37,10 +37,33 @@ class MockDevice:
         self.queued_reads: dict[int, CMD_SUBMIT] = {}  # key'd by the sequence # for easy access
         self._attached: bool = False
 
+    def enqueue_read(self, command: CMD_SUBMIT) -> None:
+        """enqueue the read command"""
+        self.queued_reads[command.seqnum] = command
+
+    def dequeue_read(self, seq: int) -> CMD_SUBMIT:
+        """remove the queued read from the queue"""
+        cmd_submit: CMD_SUBMIT = self.queued_reads.pop(seq)
+        return cmd_submit
+
     @property
     def is_attached(self) -> bool:
         """=True, then device is attached"""
         return self._attached
+
+    @property
+    def attach(self) -> bool:
+        """attach device =True"""
+        previous_state: bool = self._attached
+        self._attached = True
+        return previous_state
+
+    @property
+    def detach(self) -> bool:
+        """detach device"""
+        previous_state: bool = self._attached
+        self._attached = False
+        return previous_state
 
     @property
     def busnum(self) -> int:
@@ -57,6 +80,10 @@ class MockDevice:
     def __hash__(self):
         """return the hash of this device"""
         return hash((self.vendor, self.product))
+
+    def __str__(self):
+        """display readable version"""
+        return f"{self.busnum}-{self.devnum} VID/PID={self.vendor:0x4}:{self.product:0x4}"
 
 
 class Parse_lsusb:
@@ -206,6 +233,13 @@ class MockUSBDevice:
         self.devices: list[MockDevice] = devices
         self.usbip: Optional[OP_REP_DEVLIST_HEADER] = None
 
+    def device(self, busnum: int, devnum: int) -> Optional[MockDevice]:
+        """retrieve the USB device associated with this devid"""
+        for device in self.devices:
+            if device.busnum == busnum and device.devnum == devnum:
+                return device
+        return None
+
     def setup(self):
         """create the USBIP device list"""
         usbip_dev_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER()
@@ -297,13 +331,31 @@ class MockUSBIP:
                 return
             raise TimeoutError(f"Timed out waiting for USBIP server to acknowledge shutdown")
 
+    def unlink(self, message: bytes) -> bytes:
+        """unlink the specified read"""
+        cmd_unlink: CMD_UNLINK = CMD_UNLINK.unpack(message)
+        busnum, devnum = cmd_unlink.devid >> 16, cmd_unlink.devid & 0xFFFF
+        usb: MockDevice = self.usb_devices.device(busnum, devnum)
+        unlinked_command: CMD_SUBMIT = usb.dequeue_read(seq=cmd_unlink.unlink_seqnum)
+        status: int = ~errno.ECONNRESET if not unlinked_command else 0
+        ret_unlink: RET_UNLINK = RET_UNLINK(status=status, seqnum=cmd_unlink.seqnum, devid=cmd_unlink.devid)
+        self.logger.info(f"unlink #{cmd_unlink.unlink_seqnum} for {busnum}-{devnum}")
+        return ret_unlink.pack()
+
     def mock_urb_responses(self, message: bytes, busid: bytes) -> bytes:
         """return URB packets"""
         urb_header: HEADER_BASIC = HEADER_BASIC.unpack(message)
+        if urb_header.command == BasicCommands.CMD_UNLINK:  # de-queue a read request
+            return self.unlink(message)
+
         if urb_header.command == BasicCommands.CMD_SUBMIT:
             cmd_submit: CMD_SUBMIT = CMD_SUBMIT.unpack(message)
             if cmd_submit.ep and cmd_submit.direction == Direction.USBIP_DIR_IN:  # a read is being issued
-                raise NotImplementedError("TBD, queueing URB packets")
+                busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
+                usb: MockDevice = self.usb_devices.device(busnum, devnum)
+                usb.enqueue_read(cmd_submit)  # associate this read with the device it's intended
+                self.logger.info(f"queued read #{cmd_submit.seqnum} for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
+                return bytes()  # there is no response (yet!)
 
             urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
             self.logger.info(f"[mock_urb_responses] Setup flags: {str(urb_setup)}")
@@ -360,9 +412,9 @@ class MockUSBIP:
         self.logger.info(f"[mock_response] {busid=}, {message.hex()=}")
         if self._urb_traffic is not None:  # we have imported a device
             response: bytes = self.mock_urb_responses(message, busid=self._urb_traffic)
-            self.logger.info(f"[mock_response] client.sendall {response.hex()=}")
             client.sendall(response)
-            
+            self.logger.info(f"[mock_response] client.sendall {response.hex()=}")
+
         header: CommonHeader = CommonHeader.unpack(message)
         if header.command == BasicCommands.REQ_DEVLIST:
             response: bytes = self.usb_devices.pack()
@@ -374,6 +426,10 @@ class MockUSBIP:
             self.logger.info(f"[mock_response] REQ_IMPORT {req_import.busid}")
             for path in self.usb_devices.usbip.paths:
                 if path.busid == req_import.busid:
+                    device: MockDevice = self.usb_devices.device(busnum=path.busnum, devnum=path.devnum)
+                    was_already_attached: bool = device.attach  # attach the device (returns previous state
+                    if was_already_attached:
+                        self.logger.warning(f"Device is already attached! {str(device)}")
                     rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=0, path=path.path, busid=req_import.busid, busnum=path.busnum,
                                                               devnum=path.devnum, speed=path.speed, idVendor=path.idVendor,
                                                               idProduct=path.idProduct, bcdDevice=path.bcdDevice,

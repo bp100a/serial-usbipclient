@@ -246,7 +246,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         """send the command"""
         try:
             with USBStatsManager(self._stats, name="USBIP_Connection.sendall"):
-                self.sendall(command.packet())
+                self.sendall(command.pack())
             self._commands[command.seqnum] = command
 
             # If this is a *write* to the device, then wait for confirmation
@@ -271,7 +271,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     def send_unlink(self, command: CMD_UNLINK) -> bool:
         """send an unlink command"""
         try:
-            self.sendall(command.packet())
+            self.sendall(command.pack())
             unlink_response: Optional[RET_UNLINK] = self.wait_for_unlink()
             if abs(unlink_response.status) in USBConnectionLost.USB_DISCONNECT:
                 return True
@@ -290,7 +290,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         """wait for the unlink response"""
         start_time: float = time()
         while time() - start_time < 10.0:  # wade through any residual packets to get the unlink response
-            header_data: bytes = USBIPClient.readall(HEADER_BASIC().size, self.socket)
+            header_data: bytes = USBIPClient.readall(HEADER_BASIC.size, self.socket)
             if not header_data:
                 return None
             header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
@@ -859,10 +859,12 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 return ""
         return response.decode("utf-8").strip("\r\n")
 
-    @staticmethod
-    def shutdown_connection(usb: USBIP_Connection) -> None:
+    def shutdown_connection(self, usb: USBIP_Connection) -> None:
         """shutdown this connection"""
         # Any commands that are "pending", we need to unlink them
+        if usb.pending_commands:
+            self._logger.info(f"unlink for {len(usb.pending_commands)} commands")
+
         for submit in usb.pending_commands:
             usb.seqnum += 1
             unlink: CMD_UNLINK = CMD_UNLINK(
