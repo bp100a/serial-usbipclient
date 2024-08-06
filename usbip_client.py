@@ -632,7 +632,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                                                )
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)
-        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(data=prefix_data)
+        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(prefix_data)
         if prefix.status != 0:
             raise ValueError(f"set_line_control_state failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
 

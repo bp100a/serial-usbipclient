@@ -70,8 +70,8 @@ class TestDeviceConfiguration(CommonTestBase):
         error: list[str] = []
         lsusb_parsed: Parse_lsusb = Parse_lsusb(self.logger)
         self.assertTrue(lsusb_parsed)
-        self.assertTrue(lsusb_parsed.device_descriptors)  # we have a device descriptor
-        for usb in lsusb_parsed.device_descriptors:
+        self.assertTrue(lsusb_parsed.devices)  # we have a device descriptor
+        for usb in lsusb_parsed.devices:
             for configuration in usb.device.configurations:
                 if configuration.bNumInterfaces != len(configuration.interfaces):
                     error.append(f"[0x{usb.vendor:0x4x}:0x{usb.product:0x4x}] Incorrect # interfaces {configuration.descriptor_type.name=}")
@@ -81,7 +81,7 @@ class TestDeviceConfiguration(CommonTestBase):
     def test_usbip_path(self):
         """test we generate a USBIP path for our devices"""
         parsed_devices: Parse_lsusb = Parse_lsusb(self.logger)
-        devices: MockUSBDevice = MockUSBDevice(parsed_devices.device_descriptors)
+        devices: MockUSBDevice = MockUSBDevice(parsed_devices.devices)
         devices.setup()  # create our USBIP protocol image
         response: bytes = devices.pack()
         print(f"{response.hex()=}")
