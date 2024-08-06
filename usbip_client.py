@@ -867,13 +867,8 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
 
         for submit in usb.pending_commands:
             usb.seqnum += 1
-            unlink: CMD_UNLINK = CMD_UNLINK(
-                seqnum=usb.seqnum,
-                devid=submit.devid,
-                direction=submit.direction,
-                ep=submit.ep,
-                unlink_seqnum=submit.seqnum,
-            )
+            unlink: CMD_UNLINK = CMD_UNLINK(seqnum=usb.seqnum, devid=submit.devid, direction=submit.direction,
+                                            ep=submit.ep, unlink_seqnum=submit.seqnum)
             usb.send_unlink(unlink)  # waits for response
 
         # we are all done, shutdown the socket connection

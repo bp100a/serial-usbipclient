@@ -354,7 +354,7 @@ class MockUSBIP:
                 busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
                 usb: MockDevice = self.usb_devices.device(busnum, devnum)
                 usb.enqueue_read(cmd_submit)  # associate this read with the device it's intended
-                self.logger.info(f"queued read #{cmd_submit.seqnum} for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
+                self.logger.info(f"[usbip-server] queued read #{cmd_submit.seqnum} for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
                 return bytes()  # there is no response (yet!)
 
             urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
@@ -416,7 +416,7 @@ class MockUSBIP:
             response: bytes = self.mock_urb_responses(message, busid=self._urb_traffic)
             if response:
                 client.sendall(response)
-            self.logger.info(f"[usbip-server] client.sendall {response.hex()=}")
+                self.logger.info(f"[usbip-server] client.sendall {response.hex()=}")
 
         header: CommonHeader = CommonHeader.unpack(message)
         if header.command == BasicCommands.REQ_DEVLIST:
