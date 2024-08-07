@@ -603,12 +603,17 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         except struct.error as s_error:
             self._logger.error(f"parsing packet error {str(s_error)}, for {prefix_data.hex()=}")
             raise
-
-        generic_handler: GenericDescriptor = GenericDescriptor()
-        data: bytes = self.readall(prefix.actual_length, usb)
-        descriptor = generic_handler.packet(data=data)
-        return descriptor
-
+        except Exception as bad_error:
+            self._logger.error(f"parsing request_descriptor error! {str(bad_error)}")
+            raise
+        try:
+            generic_handler: GenericDescriptor = GenericDescriptor()
+            data: bytes = self.readall(prefix.actual_length, usb)
+            descriptor = generic_handler.packet(data=data)
+            return descriptor
+        except Exception as descriptor_error:
+            self._logger.error(f"GenericDescriptor() error! {prefix.actual_length=}, {str(descriptor_error)}")
+            raise
     def set_line_coding(self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection) -> None:
         """set line coding"""
         self.send_setup(setup=setup, usb=usb, data=data)
