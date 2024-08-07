@@ -498,6 +498,7 @@ class MockUSBIP:
         try:
             while self.event.is_set():
                 conn, address = self.server_socket.accept()  # accept new connection
+                conn.settimeout(None)  # wait for as long as it takes
                 self.logger.info(f"[usbip-server] client @{address} connected")
                 try:
                     while conn and self.event.is_set():
@@ -514,7 +515,7 @@ class MockUSBIP:
                         conn.close()  # close the connection
                 except OSError as os_error:
                     failure: str = traceback.format_exc()
-                    self.logger.info(f"[usbip-server] client @{address} disconnected from {self.host}:{self.port}: {os_error}\n{failure=}")
+                    self.logger.info(f"[usbip-server] client @{address} disconnected from {self.host}:{self.port}, {os_error=}\n{failure=}")
                     if conn:
                         conn.shutdown(socket.SHUT_RDWR)
                         conn.close()
