@@ -1,15 +1,13 @@
-#
-# definitions for URB packets
-#
+"""definitions for URB packets"""
 
 from typing import Optional, Any
 from dataclasses import dataclass
 
 from datastruct.fields import field
 
+from usbip_defs import Direction
 from protocol.packets import URBBase  # URBs are "little-endian"
-from usbip_protocol import (Direction, URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest,
-                            URBCDCRequestType, URBSetupRequestType, URBCDCRequestType)
+from usbip_protocol import URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest, URBSetupRequestType, URBCDCRequestType
 from usb_descriptors import DescriptorType, DeviceInterfaceClass, CDCDescriptorSubType, EndpointAttributesTransferType
 
 
@@ -38,8 +36,12 @@ class DeviceDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/moment
     bcdDevice: int = field("H", default=0x0)
     iManufacturer: int = field("B", default=0x0)
     iProduct: int = field("B", default=0x0)
-    iSerialNumber: int = field("B", default=0x0)
-    bNumberConfigurations: int = field("B", default=0x0)
+    iSerial: int = field("B", default=0x0)
+    bNumConfigurations: int = field("B", default=0x0)
+
+    def __post_init__(self) -> None:
+        """set up some instance variables"""
+        self.configurations: list[ConfigurationDescriptor] = []
 
 
 @dataclass
@@ -55,6 +57,7 @@ class ConfigurationDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx
     def __post_init__(self) -> None:
         """set up some instance variables"""
         self.interfaces: list[InterfaceDescriptor] = []
+        self.associations: list[InterfaceAssociation] = []
 
 
 @dataclass
@@ -94,14 +97,20 @@ class FunctionalDescriptor(URBBase):
     """interface descriptor base"""
     bFunctionLength: int = field("B", default=0x0)
     bDescriptorType: DescriptorType = field("B", default=0x0)
-    bDescriptorSubType: int = field("B", default=0x0)
+    bDescriptorSubType: CDCDescriptorSubType = field("B", default=0x0)
 
 
 @dataclass
 class UnionFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
-    bControllerInterface: int = field("B", default=0x0)
-    bSubordinateInterface: int = field("B", default=0x0)
+    bMasterInterface: int = field("B", default=0x0)
+    bSlaveInterface: int = field("B", default=0x0)
+
+    def __post_init__(self) -> None:
+        """initialize our descriptor type"""
+        self.bDescriptorType = DescriptorType.CS_INTERFACE
+        self.bDescriptorSubType = CDCDescriptorSubType.FeatureUnit
+        self.bFunctionLength = self.size
 
 
 @dataclass
@@ -109,11 +118,23 @@ class ACMFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
     bmCapabilities: int = field("B", default=0x0)
 
+    def __post_init__(self) -> None:
+        """initialize our descriptor type"""
+        self.bDescriptorType = DescriptorType.CS_INTERFACE
+        self.bDescriptorSubType = CDCDescriptorSubType.AbstractControlManagement
+        self.bFunctionLength = self.size
+
 
 @dataclass
 class HeaderFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
     bcdCDC: int = field("H", default=0x0)
+
+    def __post_init__(self) -> None:
+        """initialize our descriptor type"""
+        self.bDescriptorType = DescriptorType.CS_INTERFACE
+        self.bDescriptorSubType = CDCDescriptorSubType.Header
+        self.bFunctionLength = self.size
 
 
 @dataclass
@@ -121,6 +142,12 @@ class CallManagementFunctionalDescriptor(FunctionalDescriptor):
     """interface descriptor base"""
     bmCapabilities: int = field("B", default=0x0)
     bDataInterface: int = field("B", default=0x0)
+
+    def __post_init__(self) -> None:
+        """initialize our descriptor type"""
+        self.bDescriptorType = DescriptorType.CS_INTERFACE
+        self.bDescriptorSubType = CDCDescriptorSubType.CallManagement
+        self.bFunctionLength = self.size
 
 
 @dataclass
@@ -130,6 +157,11 @@ class EndPointDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/mome
     bmAttributes: int = field("B", default=0x0)
     wMaxPacketSize: int = field("H", default=0x0)
     bInterval: int = field("B", default=0x0)
+
+    def __post_init__(self) -> None:
+        """fill out the endpoint"""
+        self.bLength = 0x7  # size in bytes
+        self.bDescriptorType = DescriptorType.ENDPOINT_DESCRIPTOR
 
     def transfer_type(self) -> EndpointAttributesTransferType:
         """determine the transfer type from the bitfield"""
@@ -145,11 +177,24 @@ class EndPointDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/mome
         """return the endpoint address"""
         return self.bEndpointAddress & 0xF
 
+    def __repr__(self):
+        """for display purposes"""
+        ep_dir: str = "IN" if self.bEndpointAddress & 0x80 else "OUT"
+        number: int = self.bEndpointAddress & 0xF
+        response: str = f"bEndpointAddress=0x{self.bEndpointAddress:02x}[{ep_dir} #{number}]"
+        response += f", bDescriptorType={self.bDescriptorType.name}"
+        return response
+
 
 @dataclass
 class StringDescriptor(BaseDescriptor):
     """handle string descriptors"""
     wLanguage: int = field("H", default=0x0)
+
+    def __post_init__(self) -> None:
+        """set the size of the string descriptor"""
+        self.bLength = BaseDescriptor.size + 2  # for now, support a single language
+        self.bDescriptorType = DescriptorType.STRING_DESCRIPTOR
 
 
 class GenericDescriptor:
@@ -163,38 +208,31 @@ class GenericDescriptor:
             DescriptorType.CS_INTERFACE: self._functional_handler,
             DescriptorType.DEVICE_DESCRIPTOR: self._device_handler,
             DescriptorType.INTERFACE_ASSOCIATION: self._interface_assoc_handler,
+            DescriptorType.STRING_DESCRIPTOR: self._string_handler,
         }
 
     def _configuration_handler(
         self, data: bytes, length: int
     ) -> ConfigurationDescriptor:
         """handle Configuration descriptors"""
-        configuration_desc: ConfigurationDescriptor = ConfigurationDescriptor.new(
-            data[0:length]
-        )
+        configuration_desc: ConfigurationDescriptor = ConfigurationDescriptor.unpack(data)
         offset: int = configuration_desc.size
-        interface_desc_size: int = InterfaceDescriptor().size
+        interface_desc_size: int = InterfaceDescriptor.size
         idx_interface: int = 0
         while idx_interface < configuration_desc.bNumInterfaces:
-            if len(data[offset:]) < BaseDescriptor().size:
+            if len(data[offset:]) < BaseDescriptor.size:
                 break
             desc_type: DescriptorType = self._descriptor_type(data[offset:])
             if desc_type == DescriptorType.INTERFACE_ASSOCIATION:
-                offset += InterfaceAssociation().size
+                offset += InterfaceAssociation.size
             elif desc_type == DescriptorType.INTERFACE_DESCRIPTOR:
                 idx_interface += 1
                 if len(data[offset:]) >= interface_desc_size:
-                    interface_desc: InterfaceDescriptor = self._interface_handler(
-                        data[offset:], length=interface_desc_size
-                    )
+                    interface_desc: InterfaceDescriptor = self._interface_handler(data[offset:], length=interface_desc_size)
                     configuration_desc.interfaces.append(interface_desc)
-                    offset += interface_desc.size + sum(
-                        item.size for item in interface_desc.descriptors
-                    )
+                    offset += interface_desc.size + sum(item.size for item in interface_desc.descriptors)
             elif desc_type == DescriptorType.STRING_DESCRIPTOR:
-                base_desc: BaseDescriptor = BaseDescriptor.new(
-                    data[offset: offset + BaseDescriptor().size]
-                )
+                base_desc: BaseDescriptor = BaseDescriptor.unpack(data[offset:])
                 offset += base_desc.bLength
 
         return configuration_desc
@@ -223,76 +261,52 @@ class GenericDescriptor:
         base_desc: BaseDescriptor = BaseDescriptor.new(data[: BaseDescriptor().size])
         return DescriptorType(base_desc.bDescriptorType)
 
-    def _interface_handler(
-        self, data: bytes, length
-    ) -> InterfaceDescriptor | InterfaceAssociation:
+    def _interface_handler(self, data: bytes, length) -> InterfaceDescriptor | InterfaceAssociation:
         """handle interface descriptors"""
-        interface_desc: InterfaceDescriptor = InterfaceDescriptor.new(data[0:length])
+        interface_desc: InterfaceDescriptor = InterfaceDescriptor.unpack(data)
         offset: int = interface_desc.size
         for _ in range(0, interface_desc.bNumEndpoints):
             endpoint: bool = False
             while not endpoint:
-                base_desc: BaseDescriptor = BaseDescriptor.new(
-                    data[offset: offset + BaseDescriptor().size]
-                )
-                descriptor_type: DescriptorType = DescriptorType(
-                    base_desc.bDescriptorType
-                )
+                base_desc: BaseDescriptor = BaseDescriptor.unpack(data[offset:])
+                descriptor_type: DescriptorType = DescriptorType(base_desc.bDescriptorType)
                 if descriptor_type == DescriptorType.ENDPOINT_DESCRIPTOR:
-                    endpoint_desc: EndPointDescriptor = self._endpoint_handler(
-                        data[offset:], length=base_desc.bLength
-                    )
+                    endpoint_desc: EndPointDescriptor = self._endpoint_handler(data[offset:], length=base_desc.bLength)
                     interface_desc.descriptors.append(endpoint_desc)
                     offset += endpoint_desc.size
                     endpoint = True
                 elif descriptor_type == DescriptorType.CS_INTERFACE:
-                    functional_desc: FunctionalDescriptor = self._functional_handler(
-                        data[offset:], base_desc.bLength
-                    )
+                    functional_desc: FunctionalDescriptor = self._functional_handler(data[offset:], base_desc.bLength)
                     interface_desc.descriptors.append(functional_desc)
                     offset += base_desc.bLength
+                elif descriptor_type == DescriptorType.INVALID_DESCRIPTOR:
+                    raise ValueError(f"Interface: invalid descriptor type, {data.hex()=}")
 
         return interface_desc
 
     @staticmethod
-    def _functional_handler(
-        data: bytes, length: int  # pylint: disable=unused-argument
-    ) -> FunctionalDescriptor:
+    def _functional_handler(data: bytes, length: int) -> FunctionalDescriptor:  # pylint: disable=unused-argument
         """handle functional descriptors"""
-        func_desc: FunctionalDescriptor = FunctionalDescriptor.new(
-            data[: FunctionalDescriptor().size]
-        )
-        if (
-            func_desc.bDescriptorSubType
-            == CDCDescriptorSubType.AbstractControlManagement
-        ):
-            func_desc = ACMFunctionalDescriptor.new(data[: func_desc.bFunctionLength])
-        elif (
-            func_desc.bDescriptorSubType == CDCDescriptorSubType.FeatureUnit
-        ):  # union functional descriptor
-            func_desc = UnionFunctionalDescriptor.new(data[: func_desc.bFunctionLength])
-        elif (
-            func_desc.bDescriptorSubType == CDCDescriptorSubType.Header
-        ):  # header functional descriptor
-            func_desc = HeaderFunctionalDescriptor.new(
-                data[: func_desc.bFunctionLength]
-            )
-        elif (
-            func_desc.bDescriptorSubType == CDCDescriptorSubType.CallManagement
-        ):  # Call Management descriptor
-            func_desc = CallManagementFunctionalDescriptor.new(
-                data[: func_desc.bFunctionLength]
-            )
-        else:
-            pass
+        func_desc: FunctionalDescriptor = FunctionalDescriptor.unpack(data)
+        if func_desc.bDescriptorSubType == CDCDescriptorSubType.AbstractControlManagement:
+            func_desc = ACMFunctionalDescriptor.unpack(data)
+        elif func_desc.bDescriptorSubType == CDCDescriptorSubType.FeatureUnit:  # union functional descriptor
+            func_desc = UnionFunctionalDescriptor.unpack(data)
+        elif func_desc.bDescriptorSubType == CDCDescriptorSubType.Header:  # header functional descriptor
+            func_desc = HeaderFunctionalDescriptor.unpack(data)
+        elif func_desc.bDescriptorSubType == CDCDescriptorSubType.CallManagement:  # Call Management descriptor
+            func_desc = CallManagementFunctionalDescriptor.unpack(data)
+
         return func_desc
 
     def _string_handler(self, data: bytes, length: int) -> StringDescriptor:
         """handle string descriptors"""
+        str_desc: StringDescriptor = StringDescriptor.unpack(data)
+        return str_desc
 
     def packet(self, data: bytes) -> Any:
         """given a stream of bytes, create appropriate descriptor"""
-        descriptor: BaseDescriptor = BaseDescriptor.new(data[0:2])
+        descriptor: BaseDescriptor = BaseDescriptor.unpack(data)
         descriptor_type = DescriptorType(descriptor.bDescriptorType)
         handler: Optional[callable] = self._handlers.get(descriptor_type, None)
         if handler:
@@ -335,6 +349,14 @@ class UrbSetupPacket(URBBase):
                 return f"0x{self.request:02x}"
 
     @property
+    def descriptor_type(self) -> DescriptorType:
+        """return the descriptor type"""
+        if self.bRequest in [URBStandardDeviceRequest.GET_DESCRIPTOR.name, URBStandardDeviceRequest.SET_CONFIGURATION.name]:
+            return DescriptorType(self.value >> 8)
+        else:
+            return DescriptorType.INVALID_DESCRIPTOR
+
+    @property
     def wValue(self) -> str:
         """return a string represent the value that is contextually aware"""
         if self.bRequest == URBStandardDeviceRequest.GET_DESCRIPTOR.name:
@@ -367,6 +389,8 @@ class UrbSetupPacket(URBBase):
         output += "......Recipient=" + self.recipient + "\n"
         output += f"...bRequest={self.bRequest}\n"
         output += f"...wValue={self.wValue}\n"
+        output += f"...wIndex={self.index} (0x{self.index:04x})\n"
         output += f"...wLength={self.length}\n"
+        output += f"...Direction={self.direction.name}\n"
 
         return output

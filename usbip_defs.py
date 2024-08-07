@@ -1,11 +1,7 @@
-#
-# Copyright (c) 2024 Altai Technologies, LLC
-# Author: Harry Collins
-#
 """full implementation of a python-only client to connect to usbipd servers"""
 
 # https://docs.kernel.org/usb/usbip_protocol.html
-#
+
 import errno
 from os import strerror
 from enum import IntEnum

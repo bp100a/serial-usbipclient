@@ -1,6 +1,4 @@
-#
-# Definitions for USBIP protocol packets
-#
+"""Definitions for USBIP protocol packets"""
 import struct
 from functools import lru_cache
 from dataclasses import dataclass
@@ -168,25 +166,32 @@ class HEADER_BASIC(BaseStruct):
 
 
 @dataclass
-class CMD_SUBMIT(HEADER_BASIC):
+class CMD_SUBMIT_PREFIX(HEADER_BASIC):
     """submit a URB"""
-    transfer_flags: int = field("i", default=0x0)  # 0x14, URB transfer flags
-    transfer_buffer_length: int = built("i", lambda ctx: len(ctx.transfer_buffer) if ctx.transfer_buffer else 0)  # 0x18
-    start_frame: int = field("i", default=0x0)  # 0x1C, =0 if not ISO transfer
+    transfer_flags: int = field("I", default=0x0)  # 0x14, URB transfer flags
+    transfer_buffer_length: int = field("I", default=0)
+    start_frame: int = field("I", default=0x0)  # 0x1C, =0 if not ISO transfer
     number_of_packets: int = field("I", default=0xFFFFFFFF)  # 0x20, # of ISO packets, default it not ISO
     interval: int = field("i", default=0x0)  # 0x24,  maximum time for the request on the server-side host controller
     setup: bytes = field("8s", default=b'\0\0\0\0\0\0\0\0')  # 0x28, data bytes for USB setup, filled with zeros if not used.
-    transfer_buffer: bytes = field(lambda ctx: ctx.transfer_buffer_length)  # 0x30, -> HOST, data we are sending
-
-    @property
-    def iso_packet_descriptors(self) -> bytes:
-        """return the iso packet descriptor"""
-        return self.transfer_buffer if self.number_of_packets != 0xFFFFFFFF else None
+    # a buffer is specified if we are *sending* to the USB device (USBIP_DIR_OUT), otherwise we are receiving data and expect transfer_buffer_length
 
     def __post_init__(self):
         """ensure command is set properly"""
         if self.command == BasicCommands.UNDEFINED:
             self.command = BasicCommands.CMD_SUBMIT
+
+
+@dataclass
+class CMD_SUBMIT(CMD_SUBMIT_PREFIX):
+    """submit a URB"""
+    # a buffer is specified if we are *sending* to the USB device (USBIP_DIR_OUT), otherwise we are receiving data and expect transfer_buffer_length
+    transfer_buffer: bytes = field(lambda ctx: ctx.transfer_buffer_length if ctx.direction == Direction.USBIP_DIR_OUT else 0, default=b'')
+
+    @property
+    def iso_packet_descriptors(self) -> bytes:
+        """return the iso packet descriptor"""
+        return self.transfer_buffer if self.number_of_packets != 0xFFFFFFFF else None
 
 
 @dataclass

@@ -1,6 +1,6 @@
 """test packet generation using py-datastruct"""
 from time import time
-
+from dataclasses import dataclass
 
 from tests.common_test_base import CommonTestBase
 
@@ -10,10 +10,31 @@ from usbip_protocol import URBSetupRequestType, URBStandardDeviceRequest
 from protocol.urb_packets import DeviceDescriptor
 from protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, OP_REP_DEVLIST_HEADER
 from protocol.urb_packets import UrbSetupPacket
+from usbip_client import USBIPClient, USBIP_Connection, USB_Endpoint
 
 
 class TestPacketGeneration(CommonTestBase):
     """test packet generation using py-datastruct"""
+
+    @dataclass
+    class MockUSBIP_Connection(USBIP_Connection):
+        """mock the USBIP Connection for testing"""
+
+        def __init__(self, **kwargs):
+            """set up instance variables"""
+            super().__init__(**kwargs)
+            self.command: CMD_SUBMIT | None = None
+
+        def __post__init__(self):
+            """some setup"""
+            super().__post_init__()
+            self.endpoint.input = USB_Endpoint()
+
+        def send_command(self, command: CMD_SUBMIT) -> int:
+            """get the command"""
+            self.command = command
+            return 0
+
     def test_request_devlist(self):
         """test requesting the device list"""
         start_time = time()
@@ -37,7 +58,7 @@ class TestPacketGeneration(CommonTestBase):
         cmd_in: bytes = bytes.fromhex('00000001'  # command
                                       '00000d06'  # sequence #
                                       '0001000f'  # device/bus id (1-15)
-                                      '00000000'  # direction
+                                      '00000000'  # direction (USBIP_DIR_OUT)
                                       '00000001'  # endpoint
                                       '00000000'  # transfer_flags
                                       '00000040'  # transfer_buffer_length
@@ -49,7 +70,7 @@ class TestPacketGeneration(CommonTestBase):
                                       'ffffffff860008a784ce5ae21237630000000000000000000000000000000000'
                                       '0000000000000000000000000000000000000000000000000000000000000000')
 
-        submit: CMD_SUBMIT = CMD_SUBMIT.unpack(io=cmd_in)
+        submit: CMD_SUBMIT = CMD_SUBMIT.unpack(cmd_in)
         self.assertEqual(submit.command, BasicCommands.CMD_SUBMIT)
         self.assertEqual(submit.seqnum, 0xd06)
         self.assertEqual(submit.direction, Direction.USBIP_DIR_OUT)
@@ -67,10 +88,20 @@ class TestPacketGeneration(CommonTestBase):
                             direction=Direction.USBIP_DIR_OUT,
                             ep=1,
                             transfer_flags=0, interval=4,
+                            transfer_buffer_length=len(cmd_in[-64:]),
                             transfer_buffer=cmd_in[-64:])
         self.assertEqual(submit.command, BasicCommands.CMD_SUBMIT)
         generated: bytes = submit.pack()
         self.assertEqual(cmd_in, generated)
+
+    def test_queue_urb(self):
+        """Test serialization of command to queue a URB read request"""
+
+        usb: TestPacketGeneration.MockUSBIP_Connection = TestPacketGeneration.MockUSBIP_Connection()
+        usb.endpoint.input = USB_Endpoint()
+        USBIPClient.read(usb=usb, size=1024)  # generate a command to queue up a read
+        # serialize the command that was generated
+        usb.command.pack()
 
     def test_cmd_response(self):
         """test command response parsing"""
@@ -116,7 +147,7 @@ class TestPacketGeneration(CommonTestBase):
 
         self.assertEqual(12, OP_REP_DEVLIST_HEADER.size)
 
-    def test_urb_endianess(self):
+    def test_urb_endianness(self):
         """test packets generated for URBs have correct (little) endianess"""
         setup: UrbSetupPacket = UrbSetupPacket(
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,

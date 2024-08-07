@@ -5,22 +5,25 @@ from os import getenv
 import logging
 import os
 import re
+import json
 
 from unittest import TestCase
 
 
 class CommonTestBase(TestCase):
     """base class for common behavior to all unit tests"""
+    DEFAULT_USBIP_SERVER_PORT: int = 3240
+
     @staticmethod
     def is_truthy(key: str, default: bool) -> bool:
         """read environment variable, return boolean response"""
         value: str = getenv(key, default=str(default)).upper()
         return value in ['TRUE', '1', '1.0']
 
-    def skip_on_ci(self):
+    def skip_on_ci(self, reason='incompatible with CI'):
         """skip the test if running on a CI/CD system"""
         if self.CI:
-            self.skipTest(reason='incompatible with CI')
+            self.skipTest(reason=reason)
 
     def __init__(self, methodName):
         """need some special variables"""
@@ -46,3 +49,15 @@ class CommonTestBase(TestCase):
 
         self.runner_instance: str = os.getenv('PYTEST_XDIST_WORKER', '1')
         self.worker_id: int = int(re.findall(r"(\d+)$", self.runner_instance)[0]) if self.runner_instance else 0
+
+    def get_test_index(self, name: str) -> int:
+        """get index of test, can be used as offset for port assignments"""
+        qualified_name: str = name.replace(os.sep, '.').lower()
+        with open(os.path.join(os.path.dirname(__file__), 'list_of_tests.json'), 'r') as tests:
+            all_tests: dict = json.load(tests)
+
+        for i in range(len(all_tests)):
+            if qualified_name.endswith(all_tests[i]):
+                return i + 1
+
+        raise ValueError(f"{name=}, {qualified_name=}, {all_tests=}")

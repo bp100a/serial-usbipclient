@@ -1,6 +1,8 @@
-[![cov](https://bp100a.github.io/usbip/badges/coverage.svg)](https://github.com/bp100a/usbip/actions)
-# USBIP simple client
-USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
+# USBIP CDC client
+![workflow](https://github.com/bp100a/usbip/actions/workflows/python-app.yml/badge.svg?branch=develop)</br>
+![coverage badge](./coverage.svg)</br>
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)</br>
+This package supports connecting to a CDC (serial) USB device exposed by a USBIPD server. USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
 
 There are some issues sharing USB devices to docker containers, a major one being if the USB connection is lost
 it is difficult to recover the connection between the docker container and the hosting server.
@@ -12,9 +14,33 @@ The USBIP client implementation will only address USB devices that implemented t
 serial devices. This allows for a simple connection to the USBIP server without the need for mapping USB devices into
 the container.
 
+## SOUP
+| Module          | Version | comments                                    |
+|-----------------|---------|---------------------------------------------|
+| Python          | 3.12    | Python interpreter                          |
+| py-datastruct   | 1.0.0   | Serialization of binary to/from dataclasses |
+
+
 ## Build Process
 Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) package, read the docs [here](https://pip-tools.readthedocs.io/en/latest/)
 
 ```bash
 pip-compile requirements.in
 ```
+
+## Useful Resources
+For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network,
+there are usbipd-clients for Linux & [Windows](https://github.com/cezanne/usbip-win).
+
+
+## Testing
+A `MockUSBIP` service reads configuration information from the output of `lsusb` (e.g `lsusb -d 1f46:1b01 -v`). **MockUSBIP** will then play back this configuration.
+Just capture the output of the `lsusb` command and save with the `.lsusb` suffix in the test folder. The file name should be the `busnum`/`devnum` number.
+
+```text
+1-1.lsusb
+1-2.lsusb
+2-1.lsusb
+```
+Would result in 3 devices with busid values of `1-1`, `1-2` and `2-1`.
+

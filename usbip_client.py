@@ -109,7 +109,7 @@ class USBIPResponseTimeout(USBIPError):
         )
 
 
-class MBIUSBConnectionLost(USBIPError):
+class USBConnectionLost(USBIPError):
     """the connection to the USB device has been lost"""
 
     USB_DISCONNECT: list[errno] = [errno.ENOENT, errno.ENODEV]
@@ -120,7 +120,7 @@ class MBIUSBConnectionLost(USBIPError):
         super().__init__(detail=detail)
 
 
-class MBIUSBAttachError(USBIPError):
+class USBAttachError(USBIPError):
     """problem attaching to the device, specifics in the error status"""
 
     def __init__(self, detail: str, an_errno: int):
@@ -144,10 +144,9 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     _device: Optional[DeviceDescriptor] = None
     _endpoints: Optional[CDCEndpoints] = None
     _commands: Optional[dict[int, CMD_SUBMIT]] = None  # seqnum/command
-    _responses: Optional[dict[int, (RET_SUBMIT_PREFIX, Optional[bytes])]] = (
-        None  # seqnum/(ret/data)
-    )
+    _responses: Optional[dict[int, (RET_SUBMIT_PREFIX, Optional[bytes])]] = None  # seqnum/(ret/data)
     _stats: Optional[USBStats] = None
+    _logger: Optional[logging.Logger] = None
 
     def __post_init__(self) -> None:
         """setup our classes instances"""
@@ -155,6 +154,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         self._commands = {}
         self._responses = {}
         self._stats = USBStats()
+
 
     @property
     def stats(self) -> str:
@@ -186,6 +186,16 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         """set our new device descriptor"""
         self._device = desc
 
+    @property
+    def logger(self) -> logging.Logger:
+        """return the current logger"""
+        return self._logger
+
+    @logger.setter
+    def logger(self, logger: logging.Logger) -> None:
+        """set the logger"""
+        self._logger = logger
+
     @configuration.setter
     def configuration(self, configuration: ConfigurationDescriptor) -> None:
         """set the configuration to the device, locate endpoints"""
@@ -193,17 +203,10 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         for interface in self._configuration.interfaces:
             if interface.interface_class == DeviceInterfaceClass.CDC_DATA.value:
                 for descriptor in interface.descriptors:
-                    if (
-                        descriptor.descriptor_type
-                        == DescriptorType.ENDPOINT_DESCRIPTOR.value
-                    ):
-                        endpoint_desc: EndPointDescriptor = cast(
-                            EndPointDescriptor, descriptor
-                        )
+                    if descriptor.descriptor_type == DescriptorType.ENDPOINT_DESCRIPTOR.value:
+                        endpoint_desc: EndPointDescriptor = cast(EndPointDescriptor, descriptor)
                         if endpoint_desc.is_output:
-                            self._endpoints.output = USB_Endpoint(
-                                endpoint=endpoint_desc
-                            )
+                            self._endpoints.output = USB_Endpoint(endpoint=endpoint_desc)
                         else:
                             self._endpoints.input = USB_Endpoint(endpoint=endpoint_desc)
 
@@ -230,64 +233,51 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     @property
     def pending_reads(self) -> int:
         """calculate buffer size available for pending read operations"""
-        return len(
-            [
-                seqnum
-                for seqnum in self._commands
-                if self._commands[seqnum].ep == self.endpoint.input.number
-            ]
-        )
+        return len([seqnum for seqnum in self._commands if self._commands[seqnum].ep == self.endpoint.input.number])
+
+    def sendall(self, data: bytes) -> None:
+        """wrapper for socket sendall"""
+        self.socket.sendall(data)
 
     def send_command(self, command: CMD_SUBMIT) -> int:
         """send the command"""
         try:
             with USBStatsManager(self._stats, name="USBIP_Connection.sendall"):
-                self.socket.sendall(command.packet())
+                self.sendall(command.pack())
             self._commands[command.seqnum] = command
+            if command.ep and command.direction == Direction.USBIP_DIR_IN:  # a read is being issued
+                self._logger.info(f"[usbip-connection] queued read #{command.seqnum}")
 
             # If this is a *write* to the device, then wait for confirmation
             # it was successful
-            if (
-                command.ep in [self.output.number, self.control.number]
-                and command.direction == Direction.USBIP_DIR_OUT
-            ):
-                with USBStatsManager(
-                    self._stats, name="USBIP_Connection.wait_for_response"
-                ):
+            if command.ep in [self.output.number, self.control.number] and command.direction == Direction.USBIP_DIR_OUT:
+                with USBStatsManager(self._stats, name="USBIP_Connection.wait_for_response"):
                     timeout: float = 5.0  # pretty large for testing
                     start_time: float = perf_counter()
-                    while (
-                        command.seqnum not in self._responses
-                        and perf_counter() - start_time < timeout
-                    ):
+                    while command.seqnum not in self._responses and perf_counter() - start_time < timeout:
                         self.wait_for_response()
 
                 # if we got a response, then pop it off and return the size of data
                 #  the send operation successfully sent
                 if command.seqnum in self._responses:
-                    response: tuple[RET_SUBMIT_PREFIX, bytes] = self._responses.pop(
-                        command.seqnum
-                    )
+                    response: tuple[RET_SUBMIT_PREFIX, bytes] = self._responses.pop(command.seqnum)
                     self._commands.pop(command.seqnum)
                     return response[0].actual_length  # how much data was sent
             return 0
         except ConnectionError as connection_error:
-            raise MBIUSBConnectionLost(
-                detail="send_command() connection lost", connection=self
-            ) from connection_error
+            raise USBConnectionLost(detail="send_command() connection lost", connection=self) from connection_error
 
     def send_unlink(self, command: CMD_UNLINK) -> bool:
         """send an unlink command"""
         try:
-            self.socket.sendall(command.packet())
+            self._logger.info(f"[usbip-connection] UNLINK #{command.unlink_seqnum}")
+            self.sendall(command.pack())
             unlink_response: Optional[RET_UNLINK] = self.wait_for_unlink()
-            if abs(unlink_response.status) in MBIUSBConnectionLost.USB_DISCONNECT:
+            if unlink_response and abs(unlink_response.status) in USBConnectionLost.USB_DISCONNECT:
                 return True
             return False
         except ConnectionError as connection_error:
-            raise MBIUSBConnectionLost(
-                detail="send_unlink() connection lost", connection=self
-            ) from connection_error
+            raise USBConnectionLost(detail="send_unlink() connection lost", connection=self) from connection_error
 
     def readall(self, size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
@@ -298,16 +288,18 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         """wait for the unlink response"""
         start_time: float = time()
         while time() - start_time < 10.0:  # wade through any residual packets to get the unlink response
-            header_data: bytes = USBIPClient.readall(HEADER_BASIC().size, self.socket)
+            header_data: bytes = USBIPClient.readall(HEADER_BASIC.size, self.socket, timeout=1.0)
             if not header_data:
                 return None
             header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
             if header.command == BasicCommands.RET_UNLINK:  # unlink command
                 unlink_data: bytes = header_data + USBIPClient.readall(RET_UNLINK.size - HEADER_BASIC.size, self)
-                unlink: RET_UNLINK = RET_UNLINK.new(data=unlink_data)
+                unlink: RET_UNLINK = RET_UNLINK.unpack(unlink_data)
                 return unlink
             if header.command == BasicCommands.RET_SUBMIT:  # response for a submit
+                self._logger.warning(f"[usbip-connection] wait_for_unlink() read a RET_SUBMIT {header_data.hex()=}")
                 self.wait_for_response(header_data=header_data)
+                return None
 
     def wait_for_response(self, header_data: Optional[bytes] = None) -> bool:
         """wait for response"""
@@ -498,16 +490,12 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             socket_connection.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         return socket_connection
 
-    def create_connection(
-        self, device: HardwareID, attached: OP_REP_IMPORT
-    ) -> USBIP_Connection:
+    def create_connection(self, device: HardwareID, attached: OP_REP_IMPORT) -> USBIP_Connection:
         """create a USBIP device connection for the attached device"""
-        return USBIP_Connection(
-            busnum=attached.busnum,
-            devnum=attached.devnum,
-            device=device,
-            socket=self._remove_connection(),
-        )
+        conn: USBIP_Connection = USBIP_Connection(busnum=attached.busnum, devnum=attached.devnum,
+                                                  device=device, socket=self._remove_connection())
+        conn.logger = self._logger
+        return conn
 
     @staticmethod
     def readall(size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
@@ -523,16 +511,17 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         return data
                     data += just_read
                     size -= len(just_read)
-                except TimeoutError:
+                except TimeoutError as timeout_error:
                     if perf_counter() - start > timeout:
-                        break
+                        print(f"[usbip-client] Timeout Error, {size=}, {timeout=}, {data.hex()=}")
+                        raise timeout_error
             return data
         except ConnectionError as connection_error:
-            raise MBIUSBConnectionLost(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
+            raise USBConnectionLost(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
         except OSError as os_error:
-            raise MBIUSBConnectionLost(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, "
-                                              f"{os.strerror(os_error.errno)}",
-                                       connection=usb) from os_error
+            raise USBConnectionLost(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, "
+                                           f"{os.strerror}",
+                                    connection=usb) from os_error
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
         """get list of remote devices"""
@@ -565,62 +554,17 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
         base_response: BaseProtocolPacket = BaseProtocolPacket.new(data=data)
         if base_response.status != Status.SUCCESS:
-            raise MBIUSBAttachError(
-                "Error attaching to device", an_errno=base_response.status
-            )
+            raise USBAttachError("Error attaching to device", an_errno=base_response.status)
 
         more_data: bytes = bytes()
         start_time: float = time()
         while not more_data and time() - start_time < 1.0:
-            more_data += self.readall(
-                OP_REP_IMPORT().size - BaseProtocolPacket().size, self.usbipd
-            )
+            more_data += self.readall(OP_REP_IMPORT().size - BaseProtocolPacket().size, self.usbipd)
 
+        self._logger.debug(f"OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
         return OP_REP_IMPORT.unpack(data + more_data)
 
-    def get_descriptor(self, usb: USBIP_Connection) -> DeviceDescriptor:
-        """get the descriptor for the underlying USB/URB"""
-        usb.seqnum += 1
-        descriptor_size: int = DeviceDescriptor().size
-        setup: bytes = UrbSetupPacket(
-            request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
-            request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
-            value=DescriptorType.DEVICE_DESCRIPTOR.value,
-            length=descriptor_size,
-        ).packet()
-
-        command: CMD_SUBMIT = CMD_SUBMIT(
-            seqnum=usb.seqnum,
-            devid=usb.devid,
-            start_frame=0,
-            ep=usb.control.number,
-            number_of_packets=0,
-            transfer_flags=URBTransferFlags.URB_DIR_IN,
-            transfer_buffer_length=descriptor_size,
-            interval=0,
-            setup=setup,
-            direction=Direction.USBIP_DIR_IN,
-            transfer_buffer=bytes(),
-        )
-        usb.socket.sendall(command.packet())
-        prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb.socket)
-        if not prefix_data:
-            raise MBIUSBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
-
-        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
-        if prefix.status != 0:
-            raise ValueError(
-                f"get_descriptor() returned non-zero status={prefix.status}"
-            )
-        dev_descriptor: DeviceDescriptor = DeviceDescriptor.new(
-            data=self.readall(descriptor_size, usb)
-        )
-        return dev_descriptor
-
-    @staticmethod
-    def send_setup(
-        setup: UrbSetupPacket, usb: USBIP_Connection, data: Optional[bytes] = None
-    ) -> None:
+    def send_setup(self, setup: UrbSetupPacket, usb: USBIP_Connection, data: Optional[bytes] = None) -> None:
         """send command to the device"""
         usb.seqnum += 1
         command: CMD_SUBMIT = CMD_SUBMIT(
@@ -634,61 +578,80 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 if setup.direction == Direction.USBIP_DIR_IN
                 else 0x0
             ),
-            transfer_buffer_length=len(data) if data else 0,
+            transfer_buffer_length=len(data) if data else setup.length,
             interval=0,
             setup=setup.packet(),
             direction=setup.direction,
             transfer_buffer=data if data else bytes(),
         )
-        usb.socket.sendall(command.pack())
+        data: bytes = command.pack()
+        usb.sendall(data)
+        self._logger.debug(f"send_setup(): {str(setup)}\n{data.hex()=}")
 
-    def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection
-    ) -> DeviceDescriptor | ConfigurationDescriptor | StringDescriptor:
+    def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> (
+            DeviceDescriptor | ConfigurationDescriptor | StringDescriptor):
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
-        self._logger.debug(f"{len(prefix_data)=}, {prefix_data.hex()=}")
+        self._logger.debug(f"[usbip-client] {len(prefix_data)=}, {prefix_data.hex()=}")
         if not prefix_data:
-            raise MBIUSBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
+            raise USBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
         try:
-            prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
+            prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(prefix_data)
             if prefix.status != 0:
-                raise ValueError(
-                    f"request_descriptor failure! {prefix.status=} "
-                    f"errno='{os.strerror(abs(prefix.status))}'"
-                )
+                raise ValueError(f"request_descriptor failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
         except struct.error as s_error:
-            self._logger.error(f"parsing packet error {str(s_error)}, for {prefix_data.hex()=}")
+            self._logger.error(f"[usbip-client] parsing packet error {str(s_error)}, for {prefix_data.hex()=}")
+            raise
+        except Exception as bad_error:
+            self._logger.error(f"[usbip-client] parsing request_descriptor error! {str(bad_error)}")
+            raise
+        try:
+            generic_handler: GenericDescriptor = GenericDescriptor()
+            data: bytes = self.readall(prefix.actual_length, usb)
+            self._logger.debug(f"[usbip-client] {prefix.actual_length=}, {data.hex()=}")
+            descriptor = generic_handler.packet(data=data)
+            return descriptor
+        except Exception as descriptor_error:
+            self._logger.error(f"[usbip-client] GenericDescriptor() error! {prefix.actual_length=}, {str(descriptor_error)}")
             raise
 
-        generic_handler: GenericDescriptor = GenericDescriptor()
-        data: bytes = self.readall(prefix.actual_length, usb)
-        descriptor = generic_handler.packet(data=data)
-        return descriptor
-
-    def set_line_coding(
-        self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection
-    ):
+    def set_line_coding(self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection) -> None:
         """set line coding"""
         self.send_setup(setup=setup, usb=usb, data=data)
         prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX().size, usb)
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
         if prefix.status != 0:
-            raise ValueError(
-                f"set_line_coding failure! {prefix.status=} "
-                f"errno='{os.strerror(abs(prefix.status))}'"
-            )
+            raise ValueError(f"set_line_coding failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
+
+    def set_line_control_state(self, usb: USBIP_Connection) -> None:
+        """set the line control state (DCE/DTE)"""
+        setup: UrbSetupPacket = UrbSetupPacket(request_type=URBSetupRequestType.HOST_TO_DEVICE.value
+                                                            | URBSetupRequestType.TYPE_CLASS.value
+                                                            | URBSetupRequestType.RECIPIENT_INTERFACE.value,
+                                               request=URBCDCRequestType.SET_CONTROL_LINE_STATE,
+                                               value=(CDCControl.USB_CDC_CTRL_RTS | CDCControl.USB_CDC_CTRL_DTR) << 8,
+                                               index=0,
+                                               length=0,
+                                               )
+        self.send_setup(setup=setup, usb=usb)
+        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)
+        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(prefix_data)
+        if prefix.status != 0:
+            raise ValueError(f"set_line_control_state failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
 
     def set_configuration(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> None:
         """set the configuration"""
         self.send_setup(setup=setup, usb=usb)
-        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX().size, usb)
-        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
-        if prefix.status != 0:
-            raise ValueError(
-                f"set_descriptor failure! {prefix.status=} "
-                f"errno='{os.strerror(abs(prefix.status))}'"
-            )
+        prefix_data: bytes = bytes()
+        try:
+            prefix_data = self.readall(RET_SUBMIT_PREFIX.size, usb)
+            prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
+            if prefix.status != 0:
+                raise ValueError(f"set_descriptor failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
+        except struct.error as s_error:
+            self._logger.error(f"RET_SUBMIT_PREFIX failure on {RET_SUBMIT_PREFIX.size=}, {prefix_data.hex()=}")
+            raise s_error
 
     def setup(self, usb: USBIP_Connection):
         """after we attach to the device, we need to issue some setup"""
@@ -750,6 +713,12 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         )
         config_desc: ConfigurationDescriptor = self.request_descriptor(setup=setup, usb=usb)
 
+        # now that we know the Configuration Descriptor's total length, read it all in:
+        #   Configuration Descriptor
+        #       - associations
+        #       - interfaces
+        #           - endpoints, descriptors
+        #
         setup = UrbSetupPacket(
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
             request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
@@ -767,12 +736,13 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             length=0xFF,
         )
         self.request_descriptor(setup=setup, usb=usb)  # StringDesc (not used)
+
         # "enable" the USB device
         # bytes: '0009010000000000'
         setup = UrbSetupPacket(
             request_type=URBSetupRequestType.HOST_TO_DEVICE.value,
             request=URBStandardDeviceRequest.SET_CONFIGURATION.value,
-            value=0x0001,
+            value=config_desc.bConfigurationValue,
             index=0,
             length=0x0,
         )
@@ -789,23 +759,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             length=len(line_coding_data),
         )
         self.set_line_coding(setup=setup, data=line_coding_data, usb=usb)
+        self.set_line_control_state(usb=usb)
 
-        setup = UrbSetupPacket(
-            request_type=URBSetupRequestType.HOST_TO_DEVICE.value
-            | URBSetupRequestType.TYPE_CLASS.value
-            | URBSetupRequestType.RECIPIENT_INTERFACE.value,
-            request=URBCDCRequestType.SET_CONTROL_LINE_STATE.value,
-            value=(CDCControl.USB_CDC_CTRL_RTS | CDCControl.USB_CDC_CTRL_DTR) << 8,
-            index=0,
-            length=0,
-        )
-        self.send_setup(setup=setup, usb=usb)
-
-    def attach(
-        self,
-        devices: list[HardwareID],
-        published: Optional[OP_REP_DEVLIST_HEADER] = None,
-    ) -> None:
+    def attach(self, devices: list[HardwareID], published: Optional[OP_REP_DEVLIST_HEADER] = None) -> None:
         """attach to the specified devices"""
         # find the 'busid' for devices we want to attach to
         self.disconnect_server()  # ensure we start with a clean connection
@@ -823,10 +779,10 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         response: OP_REP_IMPORT = self.import_device(busid=path.busid)
                         self._connections.append(self.create_connection(device, response))
                         self.setup(usb=self._connections[-1])  # get configuration & all that
-                    except (ValueError, MBIUSBConnectionLost) as attach_error:
+                    except (ValueError, USBConnectionLost) as attach_error:
                         raise ValueError(
                             f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "
-                            f"busid={path.busnum}-{path.devnum}"
+                            f"busid={path.busnum}-{path.devnum} @{self._host}:{self._port}"
                         ) from attach_error
 
     def get_connection(self, device: HardwareID) -> list[USBIP_Connection]:
@@ -842,9 +798,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         with USBStatsManager(self._stats, "USBIPClient.pending_reads"):
             if usb.pending_reads < self.URB_QUEUE_MIN:
                 for _ in range(usb.pending_reads, self.URB_QUEUE_MAX):
-                    self.read(
-                        usb, size=0x1000
-                    )  # max expected data from Gener8 is ~269 bytes
+                    self.read(usb, size=0x1000)  # max expected data
 
     def send(self, usb: USBIP_Connection, data: bytes | str) -> int:
         """send data to the underlying device"""
@@ -877,16 +831,15 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def read(usb: USBIP_Connection, size: int) -> None:
         """read up to the specified # of bytes from the serial device"""
         usb.seqnum += 1
-        command: CMD_SUBMIT = CMD_SUBMIT(
-            seqnum=usb.seqnum,
-            devid=usb.devid,
-            start_frame=0,
-            ep=usb.input.number,  # device -> host
-            transfer_flags=0,
-            transfer_buffer_length=size,
-            interval=0,
-            direction=Direction.USBIP_DIR_IN,
-        )
+        command: CMD_SUBMIT = CMD_SUBMIT(seqnum=usb.seqnum,
+                                         devid=usb.devid,
+                                         start_frame=0,
+                                         ep=usb.input.number,  # device -> host
+                                         transfer_flags=0,
+                                         transfer_buffer_length=size,
+                                         interval=0,
+                                         direction=Direction.USBIP_DIR_IN,
+                                         )
         usb.send_command(command)
 
     @staticmethod
@@ -909,19 +862,16 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 return ""
         return response.decode("utf-8").strip("\r\n")
 
-    @staticmethod
-    def shutdown_connection(usb: USBIP_Connection) -> None:
+    def shutdown_connection(self, usb: USBIP_Connection) -> None:
         """shutdown this connection"""
         # Any commands that are "pending", we need to unlink them
+        if usb.pending_commands:
+            self._logger.info(f"[usbip-client] unlink for {len(usb.pending_commands)} commands")
+
         for submit in usb.pending_commands:
             usb.seqnum += 1
-            unlink: CMD_UNLINK = CMD_UNLINK(
-                seqnum=usb.seqnum,
-                devid=submit.devid,
-                direction=submit.direction,
-                ep=submit.ep,
-                unlink_seqnum=submit.seqnum,
-            )
+            unlink: CMD_UNLINK = CMD_UNLINK(seqnum=usb.seqnum, devid=submit.devid, direction=submit.direction,
+                                            ep=submit.ep, unlink_seqnum=submit.seqnum)
             usb.send_unlink(unlink)  # waits for response
 
         # we are all done, shutdown the socket connection
@@ -944,18 +894,13 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         # will change, but it's pid/vid will not. Since its possible (probable in our case) to have
         # multiple devices with the same pid/vid, discard paths that map existing connections.
         for current_connection in self._connections:
-            if (
-                current_connection.busnum == path.busnum
-                and current_connection.devnum == path.devnum
-            ):
+            if current_connection.busnum == path.busnum and current_connection.devnum == path.devnum:
                 return False  # path matches an existing connection
 
         # if this path is not in use, and it matches our product, then we should connect to it
         return usb.device.vid == path.idVendor and usb.device.pid == path.idProduct
 
-    def restore_connection(
-        self, lost_usb: USBIP_Connection
-    ) -> Optional[USBIP_Connection]:
+    def restore_connection(self, lost_usb: USBIP_Connection) -> Optional[USBIP_Connection]:
         """A USB connection has been lost, attempt to restore it"""
         # get the list of published devices from the USBIPD server
         if lost_usb in self._connections:
@@ -972,15 +917,15 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     usb: USBIP_Connection = self.create_connection(device, response)
                     self.setup(usb=usb)  # get configuration & all that
                     return usb
-                except MBIUSBAttachError as device_error:
-                    if device_error.errno in MBIUSBConnectionLost.USB_DISCONNECT:
+                except USBAttachError as device_error:
+                    if device_error.errno in USBConnectionLost.USB_DISCONNECT:
                         self._logger.warning("device error on re-attachment, try again...")
                         self.disconnect_server()  # don't re-use this connection
                     return None
                 except ValueError as attach_error:
                     raise ValueError(
                         f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "
-                        f"busid={path.busnum}-{path.devnum}"
+                        f"busid={path.busnum}-{path.devnum} @{self._host}:{self._port}"
                     ) from attach_error
         self._logger.warning(f"timed out restoring connection {lost_usb.devid:04x}")
         return None
