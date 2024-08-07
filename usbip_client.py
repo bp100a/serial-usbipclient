@@ -273,7 +273,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             self._logger.info(f"[usbip-connection] UNLINK #{command.unlink_seqnum}")
             self.sendall(command.pack())
             unlink_response: Optional[RET_UNLINK] = self.wait_for_unlink()
-            if abs(unlink_response.status) in USBConnectionLost.USB_DISCONNECT:
+            if unlink_response and abs(unlink_response.status) in USBConnectionLost.USB_DISCONNECT:
                 return True
             return False
         except ConnectionError as connection_error:
@@ -297,6 +297,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 unlink: RET_UNLINK = RET_UNLINK.unpack(unlink_data)
                 return unlink
             if header.command == BasicCommands.RET_SUBMIT:  # response for a submit
+                self._logger.warning(f"[usbip-connection] wait_for_unlink() read a RET_SUBMIT {header_data.hex()=}")
                 self.wait_for_response(header_data=header_data)
                 return None
 
@@ -774,7 +775,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     except (ValueError, USBConnectionLost) as attach_error:
                         raise ValueError(
                             f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "
-                            f"busid={path.busnum}-{path.devnum}"
+                            f"busid={path.busnum}-{path.devnum} @{self._host}:{self._port}"
                         ) from attach_error
 
     def get_connection(self, device: HardwareID) -> list[USBIP_Connection]:
@@ -917,7 +918,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 except ValueError as attach_error:
                     raise ValueError(
                         f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "
-                        f"busid={path.busnum}-{path.devnum}"
+                        f"busid={path.busnum}-{path.devnum} @{self._host}:{self._port}"
                     ) from attach_error
         self._logger.warning(f"timed out restoring connection {lost_usb.devid:04x}")
         return None
