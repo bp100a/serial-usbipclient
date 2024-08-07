@@ -2,15 +2,11 @@
 import sys
 import json
 import os
-from subprocess import Popen, PIPE, run
-import multiprocessing as mp
-import psutil
+from subprocess import Popen, PIPE
 
 
 def pytest_sessionstart(session):
     """perform setup before any tests are run"""
-    process_info = psutil.Process(os.getpid())
-    parent = mp.parent_process()
     print(f"Generating list of all tests to run for unique port assignment")
     pytest_output: list[str] = []
     base_dir: str = os.path.join(os.path.dirname(__file__), '..')
