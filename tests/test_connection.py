@@ -87,7 +87,6 @@ class TestUSBIPConnection(CommonTestBase):
 
     def test_queue_urbs(self):
         """test queue urbs to the server"""
-        self.skip_on_ci(reason="not yet fully implemented")
         published: OP_REP_DEVLIST_HEADER = self.connect_server()
         self.assertTrue(published.paths)
         try:
