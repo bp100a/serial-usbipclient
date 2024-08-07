@@ -3,6 +3,7 @@
 ![coverage badge](./coverage.svg)</br>
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-312/)</br>
 This package supports connecting to a CDC (serial) USB device exposed by a USBIPD server. USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
+The protocol specification can be found [here](https://docs.kernel.org/usb/usbip_protocol.html), a local copy is [USBIP.pdf](usb_usbip_protocol.pdf)
 
 There are some issues sharing USB devices to docker containers, a major one being if the USB connection is lost
 it is difficult to recover the connection between the docker container and the hosting server.
@@ -43,4 +44,19 @@ Just capture the output of the `lsusb` command and save with the `.lsusb` suffix
 2-1.lsusb
 ```
 Would result in 3 devices with busid values of `1-1`, `1-2` and `2-1`.
+
+## Tooling
+This package was created using JetBrains PyCharm IDE, the repository does not contain any IDE specific files.
+
+### Packages required to run tests
+| Module         | Version | comments                                           |
+|----------------|---------|----------------------------------------------------|
+| pytest         | 8.3.2   | unit testing framework                             |
+| pytest-xdist   | 3.6.1   | distributes testing across multiple cpu/cores      |
+| coverage       | 7.6.0   | coverage of unit tests                             |
+| pylint         | 3.2.6   | linter, ensures adherence to PEP-8 standards       |
+| pip-tools      | 7.4.1   | provides `pip-compile` to create requirement files |
+| black          | 24.4.2  | Pythonic formatter                                 |
+| pytest-cov     | 5.0.0   | integrates coverage with pytest                    |
+| pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
 
