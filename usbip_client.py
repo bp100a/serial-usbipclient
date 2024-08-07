@@ -491,7 +491,8 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
 
     def create_connection(self, device: HardwareID, attached: OP_REP_IMPORT) -> USBIP_Connection:
         """create a USBIP device connection for the attached device"""
-        conn: USBIP_Connection = USBIP_Connection(busnum=attached.busnum, devnum=attached.devnum, device=device, socket=self._remove_connection())
+        conn: USBIP_Connection = USBIP_Connection(busnum=attached.busnum, devnum=attached.devnum,
+                                                  device=device, socket=self._remove_connection())
         conn.logger = self._logger
         return conn
 

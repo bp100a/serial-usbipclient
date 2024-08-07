@@ -461,7 +461,8 @@ class MockUSBIP:
             if message:
                 urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
                 try:
-                    transfer_buffer: bytes = conn.recv(urb_cmd.transfer_buffer_length) if urb_cmd.transfer_buffer_length  and urb_cmd.direction == Direction.USBIP_DIR_OUT else b''
+                    transfer_buffer: bytes = conn.recv(urb_cmd.transfer_buffer_length) \
+                        if urb_cmd.transfer_buffer_length  and urb_cmd.direction == Direction.USBIP_DIR_OUT else b''
                     return message + transfer_buffer
                 except OSError:
                     self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
