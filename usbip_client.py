@@ -245,6 +245,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             with USBStatsManager(self._stats, name="USBIP_Connection.sendall"):
                 self.sendall(command.pack())
             self._commands[command.seqnum] = command
+            if command.ep and command.direction == Direction.USBIP_DIR_IN:  # a read is being issued
+                self._logger.info(f"[usbip-connection] queued read #{command.seqnum}")
 
             # If this is a *write* to the device, then wait for confirmation
             # it was successful
@@ -820,16 +822,15 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def read(usb: USBIP_Connection, size: int) -> None:
         """read up to the specified # of bytes from the serial device"""
         usb.seqnum += 1
-        command: CMD_SUBMIT = CMD_SUBMIT(
-            seqnum=usb.seqnum,
-            devid=usb.devid,
-            start_frame=0,
-            ep=usb.input.number,  # device -> host
-            transfer_flags=0,
-            transfer_buffer_length=size,
-            interval=0,
-            direction=Direction.USBIP_DIR_IN,
-        )
+        command: CMD_SUBMIT = CMD_SUBMIT(seqnum=usb.seqnum,
+                                         devid=usb.devid,
+                                         start_frame=0,
+                                         ep=usb.input.number,  # device -> host
+                                         transfer_flags=0,
+                                         transfer_buffer_length=size,
+                                         interval=0,
+                                         direction=Direction.USBIP_DIR_IN,
+                                         )
         usb.send_command(command)
 
     @staticmethod

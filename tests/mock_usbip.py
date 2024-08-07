@@ -14,15 +14,19 @@ from enum import EnumType
 import glob
 import traceback
 from pathlib import Path
+import logging
 
 from usbip_defs import BasicCommands, Direction
 from usb_descriptors import DescriptorType
-from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
-                              HEADER_BASIC, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, CMD_UNLINK, RET_UNLINK)
+from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_DEVLIST, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
+                              HEADER_BASIC, CMD_SUBMIT, CMD_SUBMIT_PREFIX, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, CMD_UNLINK, RET_UNLINK)
 from protocol.urb_packets import (UrbSetupPacket, DeviceDescriptor, ConfigurationDescriptor,
                                   URBBase, InterfaceDescriptor, InterfaceAssociation, EndPointDescriptor, HeaderFunctionalDescriptor,
                                   CallManagementFunctionalDescriptor, ACMFunctionalDescriptor, UnionFunctionalDescriptor, StringDescriptor,
                                   URBStandardDeviceRequest, URBCDCRequestType)
+
+
+logger = logging.getLogger(__name__)
 
 
 class MockDevice:
@@ -43,8 +47,11 @@ class MockDevice:
 
     def dequeue_read(self, seq: int) -> CMD_SUBMIT:
         """remove the queued read from the queue"""
-        cmd_submit: CMD_SUBMIT = self.queued_reads.pop(seq)
-        return cmd_submit
+        if seq in self.queued_reads:
+            cmd_submit: CMD_SUBMIT = self.queued_reads.pop(seq)
+            return cmd_submit
+        else:
+            logger.error(f"{seq=} not in queue! {self.queued_reads=}")
 
     @property
     def is_attached(self) -> bool:
@@ -447,6 +454,36 @@ class MockUSBIP:
                     return
             return
 
+    def read_message(self, conn: socket.socket) -> bytes:
+        """read a single message from the socket"""
+        if self._urb_traffic:  # reading URBs
+            message = conn.recv(CMD_SUBMIT_PREFIX.size)
+            if message:
+                urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
+                try:
+                    transfer_buffer: bytes = conn.recv(urb_cmd.transfer_buffer_length) if urb_cmd.transfer_buffer_length  and urb_cmd.direction == Direction.USBIP_DIR_OUT else b''
+                    return message + transfer_buffer
+                except OSError:
+                    self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
+                    raise
+        else:  # USBIP traffic
+            message = conn.recv(CommonHeader.size)  # read the prefix for a USBIP command
+            if message:
+                usbip_cmd: CommonHeader = CommonHeader.unpack(message)
+                if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
+                    return message
+                elif usbip_cmd.command == BasicCommands.REQ_IMPORT:
+                    remaining_size = OP_REQ_IMPORT.size - len(message)
+                    remainder = conn.recv(remaining_size)
+                    if not remainder:
+                        raise ValueError(f"Unexpected lack of response {usbip_cmd.command.name}, expected {remaining_size} bytes")
+                    message += remainder
+                    return message
+                else:
+                    raise ValueError(f"Unrecognized command {usbip_cmd.command.name}")
+
+        return b''
+
     def run(self):
         """standup the server, start listening"""
         self.server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
@@ -463,7 +500,7 @@ class MockUSBIP:
                 self.logger.info(f"[usbip-server] client @{address} connected")
                 try:
                     while conn and self.event.is_set():
-                        message: bytes = conn.recv(1024)
+                        message: bytes = self.read_message(conn)  # conn.recv(1024)
                         if not message:
                             conn.shutdown(socket.SHUT_RDWR)
                             conn.close()
@@ -475,7 +512,8 @@ class MockUSBIP:
                         conn.shutdown(socket.SHUT_RDWR)
                         conn.close()  # close the connection
                 except OSError as os_error:
-                    self.logger.info(f"[usbip-server] client @{address} disconnected: {os_error}")
+                    failure: str = traceback.format_exc()
+                    self.logger.info(f"[usbip-server] client @{address} disconnected: {os_error}\n{failure=}")
                     if conn:
                         conn.shutdown(socket.SHUT_RDWR)
                         conn.close()
@@ -483,6 +521,9 @@ class MockUSBIP:
         except OSError as os_error:
             failure: str = traceback.format_exc()
             self.logger.error(f"Exception {str(os_error)}\n{failure=}")
+        except Exception as bad_error:
+            failure: str = traceback.format_exc()
+            self.logger.error(f"Exception = {str(bad_error)}\n{failure=}")
         finally:
             self.event.set()  # indicate we are exiting
             self.logger.info("[usbip-server] server stopped @%s:%s", self.host, self.port)
