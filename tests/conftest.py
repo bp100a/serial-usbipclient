@@ -42,3 +42,5 @@ def pytest_sessionstart(session):
     file_path: str = os.path.join(base_dir, 'tests', 'list_of_tests.json')
     with open(file_path, mode='w+', encoding='utf-8') as json_file:
         json_file.write(json.dumps(unambiguous_names))
+
+    print(f"{os.path.basename(file_path)} tests were generated successfully")
