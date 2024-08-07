@@ -22,13 +22,6 @@ the container.
 | py-datastruct   | 1.0.0   | Serialization of binary to/from dataclasses |
 
 
-## Build Process
-Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) package, read the docs [here](https://pip-tools.readthedocs.io/en/latest/)
-
-```bash
-pip-compile requirements.in
-```
-
 ## Useful Resources
 For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network,
 there are usbipd-clients for Linux & [Windows](https://github.com/cezanne/usbip-win).
@@ -45,6 +38,12 @@ Just capture the output of the `lsusb` command and save with the `.lsusb` suffix
 ```
 Would result in 3 devices with busid values of `1-1`, `1-2` and `2-1`.
 
+During testing, the `MockUSBIP` service acts as a stand-in for an actual USBIP server. Since the tests are run in parallel, 
+the port on which the service listens must be unique for each unit test. This is accomplished by the `conftest.py::pytest_sessionstart` which is run
+when the pytest session is started and collects all tests being run into a file called `lists_of_tests.json`. The unit test's index into this array
+is used to determine the offset to be added to the port base (typically **3240**).
+
+
 ## Tooling
 This package was created using JetBrains PyCharm IDE, the repository does not contain any IDE specific files.
 
@@ -60,3 +59,10 @@ This package was created using JetBrains PyCharm IDE, the repository does not co
 | pytest-cov     | 5.0.0   | integrates coverage with pytest                    |
 | pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
 
+
+## Build Process
+Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) package, read the docs [here](https://pip-tools.readthedocs.io/en/latest/)
+
+```bash
+pip-compile requirements.in
+```
