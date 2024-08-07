@@ -593,7 +593,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
-        self._logger.debug(f"{len(prefix_data)=}, {prefix_data.hex()=}")
+        self._logger.debug(f"[usbip-client] {len(prefix_data)=}, {prefix_data.hex()=}")
         if not prefix_data:
             raise USBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
         try:
@@ -601,19 +601,21 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             if prefix.status != 0:
                 raise ValueError(f"request_descriptor failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
         except struct.error as s_error:
-            self._logger.error(f"parsing packet error {str(s_error)}, for {prefix_data.hex()=}")
+            self._logger.error(f"[usbip-client] parsing packet error {str(s_error)}, for {prefix_data.hex()=}")
             raise
         except Exception as bad_error:
-            self._logger.error(f"parsing request_descriptor error! {str(bad_error)}")
+            self._logger.error(f"[usbip-client] parsing request_descriptor error! {str(bad_error)}")
             raise
         try:
             generic_handler: GenericDescriptor = GenericDescriptor()
             data: bytes = self.readall(prefix.actual_length, usb)
+            self._logger.debug(f"[usbip-client] {prefix.actual_length=}, {data.hex()=}")
             descriptor = generic_handler.packet(data=data)
             return descriptor
         except Exception as descriptor_error:
-            self._logger.error(f"GenericDescriptor() error! {prefix.actual_length=}, {str(descriptor_error)}")
+            self._logger.error(f"[usbip-client] GenericDescriptor() error! {prefix.actual_length=}, {str(descriptor_error)}")
             raise
+
     def set_line_coding(self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection) -> None:
         """set line coding"""
         self.send_setup(setup=setup, usb=usb, data=data)
