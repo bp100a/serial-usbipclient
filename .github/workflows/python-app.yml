@@ -1,7 +1,7 @@
 # Workflow to test the USBIP client
 
 name: USBIP CDC Client
-on: push
+on: [push, pull_request]
 
 permissions:
   contents: read
@@ -58,3 +58,18 @@ jobs:
       with:
         github_token: ${{ secrets.github_token }}
         branch: ${{ github.ref }}
+
+  coveralls:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: 3.x
+    - name: Coveralls Finished
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_SERVICE_NAME: github
+      run: |
+        pip install coveralls
+        coveralls --finish
