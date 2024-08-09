@@ -18,7 +18,7 @@ import struct
 
 from usbip_defs import BasicCommands, Direction
 from usb_descriptors import DescriptorType
-from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_DEVLIST, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
+from protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
                               HEADER_BASIC, CMD_SUBMIT, CMD_SUBMIT_PREFIX, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, CMD_UNLINK, RET_UNLINK)
 from protocol.urb_packets import (UrbSetupPacket, DeviceDescriptor, ConfigurationDescriptor,
                                   URBBase, InterfaceDescriptor, InterfaceAssociation, EndPointDescriptor, HeaderFunctionalDescriptor,
