@@ -52,13 +52,26 @@ This package was created using JetBrains PyCharm IDE, the repository does not co
 |----------------|---------|----------------------------------------------------|
 | pytest         | 8.3.2   | unit testing framework                             |
 | pytest-xdist   | 3.6.1   | distributes testing across multiple cpu/cores      |
-| coverage       | 7.6.0   | coverage of unit tests                             |
+| coverage       | 7.6.1   | coverage of unit tests                             |
 | pylint         | 3.2.6   | linter, ensures adherence to PEP-8 standards       |
 | pip-tools      | 7.4.1   | provides `pip-compile` to create requirement files |
-| black          | 24.4.2  | Pythonic formatter                                 |
+| black          | 24.8.0  | Pythonic formatter                                 |
 | pytest-cov     | 5.0.0   | integrates coverage with pytest                    |
 | pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
 
+### Packages required publish to PyPi
+| Module     | Version | comments                      |
+|------------|---------|-------------------------------|
+| setuptools | 72.1.0  | build system                  |
+| wheel      | 0.44.0  | platform independent builds   |
+| twine      | 5.1.1   | utilities for pypi publishing |
+
+A tooling is defined in the `tool_requirements.txt` and should be installed on the build system as follows:
+```shell
+pip install -r tool_requirements.txt
+```
+
+Tooling is not needed to run the package but is required for testing & packaging.
 
 ## Build Process
 Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) package, read the docs [here](https://pip-tools.readthedocs.io/en/latest/)
