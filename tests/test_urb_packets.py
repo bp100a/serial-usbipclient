@@ -7,6 +7,7 @@ from protocol.urb_packets import (GenericDescriptor, ConfigurationDescriptor, In
                                   CDCDescriptorSubType, EndPointDescriptor, StringDescriptor)
 from protocol.packets import RET_SUBMIT_PREFIX
 
+
 class TestURBPackets(CommonTestBase):
     """test URB packets"""
     def __init__(self, methodName):

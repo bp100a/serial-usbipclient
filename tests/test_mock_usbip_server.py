@@ -4,7 +4,7 @@ from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR
 import logging
 
 from tests.common_test_base import CommonTestBase
-from tests.mock_usbip import MockUSBIP, Parse_lsusb, MockDevice, MockUSBDevice
+from tests.mock_usbip import MockUSBIP, Parse_lsusb, MockUSBDevice
 
 from usbip_client import USBIPClient
 

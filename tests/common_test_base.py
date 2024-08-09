@@ -6,8 +6,12 @@ import logging
 import os
 import re
 import json
+from typing import Optional
 
 from unittest import TestCase
+
+from tests.mock_usbip import MockUSBIP
+from usbip_client import USBIPClient
 
 
 class CommonTestBase(TestCase):
@@ -29,6 +33,10 @@ class CommonTestBase(TestCase):
         """need some special variables"""
         self.CI: bool = CommonTestBase.is_truthy('CI', False)
         self.logger: logging.Logger = logging.getLogger(__name__)
+        self.mock_usbip: Optional[MockUSBIP] = None
+        self.client: Optional[USBIPClient] = None
+        self.host: str = 'localhost'
+        self.port: int = self.DEFAULT_USBIP_SERVER_PORT  # will be updated by subclasses
         formatter: logging.Formatter = logging.Formatter('%(asctime)s \t%(levelname)s \t%(name)s \t%(message)s')
         if not self.logger.handlers:
             handler: logging.Handler = logging.StreamHandler(sys.stdout)
@@ -61,3 +69,14 @@ class CommonTestBase(TestCase):
                 return i + 1
 
         raise ValueError(f"{name=}, {qualified_name=}, {all_tests=}")
+
+    def tearDown(self):
+        """clean up after test"""
+        if self.mock_usbip:
+            try:
+                self.mock_usbip.shutdown()
+            except TimeoutError:
+                pass
+            self.mock_usbip = None
+
+        super().tearDown()

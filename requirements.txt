@@ -4,5 +4,7 @@
 #
 #    pip-compile requirements.in
 #
+event-scheduler==0.1.3
+    # via -r requirements.in
 py-datastruct==1.0.0
     # via -r requirements.in

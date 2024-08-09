@@ -13,8 +13,6 @@ class TestUSBIPConnection(CommonTestBase):
     def __init__(self, methodName):
         """set up local variables"""
         super().__init__(methodName)
-        self.host: str = 'localhost'
-        self.port: int = 3240
         self.mock_usbip: Optional[MockUSBIP] = None
         self.client: Optional[USBIPClient] = None
 
@@ -25,21 +23,10 @@ class TestUSBIPConnection(CommonTestBase):
 
     def setUp(self):
         """set up our connection test"""
-        super().setUp()
         # make sure that each instance of MockUSBIP() has a unique port, even when running in a parallel environment
         self.port += self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
+        super().setUp()
         self.mock_usbip = MockUSBIP(host=self.host, port=self.port, logger=self.logger)
-
-    def tearDown(self):
-        """clean up after test"""
-        if self.mock_usbip:
-            try:
-                self.mock_usbip.shutdown()
-            except TimeoutError:
-                pass
-            self.mock_usbip = None
-
-        super().tearDown()
 
     def test_connection(self):
         """test simple connection"""
