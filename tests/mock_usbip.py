@@ -8,13 +8,13 @@ import re
 import socket
 from threading import Thread, Event
 from time import time, sleep
-import logging
 from typing import Optional, Any, cast
 from enum import EnumType
 import glob
 import traceback
 from pathlib import Path
 import logging
+import struct
 
 from usbip_defs import BasicCommands, Direction
 from usb_descriptors import DescriptorType
@@ -47,6 +47,9 @@ class MockDevice:
 
     def dequeue_read(self, seq: int) -> CMD_SUBMIT:
         """remove the queued read from the queue"""
+        if not seq:
+            return self.queued_reads.popitem()[1]
+
         if seq in self.queued_reads:
             cmd_submit: CMD_SUBMIT = self.queued_reads.pop(seq)
             return cmd_submit
@@ -363,6 +366,16 @@ class MockUSBIP:
                 usb.enqueue_read(cmd_submit)  # associate this read with the device it's intended
                 self.logger.info(f"[usbip-server] queued read #{cmd_submit.seqnum} for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
                 return bytes()  # there is no response (yet!)
+            if cmd_submit.ep and cmd_submit.direction == Direction.USBIP_DIR_OUT:  # write to the device
+                busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
+                usb: MockDevice = self.usb_devices.device(busnum, devnum)
+                self.logger.info(f"[usbip-server] device write #{cmd_submit.seqnum} for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
+                ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=cmd_submit.seqnum, transfer_buffer=bytes())
+                response: bytes = ret_submit.pack()
+                queued_read: CMD_SUBMIT = usb.dequeue_read(seq=0)  # get the first one available
+                ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=queued_read.seqnum, transfer_buffer=cmd_submit.transfer_buffer)
+                self.logger.info(f"[usbip-server] ")
+                return response + ret_submit.pack()  # send the read values back immediately
 
             urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
             self.logger.info(f"[usbip-server] Setup flags: {str(urb_setup)}\n{busid.hex()=}")
@@ -401,8 +414,7 @@ class MockUSBIP:
                         transfer_buffer = bytes()
 
                     if transfer_buffer is not None:
-                        ret_submit = USBIP_RET_SUBMIT(status=0, transfer_buffer=transfer_buffer)
-                        ret_submit.seqnum = cmd_submit.seqnum
+                        ret_submit = USBIP_RET_SUBMIT(status=0, transfer_buffer=transfer_buffer, seqnum=cmd_submit.seqnum)
                         response: bytes = ret_submit.pack()
                         self.logger.info(f"[usbip-server] #{ret_submit.seqnum},{ret_submit.actual_length=}, {len(response)=} {response.hex()=}")
                         return response
@@ -459,7 +471,10 @@ class MockUSBIP:
         if self._urb_traffic:  # reading URBs
             message = conn.recv(CMD_SUBMIT_PREFIX.size)
             if message:
-                urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
+                try:
+                    urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
+                except struct.error as s_error:
+                    raise ValueError(f"{message.hex()=}") from struct.error
                 try:
                     transfer_buffer: bytes = conn.recv(urb_cmd.transfer_buffer_length) \
                         if urb_cmd.transfer_buffer_length  and urb_cmd.direction == Direction.USBIP_DIR_OUT else b''
@@ -522,10 +537,10 @@ class MockUSBIP:
                         conn = None
         except OSError as os_error:
             failure: str = traceback.format_exc()
-            self.logger.error(f"Exception {str(os_error)}\n{failure=}")
+            self.logger.error(f"[usbip-server] Exception {str(os_error)}\n{failure=}")
         except Exception as bad_error:
             failure: str = traceback.format_exc()
-            self.logger.error(f"Exception = {str(bad_error)}\n{failure=}")
+            self.logger.error(f"[usbip-server] Exception = {str(bad_error)}\n{failure=}")
         finally:
             self.event.set()  # indicate we are exiting
             self.logger.info("[usbip-server] server stopped @%s:%s", self.host, self.port)

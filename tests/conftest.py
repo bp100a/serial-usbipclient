@@ -34,7 +34,8 @@ def pytest_sessionstart(session):
             package = line.strip('<>').replace('Package', '').strip(' ')
         elif 'TestCaseFunction' in line:
             test_function: str = line.strip('<>').replace('TestCaseFunction', '').strip(' ')
-            unambiguous_name: str = f"{package}.{dirname}.{module}.{test_case}.{test_function}"
+            unambiguous_name: str = f"{package}.{dirname}.{module}.{test_case}.{test_function}" \
+                if dirname else f"{package}.{module}.{test_case}.{test_function}"
             unambiguous_names.append(unambiguous_name.lower())
         elif 'Dir' in line:
             dirname = line.strip('<>').replace('Dir', '').strip(' ')
