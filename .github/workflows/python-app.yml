@@ -59,6 +59,16 @@ jobs:
         github_token: ${{ secrets.github_token }}
         branch: ${{ github.ref }}
 
+    - name: Coveralls Parallel
+      env:
+        COVERALLS_FLAG_NAME: ${{ matrix.test-number }}
+        COVERALLS_PARALLEL: true
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        COVERALLS_SERVICE_NAME: github
+      run: |
+        pip install coveralls
+        coveralls
+
   coveralls:
     needs: build
     runs-on: ubuntu-latest
