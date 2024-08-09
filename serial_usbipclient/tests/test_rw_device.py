@@ -2,11 +2,11 @@
 import os
 import logging
 
-from tests.common_test_base import CommonTestBase
-from tests.mock_usbip import MockUSBIP
+from common_test_base import CommonTestBase
+from mock_usbip import MockUSBIP
 
-from usbip_client import USBIPClient, HardwareID, USBIP_Connection
-from protocol.packets import OP_REP_DEVLIST_HEADER
+from serial_usbipclient.usbip_client import USBIPClient, HardwareID, USBIP_Connection
+from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
 logger = logging.getLogger(__name__)
 
 

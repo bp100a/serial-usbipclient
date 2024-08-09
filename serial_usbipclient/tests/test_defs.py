@@ -3,8 +3,8 @@
 # Author: Harry Collins
 #
 
-from tests.common_test_base import CommonTestBase
-from usbip_defs import BaseProtocolPacket
+from common_test_base import CommonTestBase
+from serial_usbipclient.protocol.usbip_defs import BaseProtocolPacket
 
 
 class TestDefinitions(CommonTestBase):

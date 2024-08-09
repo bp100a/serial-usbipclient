@@ -5,10 +5,10 @@ from dataclasses import dataclass
 
 from datastruct.fields import field
 
-from usbip_defs import Direction
-from packets import URBBase  # URBs are "little-endian"
-from usbip_protocol import URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest, URBSetupRequestType, URBCDCRequestType
-from usb_descriptors import DescriptorType, DeviceInterfaceClass, CDCDescriptorSubType, EndpointAttributesTransferType
+from serial_usbipclient.protocol.usbip_defs import Direction
+from serial_usbipclient.protocol.packets import URBBase  # URBs are "little-endian"
+from serial_usbipclient.protocol.usbip_protocol import URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest, URBSetupRequestType, URBCDCRequestType
+from serial_usbipclient.protocol.usb_descriptors import DescriptorType, DeviceInterfaceClass, CDCDescriptorSubType, EndpointAttributesTransferType
 
 
 @dataclass

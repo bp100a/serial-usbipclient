@@ -2,15 +2,15 @@
 from time import time
 from dataclasses import dataclass
 
-from tests.common_test_base import CommonTestBase
+from common_test_base import CommonTestBase
 
-from usbip_defs import BasicCommands, Direction
-from usb_descriptors import DescriptorType
-from usbip_protocol import URBSetupRequestType, URBStandardDeviceRequest
-from protocol.urb_packets import DeviceDescriptor
-from protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, OP_REP_DEVLIST_HEADER
-from protocol.urb_packets import UrbSetupPacket
-from usbip_client import USBIPClient, USBIP_Connection, USB_Endpoint
+from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
+from serial_usbipclient.protocol.usb_descriptors import DescriptorType
+from serial_usbipclient.protocol.usbip_protocol import URBSetupRequestType, URBStandardDeviceRequest
+from serial_usbipclient.protocol.urb_packets import DeviceDescriptor
+from serial_usbipclient.protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, OP_REP_DEVLIST_HEADER
+from serial_usbipclient.protocol.urb_packets import UrbSetupPacket
+from serial_usbipclient.usbip_client import USBIPClient, USBIP_Connection, USB_Endpoint
 
 
 class TestPacketGeneration(CommonTestBase):

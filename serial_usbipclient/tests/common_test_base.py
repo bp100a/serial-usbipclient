@@ -10,8 +10,8 @@ from typing import Optional
 
 from unittest import TestCase
 
-from tests.mock_usbip import MockUSBIP
-from usbip_client import USBIPClient
+from mock_usbip import MockUSBIP
+from serial_usbipclient.usbip_client import USBIPClient
 
 
 class CommonTestBase(TestCase):

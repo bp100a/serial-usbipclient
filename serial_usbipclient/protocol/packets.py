@@ -7,7 +7,7 @@ from datastruct import DataStruct
 from datastruct.fields import field, built
 from datastruct.utils.config import Endianness, datastruct_config, Config, datastruct_get_config
 
-from usbip_defs import BasicCommands, Direction
+from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
 
 
 class MetaStruct(type):

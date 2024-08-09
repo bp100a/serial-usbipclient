@@ -1,11 +1,11 @@
 """test generation of URB packets"""
 from typing import Optional
 
-from tests.common_test_base import CommonTestBase
-from tests.mock_usbip import MockUSBIP
-from protocol.urb_packets import (GenericDescriptor, ConfigurationDescriptor, InterfaceDescriptor,
+from common_test_base import CommonTestBase
+from mock_usbip import MockUSBIP
+from serial_usbipclient.protocol.urb_packets import (GenericDescriptor, ConfigurationDescriptor, InterfaceDescriptor,
                                   CDCDescriptorSubType, EndPointDescriptor, StringDescriptor)
-from protocol.packets import RET_SUBMIT_PREFIX
+from serial_usbipclient.protocol.packets import RET_SUBMIT_PREFIX
 
 
 class TestURBPackets(CommonTestBase):

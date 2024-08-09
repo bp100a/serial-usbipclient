@@ -2,7 +2,7 @@
 from time import sleep
 from math import fsum
 
-from tests.common_test_base import CommonTestBase
+from common_test_base import CommonTestBase
 
 from performance_stats import USBStatsManager, USBStats
 
