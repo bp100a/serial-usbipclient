@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datastruct.fields import field
 
 from usbip_defs import Direction
-from protocol.packets import URBBase  # URBs are "little-endian"
+from packets import URBBase  # URBs are "little-endian"
 from usbip_protocol import URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest, URBSetupRequestType, URBCDCRequestType
 from usb_descriptors import DescriptorType, DeviceInterfaceClass, CDCDescriptorSubType, EndpointAttributesTransferType
 
@@ -377,7 +377,7 @@ class UrbSetupPacket(URBBase):
     def recipient(self) -> str:
         """return the recipient of the bmRequestType"""
         recipient: int = (self.request_type & 0xF) >> 8
-        recipients: dict[int, str] =  {0: 'Device', 1: 'Interface', 2: 'Endpoint', 3: 'Other'}
+        recipients: dict[int, str] = {0: 'Device', 1: 'Interface', 2: 'Endpoint', 3: 'Other'}
         return recipients[recipient]
 
     def __str__(self):

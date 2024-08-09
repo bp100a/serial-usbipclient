@@ -16,13 +16,14 @@ import logging
 
 # enums needed for USBIP and URBs
 from usb_descriptors import DescriptorType, DeviceInterfaceClass
-from usbip_defs import BaseProtocolPacket, BasicCommands, Direction, Status, CDCControl, ErrorCodes  # just the basics
+from protocol.usbip_defs import BaseProtocolPacket, BasicCommands, Direction, Status, CDCControl, ErrorCodes  # just the basics
 from usbip_protocol import URBSetupRequestType, URBTransferFlags
 
 # USBIP & URB packet definitions
+from usbip_protocol import URBStandardDeviceRequest, URBCDCRequestType
 from protocol.packets import OP_REQ_DEVLIST, OP_REQ_IMPORT, CMD_SUBMIT, CMD_UNLINK, RET_UNLINK, HEADER_BASIC
 from protocol.packets import OP_REP_DEVLIST_HEADER, OP_REP_DEV_PATH, OP_REP_DEV_INTERFACE, OP_REP_IMPORT, RET_SUBMIT_PREFIX
-from protocol.urb_packets import UrbSetupPacket, URBStandardDeviceRequest, URBCDCRequestType
+from protocol.urb_packets import UrbSetupPacket
 from protocol.urb_packets import DeviceDescriptor, ConfigurationDescriptor, GenericDescriptor, StringDescriptor, EndPointDescriptor
 
 from performance_stats import USBStats, USBStatsManager
@@ -154,7 +155,6 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         self._commands = {}
         self._responses = {}
         self._stats = USBStats()
-
 
     @property
     def stats(self) -> str:

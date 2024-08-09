@@ -73,7 +73,7 @@ class ErrorCodes:  # pylint: disable=line-too-long
         "c. ISO: attempted to change transfer interval\n"
         "d. ISO: number_of_packets is < 0\n"
         "e. various other cases",
-        errno.EXDEV: "ISO: URB_ISO_ASAP wasn’t specified and all the frames the URB would be scheduled in have already expired.",
+        errno.EXDEV: "ISO: URB_ISO_ASAP wasn't specified and all the frames the URB would be scheduled in have already expired.",
         errno.EFBIG: "Host controller driver can’t schedule that many ISO frames.",
         errno.EPIPE: "The pipe type specified in the URB doesn't match the endpoint’s actual type.",
         errno.EMSGSIZE: "a. endpoint maxpacket size is zero; it is not usable in the current interface altsetting.\n"
