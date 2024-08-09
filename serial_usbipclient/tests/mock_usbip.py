@@ -339,7 +339,7 @@ class MockUSBIP:
                 self.thread.join(timeout=1.0)
                 self.thread = None
                 return
-            raise TimeoutError(f"Timed out waiting for USBIP server to acknowledge shutdown {self.event.is_set()=}")
+            raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} to acknowledge shutdown {self.event.is_set()=}")
 
     def unlink(self, message: bytes) -> bytes:
         """unlink the specified read"""
