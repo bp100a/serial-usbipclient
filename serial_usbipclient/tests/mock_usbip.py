@@ -292,7 +292,7 @@ class SocketPair:
         self._near: Optional[socket.socket] = None
         self._far: Optional[socket.socket] = None
 
-        self._near, self._far = socket.socketpair(socket.AF_INET, socket.SOCK_STREAM)
+        self._near, self._far = socket.socketpair(family=socket.AF_INET, type=socket.SOCK_STREAM)
 
     def wakeup(self):
         """send a simple data byte to the far socket"""
