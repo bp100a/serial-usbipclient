@@ -291,8 +291,8 @@ class SocketPair:
         """create our socket pair"""
         self._near: Optional[socket.socket] = None
         self._far: Optional[socket.socket] = None
-
-        self._near, self._far = socket.socketpair(family=None, type=socket.SOCK_STREAM)
+        family: socket.AddressFamily = socket.AF_INET if platform.system() == 'Windows' else socket.AF_UNIX
+        self._near, self._far = socket.socketpair(family=family, type=socket.SOCK_STREAM)
 
     def wakeup(self):
         """send a simple data byte to the far socket"""
