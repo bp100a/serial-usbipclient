@@ -5,7 +5,7 @@ import errno
 import json
 import platform
 import re
-import socket
+import socket, select
 from threading import Thread, Event
 from time import time, sleep
 from typing import Optional, Any, cast
@@ -285,6 +285,37 @@ class MockUSBDevice:
         return response
 
 
+class SocketPair:
+    """create a socket pair"""
+    def __init__(self):
+        """create our socket pair"""
+        self._near: Optional[socket.socket] = None
+        self._far: Optional[socket.socket] = None
+
+        self._near, self._far = socket.socketpair(socket.AF_INET, socket.SOCK_STREAM)
+
+    def wakeup(self):
+        """send a simple data byte to the far socket"""
+        if self._near:
+            self._near.sendall(b'\0')  # wakeup the far listener
+
+    @property
+    def listener(self) -> socket.socket:
+        """return the socket that will be listening"""
+        return self._far
+
+    def shutdown(self):
+        """done with our socket pair"""
+        if self._near:
+            self._near.shutdown(socket.SHUT_RDWR)
+            self._near.close()
+            self._near = None
+        if self._far:
+            self._far.shutdown(socket.SHUT_RDWR)
+            self._far.close()
+            self._far = None
+
+
 class MockUSBIP:
     """mock USBIP server"""
     def __init__(self, host: str, port: int, logger: logging.Logger):
@@ -300,6 +331,7 @@ class MockUSBIP:
         self._urb_traffic: Optional[bytes] = None
         self.urb_queue: dict[int, Any] = {}  # pending read URBs, queued by seq #
         self.usb_devices: Optional[MockUSBDevice] = None
+        self._wakeup: SocketPair = SocketPair()
         self.setup()
         if self.host and self.port:
             self.event.clear()
@@ -339,6 +371,10 @@ class MockUSBIP:
                 self.thread.join(timeout=1.0)
                 self.thread = None
                 return
+            if self._wakeup:
+                self._wakeup.shutdown()  # cleanup the pair
+                self._wakeup = None
+
             raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} to acknowledge shutdown {self.event.is_set()=}")
 
     def unlink(self, message: bytes) -> bytes:
@@ -466,10 +502,25 @@ class MockUSBIP:
                     return
             return
 
+    def wait_for_message(self, conn: socket.socket, size: int) -> bytes:
+        """wait for a response (or a shutdown)"""
+        while self.event.is_set():
+            read_sockets, _, _ = select.select([conn, self._wakeup.listener], [], [])
+            for socket_read in read_sockets:
+                if socket_read == self._wakeup.listener:  # time to bail
+                    self.logger.info(f"[usbip-server]Wakeup!")
+                    raise SystemExit("wakeup!")
+                elif socket_read == conn:  # data from the client
+                    message: bytes = conn.recv(size)
+                    self.logger.info(f"[usbip-server] wait_for_message: {message.hex()=}")
+                    return message
+                raise ValueError(f"Unrecognized socket received, {socket_read=}")
+
     def read_message(self, conn: socket.socket) -> bytes:
         """read a single message from the socket"""
         if self._urb_traffic:  # reading URBs
-            message = conn.recv(CMD_SUBMIT_PREFIX.size)
+            message = self.wait_for_message(conn, CMD_SUBMIT_PREFIX.size)
+#            message = conn.recv(CMD_SUBMIT_PREFIX.size)
             if message:
                 try:
                     urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
@@ -483,7 +534,8 @@ class MockUSBIP:
                     self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
                     raise
         else:  # USBIP traffic
-            message = conn.recv(CommonHeader.size)  # read the prefix for a USBIP command
+            message = self.wait_for_message(conn, CommonHeader.size)
+#            message = conn.recv(CommonHeader.size)  # read the prefix for a USBIP command
             if message:
                 usbip_cmd: CommonHeader = CommonHeader.unpack(message)
                 if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
