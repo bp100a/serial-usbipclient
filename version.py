@@ -1,3 +1,4 @@
+"""stash our version number here"""
 # flake8: noqa
 
 # fmt: off
