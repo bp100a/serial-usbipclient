@@ -505,22 +505,24 @@ class MockUSBIP:
     def wait_for_message(self, conn: socket.socket, size: int) -> bytes:
         """wait for a response (or a shutdown)"""
         while self.event.is_set():
-            read_sockets, _, _ = select.select([conn, self._wakeup.listener], [], [])
-            for socket_read in read_sockets:
-                if socket_read == self._wakeup.listener:  # time to bail
-                    self.logger.info(f"[usbip-server]Wakeup!")
-                    raise SystemExit("wakeup!")
-                elif socket_read == conn:  # data from the client
-                    message: bytes = conn.recv(size)
-                    self.logger.info(f"[usbip-server] wait_for_message: {message.hex()=}")
-                    return message
-                raise ValueError(f"Unrecognized socket received, {socket_read=}")
+            try:
+                read_sockets, _, _ = select.select([conn, self._wakeup.listener], [], [])
+                for socket_read in read_sockets:
+                    if socket_read == self._wakeup.listener:  # time to bail
+                        self.logger.info(f"[usbip-server]Wakeup!")
+                        raise SystemExit("wakeup!")
+                    elif socket_read == conn:  # data from the client
+                        message: bytes = conn.recv(size)
+                        self.logger.info(f"[usbip-server] wait_for_message: {message.hex()=}")
+                        return message
+                    raise ValueError(f"Unrecognized socket received, {socket_read=}")
+            except OSError as os_error:
+                self.logger.error(f"[usbip-server] wait_for_message: OSError: {str(os_error)}")
 
     def read_message(self, conn: socket.socket) -> bytes:
         """read a single message from the socket"""
         if self._urb_traffic:  # reading URBs
             message = self.wait_for_message(conn, CMD_SUBMIT_PREFIX.size)
-#            message = conn.recv(CMD_SUBMIT_PREFIX.size)
             if message:
                 try:
                     urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
@@ -535,7 +537,6 @@ class MockUSBIP:
                     raise
         else:  # USBIP traffic
             message = self.wait_for_message(conn, CommonHeader.size)
-#            message = conn.recv(CommonHeader.size)  # read the prefix for a USBIP command
             if message:
                 usbip_cmd: CommonHeader = CommonHeader.unpack(message)
                 if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
