@@ -87,7 +87,7 @@ class USBIPError(Exception):
         self.detail: str = detail
 
 
-class USBIPServerTimeout(USBIPError):
+class USBIPServerTimeoutError(USBIPError):
     """timeout while trying to connect to the usbip server"""
 
 
@@ -95,7 +95,7 @@ class USBIPConnectionError(USBIPError):
     """connection error while trying to connect to the usbip server"""
 
 
-class USBIPResponseTimeout(USBIPError):
+class USBIPResponseTimeoutError(USBIPError):
     """timeout while waiting for data from the USBIP"""
 
     def __init__(self, **kwargs):
@@ -110,7 +110,7 @@ class USBIPResponseTimeout(USBIPError):
         )
 
 
-class USBConnectionLost(USBIPError):
+class USBConnectionLostError(USBIPError):
     """the connection to the USB device has been lost"""
 
     USB_DISCONNECT: list[errno] = [errno.ENOENT, errno.ENODEV]
@@ -265,7 +265,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                     return response[0].actual_length  # how much data was sent
             return 0
         except ConnectionError as connection_error:
-            raise USBConnectionLost(detail="send_command() connection lost", connection=self) from connection_error
+            raise USBConnectionLostError(detail="send_command() connection lost", connection=self) from connection_error
 
     def send_unlink(self, command: CMD_UNLINK) -> bool:
         """send an unlink command"""
@@ -273,11 +273,11 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             self._logger.info(f"[usbip-connection] UNLINK #{command.unlink_seqnum}")
             self.sendall(command.pack())
             unlink_response: Optional[RET_UNLINK] = self.wait_for_unlink()
-            if unlink_response and abs(unlink_response.status) in USBConnectionLost.USB_DISCONNECT:
+            if unlink_response and abs(unlink_response.status) in USBConnectionLostError.USB_DISCONNECT:
                 return True
             return False
         except ConnectionError as connection_error:
-            raise USBConnectionLost(detail="send_unlink() connection lost", connection=self) from connection_error
+            raise USBConnectionLostError(detail="send_unlink() connection lost", connection=self) from connection_error
 
     def readall(self, size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
@@ -384,7 +384,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
         if data:  # we received a response
             return data
-        raise USBIPResponseTimeout(
+        raise USBIPResponseTimeoutError(
             timeout=timeout, size=size
         )  # further up call stack should add the request packet for diagnostics
 
@@ -457,7 +457,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     f"connection attempt to {self._host}:{self._port} '{str(gai_error)}'"
                 ) from gai_error
             except (socket.timeout, OSError) as timeout_error:
-                raise USBIPServerTimeout(
+                raise USBIPServerTimeoutError(
                     f"connection attempt to {self._host}:{self._port} timed out "
                     f"after {server_timeout} seconds"
                 ) from timeout_error
@@ -517,11 +517,11 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         raise timeout_error
             return data
         except ConnectionError as connection_error:
-            raise USBConnectionLost(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
+            raise USBConnectionLostError(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
         except OSError as os_error:
-            raise USBConnectionLost(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, "
+            raise USBConnectionLostError(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, "
                                            f"{os.strerror}",
-                                    connection=usb) from os_error
+                                         connection=usb) from os_error
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
         """get list of remote devices"""
@@ -595,7 +595,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
         self._logger.debug(f"[usbip-client] {len(prefix_data)=}, {prefix_data.hex()=}")
         if not prefix_data:
-            raise USBConnectionLost("connection lost while fetching URB descriptor", connection=usb)
+            raise USBConnectionLostError("connection lost while fetching URB descriptor", connection=usb)
         try:
             prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(prefix_data)
             if prefix.status != 0:
@@ -779,7 +779,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         response: OP_REP_IMPORT = self.import_device(busid=path.busid)
                         self._connections.append(self.create_connection(device, response))
                         self.setup(usb=self._connections[-1])  # get configuration & all that
-                    except (ValueError, USBConnectionLost) as attach_error:
+                    except (ValueError, USBConnectionLostError) as attach_error:
                         raise ValueError(
                             f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "
                             f"busid={path.busnum}-{path.devnum} @{self._host}:{self._port}"
@@ -918,7 +918,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     self.setup(usb=usb)  # get configuration & all that
                     return usb
                 except USBAttachError as device_error:
-                    if device_error.errno in USBConnectionLost.USB_DISCONNECT:
+                    if device_error.errno in USBConnectionLostError.USB_DISCONNECT:
                         self._logger.warning("device error on re-attachment, try again...")
                         self.disconnect_server()  # don't re-use this connection
                     return None
