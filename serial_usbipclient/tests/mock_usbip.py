@@ -53,6 +53,10 @@ from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
 logger = logging.getLogger(__name__)
 
 
+class OrderlyExit(SystemExit):
+    """perform an orderly exit"""
+
+
 class MockDevice:
     """URB information for a device"""
     def __init__(self, vendor: int, product: int, device: DeviceDescriptor, busnum: int, devnum: int) -> None:
@@ -534,7 +538,7 @@ class MockUSBIP:
                 for socket_read in read_sockets:
                     if socket_read == self._wakeup.listener:  # time to bail
                         self.logger.info(f"[usbip-server]Wakeup!")
-                        raise SystemExit("wakeup!")
+                        raise OrderlyExit("wakeup!")
                     elif socket_read == conn:  # data from the client
                         message: bytes = conn.recv(size)
                         self.logger.info(f"[usbip-server] wait_for_message: {message.hex()=}")
@@ -618,6 +622,9 @@ class MockUSBIP:
         except Exception as bad_error:
             failure: str = traceback.format_exc()
             self.logger.error(f"[usbip-server] Exception = {str(bad_error)}\n{failure=}")
+        except OrderlyExit:
+            # we are exiting as part of a shutdown
+            self.logger.info("[usbip-server] Orderly System Shutdown")
         finally:
             self.event.set()  # indicate we are exiting
             self.logger.info("[usbip-server] server stopped @%s:%s", self.host, self.port)
