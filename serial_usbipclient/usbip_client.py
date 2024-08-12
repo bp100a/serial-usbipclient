@@ -175,6 +175,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     _responses: Optional[dict[int, (RET_SUBMIT_PREFIX, Optional[bytes])]] = None  # seqnum/(ret/data)
     _stats: Optional[USBStats] = None
     _logger: Optional[logging.Logger] = None
+    _delimiter: bytes = b'\r\n'
 
     def __post_init__(self) -> None:
         """setup our classes instances"""
@@ -182,6 +183,16 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         self._commands = {}
         self._responses = {}
         self._stats = USBStats()
+
+    @property
+    def delimiter(self) -> bytes:
+        """return the current delimiter"""
+        return self._delimiter
+
+    @delimiter.setter
+    def delimiter(self, delimiter: bytes) -> None:
+        """set the delimiter"""
+        self._delimiter = delimiter
 
     @property
     def stats(self) -> str:
@@ -376,7 +387,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         :param timeout: time in seconds we will wait for the response
         :type timeout: float
         :param size: how many bytes we expect to read, 0 if response terminated
-                     by '\r\n' (Command Valve)
+                     by '\r\n' (default delimiter)
         :type size: int
         :return: response from USBIP device
         :rtype: bytes
@@ -406,7 +417,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 self._commands.pop(seqnum)
                 if size and len(data) >= size:
                     return data
-                if size == 0 and data.endswith(b"\r\n"):
+                if size == 0 and data.endswith(self._delimiter):
                     return data
 
         if data:  # we received a response

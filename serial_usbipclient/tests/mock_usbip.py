@@ -396,6 +396,9 @@ class MockUSBIP:
                 self.server_socket.close()  # if we are waiting for accept(), should unblock
 
             self.logger.info("[usbip-server] waiting for event to signal (0->1)")
+            if self._wakeup:
+                self._wakeup.wakeup()  # if blocking for i/o, this will shake things up
+
             if self.event.wait(timeout=10.0):
                 self.thread.join(timeout=1.0)
                 self.thread = None
