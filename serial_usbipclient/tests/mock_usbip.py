@@ -344,6 +344,7 @@ class SocketPair:
             self._far = None
 
 
+# noinspection PyTypeChecker
 class MockUSBIP:
     """mock USBIP server"""
     def __init__(self, host: str, port: int, logger: logging.Logger):
