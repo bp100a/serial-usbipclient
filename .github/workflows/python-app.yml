@@ -58,7 +58,7 @@ jobs:
         files: coverage.svg
 
     - name: Commit files
-      if: steps.verify-changed-files.outputs.files_changed == 'true'
+      if: steps.verify-changed-files.outputs.files_changed == 'true' && matrix.python-version == '3.12'
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.git"
         git config --local user.name "github-actions[bot]"
