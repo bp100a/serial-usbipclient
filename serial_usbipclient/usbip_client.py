@@ -417,23 +417,22 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 self._commands.pop(seqnum)
                 if size and len(data) >= size:
                     return data
-                if size == 0 and data.endswith(self._delimiter):
+                # if a delimiter is specified, check for it & return what we have
+                if size == 0 and data.endswith(self.delimiter) and self.delimiter:
                     return data
 
         if data:  # we received a response
             return data
-        raise USBIPResponseTimeoutError(
-            timeout=timeout, size=size
-        )  # further up call stack should add the request packet for diagnostics
+
+        # further up call stack should add the request packet for diagnostics
+        raise USBIPResponseTimeoutError(timeout=timeout, size=size)
 
 
 class USBIPClient:  # pylint: disable=too-many-public-methods
     """client to connect to usbipd service for devices"""
 
     # set USBIP protocol high, observed delays long delays before response
-    USBIP_TIMEOUT: float = (
-        10.0  # timeout for USBIP protocol overhead (list/attach can run +5 secs)
-    )
+    USBIP_TIMEOUT: float = 10.0  # timeout for USBIP protocol overhead (list/attach can run +5 secs)
     READ_BUFFER_SIZE: int = 512  # number of bytes of pending reads to enqueue
     URB_QUEUE_MIN: int = 10
     URB_QUEUE_MAX: int = 50
