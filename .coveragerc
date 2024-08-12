@@ -5,6 +5,7 @@ omit =
     */tests.py
     */test*.py
     */tests/common_test_base.py
+    */tests/conftest.py
 
 [report]
 omit =
@@ -12,3 +13,4 @@ omit =
     */tests.py
     */test*.py
     */tests/common_test_base.py
+    */tests/conftest.py
