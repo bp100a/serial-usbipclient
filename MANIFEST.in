@@ -1,0 +1,4 @@
+include AUTHORS CHANGES LICENSE README.md version.py
+recursive-include serial-usbipclient *.py
+exclude version.py .coveragerc pull_request_template.md
+global-exclude *.pyc *~ .DS_Store *__pycache__* *.pyo

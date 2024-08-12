@@ -1,30 +1,54 @@
 """mock USBIP server"""
 
-import os
 import errno
+import glob
 import json
+import logging
+import os
 import platform
 import re
-import socket, select
-from threading import Thread, Event
-from time import time, sleep
-from typing import Optional, Any, cast
-from enum import EnumType
-import glob
-import traceback
-from pathlib import Path
-import logging
+import select
+import socket
 import struct
+import traceback
+from enum import EnumType
+from pathlib import Path
+from threading import Event, Thread
+from time import sleep, time
+from typing import Any, Optional, cast
 
-from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
+from serial_usbipclient.protocol.packets import (
+    CMD_SUBMIT,
+    CMD_SUBMIT_PREFIX,
+    CMD_UNLINK,
+    HEADER_BASIC,
+    OP_REP_DEV_INTERFACE,
+    OP_REP_DEV_PATH,
+    OP_REP_DEVLIST_HEADER,
+    OP_REP_IMPORT,
+    OP_REQ_IMPORT,
+    RET_UNLINK,
+    USBIP_RET_SUBMIT,
+    CommonHeader,
+)
+from serial_usbipclient.protocol.urb_packets import (
+    ACMFunctionalDescriptor,
+    CallManagementFunctionalDescriptor,
+    ConfigurationDescriptor,
+    DeviceDescriptor,
+    EndPointDescriptor,
+    HeaderFunctionalDescriptor,
+    InterfaceAssociation,
+    InterfaceDescriptor,
+    StringDescriptor,
+    UnionFunctionalDescriptor,
+    URBBase,
+    URBCDCRequestType,
+    UrbSetupPacket,
+    URBStandardDeviceRequest,
+)
 from serial_usbipclient.protocol.usb_descriptors import DescriptorType
-from serial_usbipclient.protocol.packets import (CommonHeader, OP_REP_DEVLIST_HEADER, OP_REQ_IMPORT, OP_REP_DEV_PATH, OP_REP_IMPORT,
-                              HEADER_BASIC, CMD_SUBMIT, CMD_SUBMIT_PREFIX, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, CMD_UNLINK, RET_UNLINK)
-from serial_usbipclient.protocol.urb_packets import (UrbSetupPacket, DeviceDescriptor, ConfigurationDescriptor,
-                                  URBBase, InterfaceDescriptor, InterfaceAssociation, EndPointDescriptor, HeaderFunctionalDescriptor,
-                                  CallManagementFunctionalDescriptor, ACMFunctionalDescriptor, UnionFunctionalDescriptor, StringDescriptor,
-                                  URBStandardDeviceRequest, URBCDCRequestType)
-
+from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
 
 logger = logging.getLogger(__name__)
 

@@ -4,6 +4,7 @@
 #
 
 from common_test_base import CommonTestBase
+
 from serial_usbipclient.protocol.usbip_defs import BaseProtocolPacket
 
 

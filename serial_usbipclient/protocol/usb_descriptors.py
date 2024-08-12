@@ -4,8 +4,8 @@
 # https://docs.kernel.org/usb/usbip_protocol.html
 #
 from __future__ import annotations
-from enum import IntEnum
 
+from enum import IntEnum
 
 # Define h/w structures that don't conform to pylint's defaults
 # pylint: disable=too-many-instance-attributes, too-many-arguments, invalid-name

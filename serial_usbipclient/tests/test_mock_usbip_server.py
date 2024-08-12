@@ -1,10 +1,10 @@
 """test the mock usbip server for basic behavior"""
-import os
-from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR
 import logging
+import os
+from socket import AF_INET, SHUT_RDWR, SOCK_STREAM, socket
 
 from common_test_base import CommonTestBase
-from mock_usbip import MockUSBIP, Parse_lsusb, MockUSBDevice
+from mock_usbip import MockUSBDevice, MockUSBIP, Parse_lsusb
 
 from serial_usbipclient.usbip_client import USBIPClient
 

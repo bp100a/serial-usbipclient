@@ -3,9 +3,9 @@
 # https://docs.kernel.org/usb/usbip_protocol.html
 
 import errno
-from os import strerror
-from enum import IntEnum
 import struct
+from enum import IntEnum
+from os import strerror
 
 # To keep with names used by the URB specification
 # pylint: disable=invalid-name, too-many-arguments, too-many-instance-attributes, too-many-locals
