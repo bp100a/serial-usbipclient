@@ -1,16 +1,24 @@
 """test packet generation using py-datastruct"""
-from time import time
 from dataclasses import dataclass
+from time import time
 
 from common_test_base import CommonTestBase
 
-from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
+from serial_usbipclient.protocol.packets import (
+    CMD_SUBMIT,
+    OP_REP_DEV_INTERFACE,
+    OP_REP_DEVLIST_HEADER,
+    OP_REQ_DEVLIST,
+    USBIP_RET_SUBMIT,
+)
+from serial_usbipclient.protocol.urb_packets import DeviceDescriptor, UrbSetupPacket
 from serial_usbipclient.protocol.usb_descriptors import DescriptorType
-from serial_usbipclient.protocol.usbip_protocol import URBSetupRequestType, URBStandardDeviceRequest
-from serial_usbipclient.protocol.urb_packets import DeviceDescriptor
-from serial_usbipclient.protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, OP_REP_DEVLIST_HEADER
-from serial_usbipclient.protocol.urb_packets import UrbSetupPacket
-from serial_usbipclient.usbip_client import USBIPClient, USBIP_Connection, USB_Endpoint
+from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
+from serial_usbipclient.protocol.usbip_protocol import (
+    URBSetupRequestType,
+    URBStandardDeviceRequest,
+)
+from serial_usbipclient.usbip_client import USB_Endpoint, USBIP_Connection, USBIPClient
 
 
 class TestPacketGeneration(CommonTestBase):

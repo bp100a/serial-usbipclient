@@ -1,11 +1,17 @@
-from typing import Optional
-from common_test_base import CommonTestBase
 import os
 from time import sleep
+from typing import Optional
+
+from common_test_base import CommonTestBase
+from mock_usbip import MockUSBIP
 
 from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
-from serial_usbipclient.usbip_client import USBIPClient, HardwareID, USBAttachError, USBIP_Connection
-from mock_usbip import MockUSBIP
+from serial_usbipclient.usbip_client import (
+    HardwareID,
+    USBAttachError,
+    USBIP_Connection,
+    USBIPClient,
+)
 
 
 class TestUSBIPConnection(CommonTestBase):

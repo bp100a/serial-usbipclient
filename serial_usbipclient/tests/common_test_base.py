@@ -1,16 +1,16 @@
 """base for all unit tests"""
 
-import sys
-from os import getenv
+import json
 import logging
 import os
 import re
-import json
+import sys
+from os import getenv
 from typing import Optional
-
 from unittest import TestCase
 
 from mock_usbip import MockUSBIP
+
 from serial_usbipclient.usbip_client import USBIPClient
 
 

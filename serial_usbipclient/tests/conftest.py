@@ -1,8 +1,8 @@
 """setup for running tests"""
-import sys
 import json
 import os
-from subprocess import Popen, PIPE
+import sys
+from subprocess import PIPE, Popen
 
 
 def pytest_sessionstart(session):

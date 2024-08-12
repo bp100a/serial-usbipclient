@@ -1,14 +1,25 @@
 """definitions for URB packets"""
 
-from typing import Optional, Any
 from dataclasses import dataclass
+from typing import Any, Optional
 
 from datastruct.fields import field
 
-from serial_usbipclient.protocol.usbip_defs import Direction
 from serial_usbipclient.protocol.packets import URBBase  # URBs are "little-endian"
-from serial_usbipclient.protocol.usbip_protocol import URBStandardEndpointRequest, URBStandardInterfaceRequest, URBStandardDeviceRequest, URBSetupRequestType, URBCDCRequestType
-from serial_usbipclient.protocol.usb_descriptors import DescriptorType, DeviceInterfaceClass, CDCDescriptorSubType, EndpointAttributesTransferType
+from serial_usbipclient.protocol.usb_descriptors import (
+    CDCDescriptorSubType,
+    DescriptorType,
+    DeviceInterfaceClass,
+    EndpointAttributesTransferType,
+)
+from serial_usbipclient.protocol.usbip_defs import Direction
+from serial_usbipclient.protocol.usbip_protocol import (
+    URBCDCRequestType,
+    URBSetupRequestType,
+    URBStandardDeviceRequest,
+    URBStandardEndpointRequest,
+    URBStandardInterfaceRequest,
+)
 
 
 @dataclass

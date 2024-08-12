@@ -6,27 +6,54 @@
 from __future__ import annotations
 
 import errno
+import logging
 import os
 import socket
 import struct
-from time import time, perf_counter
-from typing import Optional, cast
 from dataclasses import dataclass
-import logging
-
-# enums needed for USBIP and URBs
-from .protocol.usb_descriptors import DescriptorType, DeviceInterfaceClass
-from .protocol.usbip_defs import BaseProtocolPacket, BasicCommands, Direction, Status, CDCControl, ErrorCodes  # just the basics
-from .protocol.usbip_protocol import URBSetupRequestType, URBTransferFlags
-
-# USBIP & URB packet definitions
-from .protocol.usbip_protocol import URBStandardDeviceRequest, URBCDCRequestType
-from .protocol.packets import OP_REQ_DEVLIST, OP_REQ_IMPORT, CMD_SUBMIT, CMD_UNLINK, RET_UNLINK, HEADER_BASIC
-from .protocol.packets import OP_REP_DEVLIST_HEADER, OP_REP_DEV_PATH, OP_REP_DEV_INTERFACE, OP_REP_IMPORT, RET_SUBMIT_PREFIX
-from .protocol.urb_packets import UrbSetupPacket
-from .protocol.urb_packets import DeviceDescriptor, ConfigurationDescriptor, GenericDescriptor, StringDescriptor, EndPointDescriptor
+from time import perf_counter, time
+from typing import Optional, cast
 
 from performance_stats import USBStats, USBStatsManager
+
+from .protocol.packets import (
+    CMD_SUBMIT,
+    CMD_UNLINK,
+    HEADER_BASIC,
+    OP_REP_DEV_INTERFACE,
+    OP_REP_DEV_PATH,
+    OP_REP_DEVLIST_HEADER,
+    OP_REP_IMPORT,
+    OP_REQ_DEVLIST,
+    OP_REQ_IMPORT,
+    RET_SUBMIT_PREFIX,
+    RET_UNLINK,
+)
+from .protocol.urb_packets import (
+    ConfigurationDescriptor,
+    DeviceDescriptor,
+    EndPointDescriptor,
+    GenericDescriptor,
+    StringDescriptor,
+    UrbSetupPacket,
+)
+# enums needed for USBIP and URBs
+from .protocol.usb_descriptors import DescriptorType, DeviceInterfaceClass
+from .protocol.usbip_defs import (  # just the basics
+    BaseProtocolPacket,
+    BasicCommands,
+    CDCControl,
+    Direction,
+    ErrorCodes,
+    Status,
+)
+# USBIP & URB packet definitions
+from .protocol.usbip_protocol import (
+    URBCDCRequestType,
+    URBSetupRequestType,
+    URBStandardDeviceRequest,
+    URBTransferFlags,
+)
 
 PAYLOAD_TIMEOUT: float = 0.250  # maximum time (seconds) we'll wait for pieces of our payload
 

@@ -3,9 +3,16 @@ from typing import Optional
 
 from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
-from serial_usbipclient.protocol.urb_packets import (GenericDescriptor, ConfigurationDescriptor, InterfaceDescriptor,
-                                  CDCDescriptorSubType, EndPointDescriptor, StringDescriptor)
+
 from serial_usbipclient.protocol.packets import RET_SUBMIT_PREFIX
+from serial_usbipclient.protocol.urb_packets import (
+    CDCDescriptorSubType,
+    ConfigurationDescriptor,
+    EndPointDescriptor,
+    GenericDescriptor,
+    InterfaceDescriptor,
+    StringDescriptor,
+)
 
 
 class TestURBPackets(CommonTestBase):

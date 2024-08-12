@@ -1,10 +1,10 @@
 """test the performance tracking"""
-from time import sleep
 from math import fsum
+from time import sleep
 
 from common_test_base import CommonTestBase
 
-from performance_stats import USBStatsManager, USBStats
+from performance_stats import USBStats, USBStatsManager
 
 
 class TestStats(CommonTestBase):
