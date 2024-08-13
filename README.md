@@ -35,7 +35,8 @@ connections[0].sendall(data=b'\01\02\03\04')
 # response data can be read either explicitly by specifying the size of the expected
 # response, or if 0 size is specified, up to a delimiter. The delimiter is a property of
 # the connection and can be set, default=b'\r\n'
-connections[0].response_data(size=0)  # reads until delimiter, default `\r\n`
+connections[0].delimiter = b'\n'
+connections[0].response_data(size=0)  # reads until delimiter
 ```
 
 ## SOUP
@@ -89,7 +90,7 @@ This package was created using JetBrains PyCharm IDE, the repository does not co
 | wheel      | 0.44.0  | platform independent builds   |
 | twine      | 5.1.1   | utilities for pypi publishing |
 
-A tooling is defined in the `tool_requirements.txt` and should be installed on the build system as follows:
+All tooling is defined in the `tool_requirements.txt` and should be installed on the build system as follows:
 ```shell
 pip install -r tool_requirements.txt
 ```
