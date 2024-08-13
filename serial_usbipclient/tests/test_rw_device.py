@@ -30,8 +30,6 @@ class TestReadWrite(CommonTestBase):
 
     def test_read_write(self):
         """read data from the faux device and verify it"""
-        self.skip_on_ci(reason='not ready for prime time')
-
         self.mock_usbip: MockUSBIP = MockUSBIP(host=self.host, port=self.port, logger=self.logger)
         self.client = USBIPClient(remote=(self.host, self.port), logger=self.logger)
         self.client.connect_server()
