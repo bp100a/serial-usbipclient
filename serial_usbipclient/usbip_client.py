@@ -439,7 +439,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
 
     def __init__(self, remote: tuple[str, int],
                  command_timeout: float = PAYLOAD_TIMEOUT,
-                 logger: logging.Logger = None):
+                 logger: Optional[logging.Logger] = None):
         """establish connection to server for devices"""
         # Note: in docker the host/port will most likely be `host.docker.internal:3420`
         self._host: str = remote[0]
@@ -461,11 +461,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     @property
     def stats(self) -> str:
         """return the stats for the USBIPClient and all its connections"""
-        return (
-            str(self._stats)
-            + "\n"
-            + "\n".join([item.stats for item in self._connections])
-        )
+        return str(self._stats) + "\n" + "\n".join([item.stats for item in self._connections])
 
     def disconnect_server(self):
         """disconnect from the usbipd server"""
