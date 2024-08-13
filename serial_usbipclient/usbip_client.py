@@ -344,7 +344,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         # Read any response packet that is waiting and save it in our 'queue'
         if not header_data:
             with USBStatsManager(self._stats, name="USBIP_Connection.usbip_header"):
-                header_data = USBIPClient.readall(HEADER_BASIC().size, self)
+                header_data = USBIPClient.readall(HEADER_BASIC.size, self)
                 if not header_data:
                     return False
 
@@ -353,9 +353,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             expected_size: int = RET_SUBMIT_PREFIX().size - len(header_data)
             if expected_size:  # if there's more data, read it in
                 with USBStatsManager(self._stats, name="USBIP_Connection.usbip_prefix"):
-                    prefix_data: bytes = header_data + USBIPClient.readall(
-                        expected_size, self
-                    )
+                    prefix_data: bytes = header_data + USBIPClient.readall(expected_size, self)
                     if not prefix_data:
                         return True
 
@@ -373,9 +371,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 ):
                     with USBStatsManager(self._stats, "USBIP_Connection.payload"):
                         payload = USBIPClient.readall(prefix.actual_length, self)
-                prefix.ep = self._commands[
-                    prefix.seqnum
-                ].ep  # makes correlation with endpoints easier
+                prefix.ep = self._commands[prefix.seqnum].ep  # makes correlation with endpoints easier
 
             self._responses[prefix.seqnum] = (prefix, payload)
             return True
