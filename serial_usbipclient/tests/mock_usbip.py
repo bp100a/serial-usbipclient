@@ -402,10 +402,10 @@ class MockUSBIP:
             if self.event.wait(timeout=10.0):
                 self.thread.join(timeout=1.0)
                 self.thread = None
+                if self._wakeup:
+                    self._wakeup.shutdown()  # cleanup the pair
+                    self._wakeup = None
                 return
-            if self._wakeup:
-                self._wakeup.shutdown()  # cleanup the pair
-                self._wakeup = None
 
             raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} to acknowledge shutdown {self.event.is_set()=}")
 
@@ -534,31 +534,40 @@ class MockUSBIP:
                     return
             return
 
-    def wait_for_message(self, conn: socket.socket, size: int) -> bytes:
+    def wait_for_message(self, conn: socket.socket, size: int) -> tuple[socket.socket, bytes]:
         """wait for a response (or a shutdown)"""
+        rlist: list[socket.socket] = [conn, self._wakeup.listener, self.server_socket]
         while self.event.is_set():
             try:
-                read_sockets, _, _ = select.select([conn, self._wakeup.listener], [], [])
+                rlist = [item for item in rlist if item.fileno() != -1]  # no need to listen to closed sockets
+                read_sockets, _, _ = select.select(rlist, [], [])
                 for socket_read in read_sockets:
                     if socket_read == self._wakeup.listener:  # time to bail
                         self.logger.info(f"[usbip-server]Wakeup!")
                         raise OrderlyExit("wakeup!")
-                    elif socket_read == conn:  # data from the client
-                        message: bytes = conn.recv(size)
+                    elif socket_read == self.server_socket:  # someone is knocking
+                        self.logger.info(f"[usbip-server] wait_for_message(): accept()")
+                        new_conn, address = self.server_socket.accept()  # accept new connection
+                        new_conn.settimeout(None)  # wait for as long as it takes
+                        rlist.append(new_conn)
+                        self.logger.info(f"[usbip-server] client @{address} connected")
+                        continue
+                    else:  # data from the client
+                        message: bytes = socket_read.recv(size)
                         self.logger.info(f"[usbip-server] wait_for_message: {message.hex()=}")
-                        return message
-                    raise ValueError(f"Unrecognized socket received, {socket_read=}")
+                        return socket_read, message
+
             except OSError as os_error:
                 self.logger.error(f"[usbip-server] wait_for_message: OSError: {str(os_error)}")
 
     def read_message(self, conn: socket.socket) -> bytes:
         """read a single message from the socket"""
         if self._urb_traffic:  # reading URBs
-            message = self.wait_for_message(conn, CMD_SUBMIT_PREFIX.size)
+            conn, message = self.wait_for_message(conn, CMD_SUBMIT_PREFIX.size)
             if message:
                 try:
                     urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
-                except struct.error as s_error:
+                except struct.error:
                     raise ValueError(f"{message.hex()=}") from struct.error
                 try:
                     transfer_buffer: bytes = conn.recv(urb_cmd.transfer_buffer_length) \
@@ -568,7 +577,7 @@ class MockUSBIP:
                     self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
                     raise
         else:  # USBIP traffic
-            message = self.wait_for_message(conn, CommonHeader.size)
+            conn, message = self.wait_for_message(conn, CommonHeader.size)
             if message:
                 usbip_cmd: CommonHeader = CommonHeader.unpack(message)
                 if usbip_cmd.command == BasicCommands.REQ_DEVLIST:

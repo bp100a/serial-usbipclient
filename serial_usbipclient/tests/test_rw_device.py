@@ -1,4 +1,5 @@
 """test we can read/write the MockUSBIP device via the usbip client"""
+import errno
 import logging
 import os
 from typing import Optional
@@ -8,7 +9,8 @@ from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
 
 from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
-from serial_usbipclient.usbip_client import HardwareID, USBIP_Connection, USBIPClient, USBConnectionLostError
+from serial_usbipclient.usbip_client import (HardwareID, USBIP_Connection, USBIPClient, USBConnectionLostError,
+                                             PAYLOAD_TIMEOUT, USBIPResponseTimeoutError, USBAttachError)
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +101,16 @@ class TestReadWrite(CommonTestBase):
     def test_restore_connection(self):
         """test we can restore lost connections"""
         self.skip_on_ci(reason='not ready for prime time')
+
         usb: USBIP_Connection = self._connect()
+        self.assertEqual(self.client.command_timeout, PAYLOAD_TIMEOUT)
         restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)
         self.assertIsNotNone(restored_usb)
+
+    def test_timeout_error(self):
+        """test formatting of the timeout error"""
+        error = USBIPResponseTimeoutError(timeout=0.2, request=b'\01\02', size=3)
+        self.assertEqual(str(error), 'Timeout error, timeout=0.2, request=0102, size=3')
+
+        error = USBAttachError(detail='a failure', an_errno=errno.EPIPE)
+        self.assertEqual(str(error), "a failure, self.errno=32/EPIPE, The pipe type specified in the URB doesn't match the endpoint’s actual type.")
