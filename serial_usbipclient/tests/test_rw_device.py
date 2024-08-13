@@ -1,12 +1,14 @@
 """test we can read/write the MockUSBIP device via the usbip client"""
 import logging
 import os
+from typing import Optional
 
+import serial_usbipclient.usbip_client
 from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
 
 from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
-from serial_usbipclient.usbip_client import HardwareID, USBIP_Connection, USBIPClient
+from serial_usbipclient.usbip_client import HardwareID, USBIP_Connection, USBIPClient, USBConnectionLostError
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +55,7 @@ class TestReadWrite(CommonTestBase):
 
         self.assertFalse(errors)  # all data responses should match
 
-    def test_readline(self):
+    def test_delimited_read(self):
         """test we can read with a delimiter"""
         usb: USBIP_Connection = self._connect()
         test_data: list[bytes] = [b'\01\02\03\04', b'\0x55' * 10, b'\0xaa'*15]
@@ -68,3 +70,35 @@ class TestReadWrite(CommonTestBase):
                     errors.append(f"{data.hex()=} != {response.hex()=}")
 
         self.assertFalse(errors)  # all data responses should match
+
+    def test_readline(self):
+        """test we can read delimited strings"""
+        usb: USBIP_Connection = self._connect()
+        test_data: list[bytes] = [b'string']
+        errors: list[str] = []
+        for delimiter in [b'\r\n', b'\n', b'\r']:
+            usb.delimiter = delimiter
+            for data in test_data:
+                data += delimiter
+                self.client.send(usb=usb, data=data)  # send URB writing data to device
+                response: str = USBIPClient.readline(usb)  # wait for delimiter
+                if data.strip(delimiter) != response.encode('utf-8'):
+                    errors.append(f"{data.hex()=} != {response=}")
+
+        self.assertFalse(errors)  # all data responses should match
+
+    def test_read_timeout(self):
+        """test we time out on empty reads"""
+        usb: USBIP_Connection = self._connect()
+        # with self.assertRaisesRegex(expected_exception=TimeoutError, expected_regex='timeout'):
+        #     usb.response_data(size=12)  # shouldn't be any data for us, time out!
+        with self.assertRaisesRegex(expected_exception=USBConnectionLostError,
+                                    expected_regex='connection lost'):
+            usb.response_data(size=12)  # shouldn't be any data for us, time out!
+
+    def test_restore_connection(self):
+        """test we can restore lost connections"""
+        self.skip_on_ci(reason='not ready for prime time')
+        usb: USBIP_Connection = self._connect()
+        restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)
+        self.assertIsNotNone(restored_usb)

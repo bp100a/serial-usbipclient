@@ -113,6 +113,10 @@ class USBIPError(Exception):
         """our basic exception"""
         self.detail: str = detail
 
+    def __str__(self) -> str:
+        """return our details"""
+        return self.detail
+
 
 class USBIPServerTimeoutError(USBIPError):
     """timeout while trying to connect to the usbip server"""
@@ -885,11 +889,11 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 packet: bytes = usb.response_data()
                 if packet:
                     response.extend(packet)
-                    if b"\n" in packet:
+                    if usb.delimiter in packet:
                         break
             except TimeoutError:
                 return ""
-        return response.decode("utf-8").strip("\r\n")
+        return response.decode("utf-8").strip(usb.delimiter.decode("utf-8"))
 
     def shutdown_connection(self, usb: USBIP_Connection) -> None:
         """shutdown this connection"""
