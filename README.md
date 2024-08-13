@@ -15,6 +15,29 @@ The USBIP client implementation will only address USB devices that implemented t
 serial devices. This allows for a simple connection to the USBIP server without the need for mapping USB devices into
 the container.
 
+## Usage
+
+```python
+from serial_usbipclient.usbip_client import USBIPClient, HardwareID, USBIP_Connection
+
+host: str = 'localhost'
+port: int = 3240  # commonly used port for USBIPD servers
+target: HardwareID = HardwareID(vid=1234, pid=5678)  # USB devices are identified by VID/PID
+client: USBIPClient = USBIPClient(remote=(host, port))
+client.connect_server()
+client.attach(devices=[target])
+connections: list[USBIP_Connection] = client.get_connection(device=target)
+
+# using the established connection, data can be written to the USB device
+# using the sendall() method
+connections[0].sendall(data=b'\01\02\03\04')
+
+# response data can be read either explicitly by specifying the size of the expected
+# response, or if 0 size is specified, up to a delimiter. The delimiter is a property of
+# the connection and can be set, default=b'\r\n'
+connections[0].response_data(size=0)  # reads until delimiter, default `\r\n`
+```
+
 ## SOUP
 | Module          | Version | comments                                    |
 |-----------------|---------|---------------------------------------------|
