@@ -1,8 +1,10 @@
 """test generation of URB packets"""
+import socket
+
 from typing import Optional
 
 from common_test_base import CommonTestBase
-from mock_usbip import MockUSBIP
+from mock_usbip import MockUSBIP, USBIPClient
 
 from serial_usbipclient.protocol.packets import RET_SUBMIT_PREFIX
 from serial_usbipclient.protocol.urb_packets import (
@@ -15,6 +17,14 @@ from serial_usbipclient.protocol.urb_packets import (
 )
 
 
+class MockUSBIPClient(USBIPClient):
+    """fake usbipclient for testing"""
+    def __init__(self, busid: bytes):
+        """set up local variables"""
+        super().__init__(connection=socket.socket(), address=('', 0), size=0)
+        self.busid = busid
+
+
 class TestURBPackets(CommonTestBase):
     """test URB packets"""
     def __init__(self, methodName):
@@ -25,7 +35,8 @@ class TestURBPackets(CommonTestBase):
     def test_configuration_descriptor(self):
         """test the generation of the ConfigurationDescriptor"""
         request_config: bytes = bytes.fromhex('0000000100000003000900020000000100000000000002000000004b0000000000000000000000008006000200004b00')
-        response: bytes = self.mock_usbip.mock_urb_responses(message=request_config, busid=b'1-1' + b'\0'*29)
+        mock_client: MockUSBIPClient = MockUSBIPClient(busid=b'1-1' + b'\0'*29)
+        response: bytes = self.mock_usbip.mock_urb_responses(mock_client, message=request_config)
         self.assertIsNotNone(response)
         header: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(response)
 
