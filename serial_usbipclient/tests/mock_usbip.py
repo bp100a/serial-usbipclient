@@ -348,7 +348,7 @@ class USBIPClient:
     """connections to the usbip clients, wrap the socket to provide more context"""
     def __init__(self, connection: socket.socket, address: tuple[str, int], size: int = 0) -> None:
         """local variables"""
-        self.socket = connection
+        self.socket: socket.socket = connection
         self.address: tuple[str, int] = address
         self.socket.settimeout(None)  # default to blocking connections
         self._size: int = size if size else CommonHeader.size
@@ -357,6 +357,17 @@ class USBIPClient:
     def fileno(self) -> int:
         """return the file id of the underlying socket"""
         return self.socket.fileno()
+
+    @property
+    def is_connected(self) -> bool:
+        """the underlying socket is up & running"""
+        return self.socket is not None and self.fileno() != -1
+
+    def shutdown(self) -> None:
+        """clean up the wrapped socket"""
+        if self.is_connected:
+            self.socket.shutdown(socket.SHUT_RDWR)
+            self.socket.close()
 
     def recv(self, size: int) -> bytes:
         """read from the wrapped socket"""
@@ -609,35 +620,32 @@ class MockUSBIP:
 
     def read_message(self, conn: Optional[USBIPClient] = None) -> bytes:
         """read a single message from the socket"""
-        if conn and conn.busid:  # reading URBs
-            conn, message = self.wait_for_message(conn)
-            if message:
-                try:
-                    urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
-                except struct.error:
-                    raise ValueError(f"{message.hex()=}") from struct.error
-                try:
-                    transfer_buffer: bytes = conn.recv(urb_cmd.transfer_buffer_length) \
-                        if urb_cmd.transfer_buffer_length and urb_cmd.direction == Direction.USBIP_DIR_OUT else b''
-                    return message + transfer_buffer
-                except OSError:
-                    self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
-                    raise
-        else:  # USBIP traffic
-            conn, message = self.wait_for_message(conn)
-            if message:
-                usbip_cmd: CommonHeader = CommonHeader.unpack(message)
-                if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
-                    return message
-                elif usbip_cmd.command == BasicCommands.REQ_IMPORT:
-                    remaining_size: int = OP_REQ_IMPORT.size - len(message)
-                    remainder = conn.recv(remaining_size)
-                    if not remainder:
-                        raise ValueError(f"Unexpected lack of response {usbip_cmd.command.name}, expected {remaining_size} bytes")
-                    message += remainder
-                    return message
-                else:
-                    raise ValueError(f"Unrecognized command {usbip_cmd.command.name}")
+        conn, message = self.wait_for_message(conn)
+        if conn.busid and message:  # reading URBs
+            try:
+                urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
+            except struct.error:
+                raise ValueError(f"{message.hex()=}") from struct.error
+            try:
+                transfer_buffer: bytes = conn.recv(urb_cmd.transfer_buffer_length) \
+                    if urb_cmd.transfer_buffer_length and urb_cmd.direction == Direction.USBIP_DIR_OUT else b''
+                return message + transfer_buffer
+            except OSError:
+                self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
+                raise
+        elif message:  # USBIP command traffic
+            usbip_cmd: CommonHeader = CommonHeader.unpack(message)
+            if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
+                return message
+            elif usbip_cmd.command == BasicCommands.REQ_IMPORT:
+                remaining_size: int = OP_REQ_IMPORT.size - len(message)
+                remainder = conn.recv(remaining_size)
+                if not remainder:
+                    raise ValueError(f"Unexpected lack of response {usbip_cmd.command.name}, expected {remaining_size} bytes")
+                message += remainder
+                return message
+            else:
+                raise ValueError(f"Unrecognized command {usbip_cmd.command.name}")
 
         return b''
 
@@ -658,18 +666,15 @@ class MockUSBIP:
                 client: USBIPClient = USBIPClient(connection=conn, address=address)
                 self.logger.info(f"[usbip-server] client @{address} connected")
                 try:
-                    while conn and self.event.is_set():
+                    while client.is_connected and self.event.is_set():
                         message: bytes = self.read_message(client)
                         if not message:
-                            conn.shutdown(socket.SHUT_RDWR)
-                            conn.close()
-                            conn = None
+                            client.shutdown()
                         else:
                             self.mock_response(client, message)
 
-                    if conn:
-                        conn.shutdown(socket.SHUT_RDWR)
-                        conn.close()  # close the connection
+                    client.shutdown()  # exiting, so cleanup
+
                 except OSError as os_error:
                     failure: str = traceback.format_exc()
                     self.logger.info(f"[usbip-server] client @{address} disconnected from {self.host}:{self.port}, {os_error=}\n{failure=}")
