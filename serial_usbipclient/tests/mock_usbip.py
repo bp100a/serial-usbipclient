@@ -66,7 +66,7 @@ class MockDevice:
         self.busid: bytes = f"{busnum}-{devnum}".encode('utf-8')
         self.busid += b'\0' * (32 - len(self.busid))
         self.device: Optional[DeviceDescriptor] = device
-        self.queued_reads: dict[int, CMD_SUBMIT] = {}  # key'd by the sequence # for easy access
+        self.queued_reads: dict[int, CMD_SUBMIT] = {}  # keyed by the sequence # for easy access
         self._attached: bool = False
 
     def enqueue_read(self, command: CMD_SUBMIT) -> None:
@@ -216,7 +216,7 @@ class Parse_lsusb:
                             configuration_response += descriptor.pack()
                     if len(configuration_response) != device_desc.configurations[-1].wTotalLength:
                         self.logger.error(f"Parsing lsusb output, mismatch for configuration size "
-                                         f"{device_desc.configurations[-1].wTotalLength=} != {len(configuration_response)}")
+                                          f"{device_desc.configurations[-1].wTotalLength=} != {len(configuration_response)}")
 
                 elif section == 'Interface Association:':
                     if not isinstance(urb, ConfigurationDescriptor):
@@ -402,13 +402,15 @@ class USBIPClient:
 # noinspection PyTypeChecker
 class MockUSBIP:
     """mock USBIP server"""
+    STARTUP_TIMEOUT: float = 5.0
+
     def __init__(self, host: str, port: int, logger: logging.Logger):
         """set up our instance"""
         self.host: str = host
         self.port: int = port
         self.logger: logging.Logger = logger
         self.server_socket: socket.socket | None = None
-        self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run, daemon=True)
+        self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run_server, daemon=True)
         self.event: Event = Event()
         self._is_windows: bool = platform.system() == 'Windows'
         self._protocol_responses: dict[str, list[str]] = {}
@@ -420,10 +422,10 @@ class MockUSBIP:
             self.event.clear()
             self.thread.start()
             start_time: float = time()
-            while time() - start_time < 5.0:
+            while time() - start_time < MockUSBIP.STARTUP_TIMEOUT:
                 if self.event.is_set():
                     return
-                sleep(0.010)  # allow thread time to start
+                sleep(MockUSBIP.STARTUP_TIMEOUT / 100.0)  # allow thread time to start
 
             raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} to start, waited {round(time() - start_time, 2)} seconds")
         else:
@@ -614,42 +616,43 @@ class MockUSBIP:
                         message: bytes = socket_read.recv(socket_read.size)
                         self.logger.info(f"[usbip-server] wait_for_message: {message.hex()=}")
                         return socket_read, message
-
             except OSError as os_error:
                 self.logger.error(f"[usbip-server] wait_for_message: OSError: {str(os_error)}")
 
-    def read_message(self, conn: Optional[USBIPClient] = None) -> bytes:
+        raise OrderlyExit("[usbip-server] wait_for_message(), event set!")
+
+    def read_message(self, client: Optional[USBIPClient] = None) -> tuple[USBIPClient, bytes]:
         """read a single message from the socket"""
-        conn, message = self.wait_for_message(conn)
-        if conn.busid and message:  # reading URBs
+        client, message = self.wait_for_message(client)
+        if client.busid and message:  # reading URBs
             try:
                 urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
             except struct.error:
                 raise ValueError(f"{message.hex()=}") from struct.error
             try:
-                transfer_buffer: bytes = conn.recv(urb_cmd.transfer_buffer_length) \
+                transfer_buffer: bytes = client.recv(urb_cmd.transfer_buffer_length) \
                     if urb_cmd.transfer_buffer_length and urb_cmd.direction == Direction.USBIP_DIR_OUT else b''
-                return message + transfer_buffer
+                return client, message + transfer_buffer
             except OSError:
                 self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
                 raise
         elif message:  # USBIP command traffic
             usbip_cmd: CommonHeader = CommonHeader.unpack(message)
             if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
-                return message
+                return client, message
             elif usbip_cmd.command == BasicCommands.REQ_IMPORT:
                 remaining_size: int = OP_REQ_IMPORT.size - len(message)
-                remainder = conn.recv(remaining_size)
+                remainder = client.recv(remaining_size)
                 if not remainder:
                     raise ValueError(f"Unexpected lack of response {usbip_cmd.command.name}, expected {remaining_size} bytes")
                 message += remainder
-                return message
+                return client, message
             else:
                 raise ValueError(f"Unrecognized command {usbip_cmd.command.name}")
 
-        return b''
+        return client, b''
 
-    def run(self):
+    def run_server(self):
         """standup the server, start listening"""
         self.server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -667,7 +670,7 @@ class MockUSBIP:
                 self.logger.info(f"[usbip-server] client @{address} connected")
                 try:
                     while client.is_connected and self.event.is_set():
-                        message: bytes = self.read_message(client)
+                        client, message = self.read_message(client)
                         if not message:
                             client.shutdown()
                         else:
@@ -678,10 +681,9 @@ class MockUSBIP:
                 except OSError as os_error:
                     failure: str = traceback.format_exc()
                     self.logger.info(f"[usbip-server] client @{address} disconnected from {self.host}:{self.port}, {os_error=}\n{failure=}")
-                    if conn:
-                        conn.shutdown(socket.SHUT_RDWR)
-                        conn.close()
-                        conn = None
+                    if client:
+                        client.shutdown()
+
         except OSError as os_error:
             failure: str = traceback.format_exc()
             self.logger.error(f"[usbip-server] Exception {str(os_error)}\n{failure=}")
