@@ -384,6 +384,7 @@ class USBIPClient:
     @busid.setter
     def busid(self, busid: bytes) -> None:
         """set the busid for this client"""
+        self._size = CMD_SUBMIT_PREFIX.size if busid else CommonHeader.size
         self._busid = busid
 
 
@@ -576,11 +577,10 @@ class MockUSBIP:
                     return
             return
 
-    def wait_for_message(self, conn: Optional[USBIPClient] = None, size: int = 0) -> tuple[USBIPClient, bytes]:
+    def wait_for_message(self, conn: Optional[USBIPClient] = None) -> tuple[USBIPClient, bytes]:
         """wait for a response (or a shutdown)"""
         rlist: list[socket.socket | USBIPClient] = [self._wakeup.listener, self.server_socket]
         if conn:
-            conn.size = size  # link the size with the connection so we can wait for it
             rlist.append(conn)
 
         while self.event.is_set():
@@ -610,7 +610,7 @@ class MockUSBIP:
     def read_message(self, conn: Optional[USBIPClient] = None) -> bytes:
         """read a single message from the socket"""
         if conn and conn.busid:  # reading URBs
-            conn, message = self.wait_for_message(conn, CMD_SUBMIT_PREFIX.size)
+            conn, message = self.wait_for_message(conn)
             if message:
                 try:
                     urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
@@ -624,7 +624,7 @@ class MockUSBIP:
                     self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
                     raise
         else:  # USBIP traffic
-            conn, message = self.wait_for_message(conn, CommonHeader.size)
+            conn, message = self.wait_for_message(conn)
             if message:
                 usbip_cmd: CommonHeader = CommonHeader.unpack(message)
                 if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
