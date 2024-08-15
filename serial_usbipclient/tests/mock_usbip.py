@@ -353,10 +353,16 @@ class USBIPClient:
         self.socket.settimeout(None)  # default to blocking connections
         self._size: int = size if size else CommonHeader.size
         self._busid: Optional[bytes] = None
+        self._name: str = f"@{self.address[0]}"
 
     def fileno(self) -> int:
         """return the file id of the underlying socket"""
         return self.socket.fileno()
+
+    @property
+    def name(self) -> str:
+        """return the fabricated name"""
+        return self._name
 
     @property
     def is_connected(self) -> bool:
@@ -398,6 +404,11 @@ class USBIPClient:
         self._size = CMD_SUBMIT_PREFIX.size if busid else CommonHeader.size
         self._busid = busid
 
+    def __repr__(self) -> str:
+        """return a developer readable view"""
+        busid: str = self.busid.strip(b'\0').decode('utf-8') if self.busid else 'None'
+        return f"{self.name=}, {self.address=}, {self.fileno()=}, {busid=}"
+
 
 # noinspection PyTypeChecker
 class MockUSBIP:
@@ -417,6 +428,7 @@ class MockUSBIP:
         self.urb_queue: dict[int, Any] = {}  # pending read URBs, queued by seq #
         self.usb_devices: Optional[MockUSBDevice] = None
         self._wakeup: SocketPair = SocketPair()
+        self._clients: list[USBIPClient] = []
         self.setup()
         if self.host and self.port:
             self.event.clear()
@@ -576,7 +588,7 @@ class MockUSBIP:
                     device: MockDevice = self.usb_devices.device(busnum=path.busnum, devnum=path.devnum)
                     was_already_attached: bool = device.attach  # attach the device (returns previous state
                     if was_already_attached:
-                        self.logger.warning(f"Device is already attached! {str(device)}")
+                        self.logger.warning(f"[usbip-server]Device is already attached! {str(device)}")
                     rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=0, path=path.path, busid=req_import.busid, busnum=path.busnum,
                                                               devnum=path.devnum, speed=path.speed, idVendor=path.idVendor,
                                                               idProduct=path.idProduct, bcdDevice=path.bcdDevice,
@@ -585,31 +597,38 @@ class MockUSBIP:
                                                               bNumConfigurations=path.bNumConfigurations, bNumInterfaces=path.bNumInterfaces)
                     data: bytes = rep_import.pack()
                     client.sendall(data)
-                    self.logger.info(f"OP_REP_IMPORT: {data.hex()}")
                     client.busid = path.busid
+                    self.logger.info(f"[usbip-server] OP_REP_IMPORT: {data.hex()}")
                     return
             return
 
     def wait_for_message(self, conn: Optional[USBIPClient] = None) -> tuple[USBIPClient, bytes]:
         """wait for a response (or a shutdown)"""
+        self.logger.info(f"[usbip-server] wait_for_message({conn=}), {self._clients=}")
         rlist: list[socket.socket | USBIPClient] = [self._wakeup.listener, self.server_socket]
         if conn:
-            rlist.append(conn)
+            if conn not in self._clients:
+                self._clients.append(conn)
+                self._clients = [item for item in self._clients if item.fileno() != -1]
+
+        rlist.extend(self._clients)
 
         while self.event.is_set():
             try:
                 rlist = [item for item in rlist if item.fileno() != -1]  # no need to listen to closed sockets
+                self.logger.debug(f"[usbip-server] {rlist=}")
                 read_sockets, _, _ = select.select(rlist, [], [])
                 for socket_read in read_sockets:
                     if socket_read == self._wakeup.listener:  # time to bail
                         self.logger.info(f"[usbip-server]Wakeup!")
                         raise OrderlyExit("wakeup!")
                     elif socket_read == self.server_socket:  # someone is knocking
-                        self.logger.info(f"[usbip-server] wait_for_message(): accept()")
+                        self.logger.info(f"[usbip-server] wait_for_message(): accept() {self.server_socket=}")
                         new_conn, address = self.server_socket.accept()  # accept new connection
                         client: USBIPClient = USBIPClient(connection=new_conn, address=address)
+                        self._clients.append(client)
                         rlist.append(client)
-                        self.logger.info(f"[usbip-server] client @{address} connected")
+                        self.logger.info(f"[usbip-server] client @{address} connected {self._clients=}")
                         continue
                     elif isinstance(socket_read, USBIPClient):
                         # should be a USBClient instance
@@ -664,6 +683,13 @@ class MockUSBIP:
         self.logger.info("\nmock USBIP server started @%s:%s", self.host, self.port)
         try:
             while self.event.is_set():
+                client, message = self.read_message()
+                if not message:
+                    client.shutdown()
+                elif client.is_connected:
+                    self.mock_response(client, message)
+                continue
+
                 conn, address = self.server_socket.accept()  # accept new connection
                 conn.settimeout(None)  # wait for as long as it takes
                 client: USBIPClient = USBIPClient(connection=conn, address=address)

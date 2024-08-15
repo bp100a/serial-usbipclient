@@ -484,7 +484,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self._socket.connect((self._host, self._port))
                 self._socket.settimeout(self._socket_timeout)
-                self._logger.info(f"usbip-client connected to {self._host}:{self._port}")
+                self._logger.info(f"[usbip-client] connected to {self._host}:{self._port} from {self._socket.getsockname()[1]}")
             except socket.gaierror as gai_error:
                 raise USBIPConnectionError(
                     f"connection attempt to {self._host}:{self._port} '{str(gai_error)}'"
@@ -582,9 +582,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self.set_tcp_nodelay()
 
         self.usbipd.sendall(request)
-        data: bytes = self.readall(
-            BaseProtocolPacket().size, self.usbipd, timeout=self.USBIP_TIMEOUT
-        )
+        data: bytes = self.readall(BaseProtocolPacket().size, self.usbipd, timeout=self.USBIP_TIMEOUT)
         base_response: BaseProtocolPacket = BaseProtocolPacket.new(data=data)
         if base_response.status != Status.SUCCESS:
             raise USBAttachError("Error attaching to device", an_errno=base_response.status)
@@ -594,7 +592,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         while not more_data and time() - start_time < 1.0:
             more_data += self.readall(OP_REP_IMPORT().size - BaseProtocolPacket().size, self.usbipd)
 
-        self._logger.debug(f"OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
+        self._logger.debug(f"[usbip-client] OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
         return OP_REP_IMPORT.unpack(data + more_data)
 
     def send_setup(self, setup: UrbSetupPacket, usb: USBIP_Connection, data: Optional[bytes] = None) -> None:
