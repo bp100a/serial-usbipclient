@@ -50,7 +50,7 @@ class TestMockUSBIPServer(CommonTestBase):
         client.connect_server()
         published = client.list_published()
         self.assertTrue(published.paths)
-        self.assertEqual(len(published.paths), 2)  # should be 2 paths
+        self.assertEqual(len(published.paths), 3)  # should be 2 paths
 
         client.shutdown()
         server.shutdown()
@@ -73,8 +73,10 @@ class TestDeviceConfiguration(CommonTestBase):
         self.assertTrue(lsusb_parsed.devices)  # we have a device descriptor
         for usb in lsusb_parsed.devices:
             for configuration in usb.device.configurations:
-                if configuration.bNumInterfaces != len(configuration.interfaces):
-                    error.append(f"[0x{usb.vendor:0x4x}:0x{usb.product:0x4x}] Incorrect # interfaces {configuration.descriptor_type.name=}")
+                if configuration.bNumInterfaces != configuration.num_interfaces:
+                    error.append(f"[0x{usb.vendor:04x}:0x{usb.product:04x}] Incorrect # interfaces "
+                                 f"(expected {configuration.bNumInterfaces} found {len(configuration.interfaces)} "
+                                 f"{configuration.descriptor_type.name=}")
 
         self.assertFalse(error)
 

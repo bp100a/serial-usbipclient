@@ -200,7 +200,7 @@ class Parse_lsusb:
                 parts: list[str] = re.split(r'\s+', section)
                 attribute_name: str = parts[0]
                 attribute_value: str = parts[1]
-                if attribute_name not in ['Self', 'line', 'Transfer', 'Synch', 'Usage'] and attribute_value not in ['Powered', 'coding', 'Type']:
+                if attribute_name not in ['Self', 'line', 'Transfer', 'Synch', 'Usage', 'Remote'] and attribute_value not in ['Powered', 'coding', 'Type', 'Wakeup']:
                     self.set_attribute(urb, attribute_name, attribute_value)
             else:
                 if section == 'Configuration Descriptor:':

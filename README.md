@@ -60,7 +60,8 @@ Just capture the output of the `lsusb` command and save with the `.lsusb` suffix
 1-2.lsusb
 2-1.lsusb
 ```
-Would result in 3 devices with busid values of `1-1`, `1-2` and `2-1`.
+Would result in 3 devices with busid values of `1-1`, `1-2` and `2-1`. Please note the file `99-99.lsusb` is reserved to provide a device to generate
+failing USBIPD attachments.
 
 During testing, the `MockUSBIP` service acts as a stand-in for an actual USBIP server. Since the tests are run in parallel, 
 the port on which the service listens must be unique for each unit test. This is accomplished by the `conftest.py::pytest_sessionstart` which is run

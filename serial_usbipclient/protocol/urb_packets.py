@@ -70,6 +70,12 @@ class ConfigurationDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx
         self.interfaces: list[InterfaceDescriptor] = []
         self.associations: list[InterfaceAssociation] = []
 
+    @property
+    def num_interfaces(self) -> int:
+        """return the # of distinct interfaces"""
+        return len({item.bInterfaceNumber: item for item in self.interfaces})
+
+
 
 @dataclass
 class InterfaceDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_interface_descriptor.html
