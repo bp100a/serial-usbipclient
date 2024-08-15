@@ -113,8 +113,6 @@ class TestReadWrite(CommonTestBase):
 
     def test_restore_connection(self):
         """test we can restore lost connections"""
-        self.skip_on_ci(reason='not ready for prime time')
-
         usb: USBIP_Connection = self._connect()
         self.assertEqual(self.client.command_timeout, PAYLOAD_TIMEOUT)
         restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)

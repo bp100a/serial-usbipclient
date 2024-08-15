@@ -922,7 +922,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             return True
 
         # if the device is plugged into a different USB receptacle, it's bus/dev information
-        # will change, but it's pid/vid will not. Since its possible (probable in our case) to have
+        # will change, but it's pid/vid will not. Since its possible to have
         # multiple devices with the same pid/vid, discard paths that map existing connections.
         for current_connection in self._connections:
             if current_connection.busnum == path.busnum and current_connection.devnum == path.devnum:
