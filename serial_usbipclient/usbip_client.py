@@ -85,11 +85,6 @@ class USB_Endpoint:  # pylint: disable=invalid-name
         """return the number for the endpoint"""
         return self.endpoint.number if self.endpoint else 0
 
-    @property
-    def packet_size(self) -> int:
-        """return the max packet size this endpoint can handle"""
-        return self.endpoint.wMaxPacketSize if self.endpoint else 0
-
 
 @dataclass
 class CDCEndpoints:
@@ -800,6 +795,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             published = self.list_published()  # get the list of devices
         self.disconnect_server()  # disconnect the socket
         self._logger.debug("found %s paths published", len(published.paths))
+        found: list[HardwareID] = []
         for device in devices:
             for path in published.paths:
                 if path.idVendor == device.vid and path.idProduct == device.pid:
@@ -810,11 +806,15 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         response: OP_REP_IMPORT = self.import_device(busid=path.busid)
                         self._connections.append(self.create_connection(device, response))
                         self.setup(usb=self._connections[-1])  # get configuration & all that
+                        found.append(device)
                     except (ValueError, USBConnectionLostError) as attach_error:
                         raise ValueError(
                             f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "
                             f"busid={path.busnum}-{path.devnum} @{self._host}:{self._port}"
                         ) from attach_error
+        not_found: list[HardwareID] = [item for item in devices if item not in found]
+        if not found:
+            raise ValueError(f"Devices not found: {not_found=}")
 
     def get_connection(self, device: HardwareID) -> list[USBIP_Connection]:
         """get the connection we'll need for reading/writing the remote usb port"""
@@ -934,6 +934,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def restore_connection(self, lost_usb: USBIP_Connection) -> Optional[USBIP_Connection]:
         """A USB connection has been lost, attempt to restore it"""
         # get the list of published devices from the USBIPD server
+        self._logger.info("[usbip-client] restoring connection")
         if lost_usb in self._connections:
             self._connections.remove(lost_usb)
 

@@ -121,7 +121,7 @@ class MockDevice:
 
     def __str__(self):
         """display readable version"""
-        return f"{self.busnum}-{self.devnum} VID/PID={self.vendor:0x4}:{self.product:0x4}"
+        return f"{self.busnum}-{self.devnum} VID/PID={self.vendor:04x}:{self.product:04x}"
 
 
 class Parse_lsusb:
@@ -688,27 +688,6 @@ class MockUSBIP:
                     client.shutdown()
                 elif client.is_connected:
                     self.mock_response(client, message)
-                continue
-
-                conn, address = self.server_socket.accept()  # accept new connection
-                conn.settimeout(None)  # wait for as long as it takes
-                client: USBIPClient = USBIPClient(connection=conn, address=address)
-                self.logger.info(f"[usbip-server] client @{address} connected")
-                try:
-                    while client.is_connected and self.event.is_set():
-                        client, message = self.read_message(client)
-                        if not message:
-                            client.shutdown()
-                        else:
-                            self.mock_response(client, message)
-
-                    client.shutdown()  # exiting, so cleanup
-
-                except OSError as os_error:
-                    failure: str = traceback.format_exc()
-                    self.logger.info(f"[usbip-server] client @{address} disconnected from {self.host}:{self.port}, {os_error=}\n{failure=}")
-                    if client:
-                        client.shutdown()
 
         except OSError as os_error:
             failure: str = traceback.format_exc()

@@ -73,6 +73,19 @@ class TestReadWrite(CommonTestBase):
 
         self.assertFalse(errors)  # all data responses should match
 
+    def test_write_string(self):
+        """test we can read with a delimiter"""
+        usb: USBIP_Connection = self._connect()
+        test_data: list[str] = ['test-string\r\n']
+        errors: list[str] = []
+        for data in test_data:
+            self.client.send(usb=usb, data=data)  # send URB writing data to device
+            response: bytes = usb.response_data(size=0)  # wait for delimiter
+            if data != response.decode('utf-8'):
+                errors.append(f"{data.encode('utf-8').hex()=} != {response.hex()=}")
+
+        self.assertFalse(errors)  # all data responses should match
+
     def test_readline(self):
         """test we can read delimited strings"""
         usb: USBIP_Connection = self._connect()
@@ -114,3 +127,14 @@ class TestReadWrite(CommonTestBase):
 
         error = USBAttachError(detail='a failure', an_errno=errno.EPIPE)
         self.assertEqual(str(error), "a failure, self.errno=32/EPIPE, The pipe type specified in the URB doesn't match the endpoint’s actual type.")
+
+    def test_hardware_id_formatting(self):
+        """simple test to get coverage on the HardwareID"""
+        hw_id: HardwareID = HardwareID(pid=0x1234, vid=0x4567)
+        self.assertEqual(str(hw_id), 'vid: 0x4567, pid: 0x1234')
+
+    def test_unknown_device(self):
+        """test handling a pid/vid that isn't being shared"""
+        self._connect()  # first connect as usual
+        with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='Devices not found'):
+            self.client.attach(devices=[HardwareID(pid=0, vid=0)], published=None)
