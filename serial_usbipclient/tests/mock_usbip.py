@@ -50,7 +50,7 @@ from serial_usbipclient.protocol.urb_packets import (
 from serial_usbipclient.protocol.usb_descriptors import DescriptorType
 from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
 
-logger = logging.getLogger(__name__)
+LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class OrderlyExit(SystemExit):
@@ -82,7 +82,7 @@ class MockDevice:
             cmd_submit: CMD_SUBMIT = self.queued_reads.pop(seq)
             return cmd_submit
         else:
-            logger.error(f"{seq=} not in queue! {self.queued_reads=}")
+            LOGGER.error(f"{seq=} not in queue! {self.queued_reads=}")
 
     @property
     def is_attached(self) -> bool:
@@ -107,7 +107,7 @@ class MockDevice:
     def busnum(self) -> int:
         """extract the bus number from the busid"""
         busid: str = "".join([chr(item) for item in self.busid if item])
-        return int(busid.split('-')[0])
+        return int(busid.split('-', maxsplit=1)[0])
 
     @property
     def devnum(self) -> int:
@@ -124,7 +124,7 @@ class MockDevice:
         return f"{self.busnum}-{self.devnum} VID/PID={self.vendor:04x}:{self.product:04x}"
 
 
-class Parse_lsusb:
+class ParseLSUSB:
     """parse the output of a lsusb command to get a USB device configuration"""
     def __init__(self, logger: logging.Logger):
         """parse the data"""
@@ -150,7 +150,7 @@ class Parse_lsusb:
     def read_file(file_path: str) -> list[str]:
         """read in the entire file"""
         usb_config_lines: list[str] = []
-        with open(file_path, "r") as usb:
+        with open(file_path, "r", encoding='utf-8') as usb:
             while line := usb.readline():
                 usb_config_lines.append(line.strip())  # remove leading & trailing whitespace
             return usb_config_lines
@@ -183,10 +183,10 @@ class Parse_lsusb:
                 elif value.startswith('0x'):
                     value = self.from_hex(value)
 
-                if type(field[0].type) == EnumType:
+                if type(field[0].type) == EnumType:  # pylint: disable=unidiomatic-typecheck
                     value = int(value)
                 typed_value = field[0].type(value)
-                urb.__setattr__(name, typed_value)
+                setattr(urb, name, typed_value)
                 return
         raise NotImplementedError(f"{name=} was not found on {urb.__class__.__name__}")
 
@@ -200,7 +200,8 @@ class Parse_lsusb:
                 parts: list[str] = re.split(r'\s+', section)
                 attribute_name: str = parts[0]
                 attribute_value: str = parts[1]
-                if attribute_name not in ['Self', 'line', 'Transfer', 'Synch', 'Usage', 'Remote'] and attribute_value not in ['Powered', 'coding', 'Type', 'Wakeup']:
+                if (attribute_name not in ['Self', 'line', 'Transfer', 'Synch', 'Usage', 'Remote'] and
+                        attribute_value not in ['Powered', 'coding', 'Type', 'Wakeup']):
                     self.set_attribute(urb, attribute_name, attribute_value)
             else:
                 if section == 'Configuration Descriptor:':
@@ -288,10 +289,14 @@ class MockUSBDevice:
             dev_path: bytes = root_dev_path + (b'\0' * (256 - len(root_dev_path)))
             path: OP_REP_DEV_PATH = OP_REP_DEV_PATH(busid=usb.busid, path=dev_path, busnum=usb.busnum, devnum=usb.devnum,
                                                     idVendor=usb.vendor, idProduct=usb.product,
-                                                    bcdDevice=usb.device.bcdDevice, bDeviceClass=usb.device.bDeviceClass,
-                                                    bDeviceSubClass=usb.device.bDeviceSubClass, bDeviceProtocol=usb.device.bDeviceProtocol,
-                                                    bConfigurationValue=0x0, bNumConfigurations=len(usb.device.configurations),
-                                                    bNumInterfaces=sum([len(item.interfaces) for item in usb.device.configurations]),
+                                                    bcdDevice=usb.device.bcdDevice,
+                                                    bDeviceClass=usb.device.bDeviceClass,
+                                                    bDeviceSubClass=usb.device.bDeviceSubClass,
+                                                    bDeviceProtocol=usb.device.bDeviceProtocol,
+                                                    bConfigurationValue=0x0,
+                                                    bNumConfigurations=len(usb.device.configurations),
+                                                    bNumInterfaces=sum([len(item.interfaces)
+                                                                        for item in usb.device.configurations]),
                                                     )
             usbip_dev_header.paths.append(path)
             for configuration in usb.device.configurations:
@@ -439,17 +444,18 @@ class MockUSBIP:
                     return
                 sleep(MockUSBIP.STARTUP_TIMEOUT / 100.0)  # allow thread time to start
 
-            raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} to start, waited {round(time() - start_time, 2)} seconds")
+            raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} to start, "
+                               f"waited {round(time() - start_time, 2)} seconds")
         else:
-            logger.info("[usbip-server] MockUSBIP server not started")
+            LOGGER.info("[usbip-server] MockUSBIP server not started")
 
     def setup(self):
         """setup our instance"""
         data_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'usbip_packets.json')
-        with open(file=data_path, mode='r') as recording:
+        with open(file=data_path, mode='r', encoding='utf-8') as recording:
             self._protocol_responses = json.loads(recording.read())
 
-        parser: Parse_lsusb = Parse_lsusb(logger=self.logger)
+        parser: ParseLSUSB = ParseLSUSB(logger=self.logger)
         self.usb_devices = MockUSBDevice(parser.devices)
         self.usb_devices.setup()  # now we have binary for the USB devices we can emulate
 
@@ -475,7 +481,8 @@ class MockUSBIP:
                     self._wakeup = None
                 return
 
-            raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} to acknowledge shutdown {self.event.is_set()=}")
+            raise TimeoutError(f"Timed out waiting for USBIP server @{self.host}:{self.port} "
+                               f"to acknowledge shutdown {self.event.is_set()=}")
 
     def unlink(self, message: bytes) -> bytes:
         """unlink the specified read"""
@@ -500,17 +507,19 @@ class MockUSBIP:
                 busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
                 usb: MockDevice = self.usb_devices.device(busnum, devnum)
                 usb.enqueue_read(cmd_submit)  # associate this read with the device it's intended
-                self.logger.info(f"[usbip-server] queued read #{cmd_submit.seqnum} for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
+                self.logger.info(f"[usbip-server] queued read #{cmd_submit.seqnum} "
+                                 f"for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
                 return bytes()  # there is no response (yet!)
             if cmd_submit.ep and cmd_submit.direction == Direction.USBIP_DIR_OUT:  # write to the device
                 busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
                 usb: MockDevice = self.usb_devices.device(busnum, devnum)
-                self.logger.info(f"[usbip-server] device write #{cmd_submit.seqnum} for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
+                self.logger.info(f"[usbip-server] device write #{cmd_submit.seqnum} "
+                                 f"for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
                 ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=cmd_submit.seqnum, transfer_buffer=bytes())
                 response: bytes = ret_submit.pack()
                 queued_read: CMD_SUBMIT = usb.dequeue_read(seq=0)  # get the first one available
                 ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=queued_read.seqnum, transfer_buffer=cmd_submit.transfer_buffer)
-                self.logger.info(f"[usbip-server] ")
+                self.logger.info("[usbip-server] ")
                 return response + ret_submit.pack()  # send the read values back immediately
 
             urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
@@ -543,16 +552,17 @@ class MockUSBIP:
                         self.logger.info(f"[usbip-server] Setting configuration: {to_enable.name}")
                         transfer_buffer = bytes()
                     elif urb_setup.request == URBCDCRequestType.SET_LINE_CODING:
-                        self.logger.info(f"[usbip-server] Setting line coding")
+                        self.logger.info("[usbip-server] Setting line coding")
                         transfer_buffer = bytes()
                     elif urb_setup.request == URBCDCRequestType.SET_CONTROL_LINE_STATE:
-                        self.logger.info(f"[usbip-server] Setting control line state")
+                        self.logger.info("[usbip-server] Setting control line state")
                         transfer_buffer = bytes()
 
                     if transfer_buffer is not None:
                         ret_submit = USBIP_RET_SUBMIT(status=0, transfer_buffer=transfer_buffer, seqnum=cmd_submit.seqnum)
                         response: bytes = ret_submit.pack()
-                        self.logger.info(f"[usbip-server] #{ret_submit.seqnum},{ret_submit.actual_length=}, {len(response)=} {response.hex()=}")
+                        self.logger.info(f"[usbip-server] #{ret_submit.seqnum},{ret_submit.actual_length=}, "
+                                         f"{len(response)=} {response.hex()=}")
                         return response
 
             # device not found, return error
@@ -589,12 +599,18 @@ class MockUSBIP:
                     was_already_attached: bool = device.attach  # attach the device (returns previous state
                     if was_already_attached:
                         self.logger.warning(f"[usbip-server]Device is already attached! {str(device)}")
-                    rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=0, path=path.path, busid=req_import.busid, busnum=path.busnum,
-                                                              devnum=path.devnum, speed=path.speed, idVendor=path.idVendor,
-                                                              idProduct=path.idProduct, bcdDevice=path.bcdDevice,
-                                                              bDeviceClass=path.bDeviceClass, bDeviceSubClass=path.bDeviceSubClass,
-                                                              bDeviceProtocol=path.bDeviceProtocol, bConfigurationValue=path.bConfigurationValue,
-                                                              bNumConfigurations=path.bNumConfigurations, bNumInterfaces=path.bNumInterfaces)
+                    rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=0, path=path.path,
+                                                              busid=req_import.busid, busnum=path.busnum,
+                                                              devnum=path.devnum, speed=path.speed,
+                                                              idVendor=path.idVendor,
+                                                              idProduct=path.idProduct,
+                                                              bcdDevice=path.bcdDevice,
+                                                              bDeviceClass=path.bDeviceClass,
+                                                              bDeviceSubClass=path.bDeviceSubClass,
+                                                              bDeviceProtocol=path.bDeviceProtocol,
+                                                              bConfigurationValue=path.bConfigurationValue,
+                                                              bNumConfigurations=path.bNumConfigurations,
+                                                              bNumInterfaces=path.bNumInterfaces)
                     data: bytes = rep_import.pack()
                     client.sendall(data)
                     client.busid = path.busid
@@ -620,7 +636,7 @@ class MockUSBIP:
                 read_sockets, _, _ = select.select(rlist, [], [])
                 for socket_read in read_sockets:
                     if socket_read == self._wakeup.listener:  # time to bail
-                        self.logger.info(f"[usbip-server]Wakeup!")
+                        self.logger.info("[usbip-server]Wakeup!")
                         raise OrderlyExit("wakeup!")
                     elif socket_read == self.server_socket:  # someone is knocking
                         self.logger.info(f"[usbip-server] wait_for_message(): accept() {self.server_socket=}")
@@ -653,7 +669,8 @@ class MockUSBIP:
                     if urb_cmd.transfer_buffer_length and urb_cmd.direction == Direction.USBIP_DIR_OUT else b''
                 return client, message + transfer_buffer
             except OSError:
-                self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, {urb_cmd.transfer_buffer_length=}, {message.hex()=}")
+                self.logger.error(f"Timeout, {BasicCommands(urb_cmd.command).name}, {len(message)=}, "
+                                  f"{urb_cmd.transfer_buffer_length=}, {message.hex()=}")
                 raise
         elif message:  # USBIP command traffic
             usbip_cmd: CommonHeader = CommonHeader.unpack(message)
@@ -692,7 +709,7 @@ class MockUSBIP:
         except OSError as os_error:
             failure: str = traceback.format_exc()
             self.logger.error(f"[usbip-server] Exception {str(os_error)}\n{failure=}")
-        except Exception as bad_error:
+        except Exception as bad_error:  # pylint: disable=broad-exception-caught
             failure: str = traceback.format_exc()
             self.logger.error(f"[usbip-server] Exception = {str(bad_error)}\n{failure=}")
         except OrderlyExit:
@@ -708,7 +725,7 @@ class MockUSBIP:
         devlist_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])
         devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]
         paths: list[OP_REP_DEV_PATH] = []
-        for device_index in range(0, devlist_header.num_exported_devices):
+        for _ in range(0, devlist_header.num_exported_devices):
             path: OP_REP_DEV_PATH = OP_REP_DEV_PATH.unpack(devices)
             paths.append(path)
             devices = devices[OP_REP_DEV_PATH.size:]

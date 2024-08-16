@@ -14,15 +14,15 @@ class TestStats(CommonTestBase):
         stats: USBStats = USBStats()
 
         for _ in range(10):
-            with USBStatsManager(stats, 'sleep') as sleep_stats:
+            with USBStatsManager(stats, 'sleep'):
                 sleep(0.01)
 
         for _ in range(10):
-            with USBStatsManager(stats, 'sleep') as sleep_stats:
+            with USBStatsManager(stats, 'sleep'):
                 sleep(0.02)
 
         for _ in range(10):
-            with USBStatsManager(stats, 'sleep-longer') as sleep_stats:
+            with USBStatsManager(stats, 'sleep-longer'):
                 sleep(0.03)
 
         self.assertEqual(len(stats.raw_data('sleep')), 20)

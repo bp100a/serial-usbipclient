@@ -1,3 +1,4 @@
+"""test the definitions"""
 #
 # Copyright (c) 2024 Altai Technologies, LLC
 # Author: Harry Collins

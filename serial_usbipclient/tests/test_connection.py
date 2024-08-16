@@ -1,3 +1,4 @@
+"""test connection to usbip server"""
 import os
 from time import sleep
 from typing import Optional

@@ -4,7 +4,6 @@ import logging
 import os
 from typing import Optional
 
-import serial_usbipclient.usbip_client
 from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
 
@@ -124,7 +123,8 @@ class TestReadWrite(CommonTestBase):
         self.assertEqual(str(error), 'Timeout error, timeout=0.2, request=0102, size=3')
 
         error = USBAttachError(detail='a failure', an_errno=errno.EPIPE)
-        self.assertEqual(str(error), "a failure, self.errno=32/EPIPE, The pipe type specified in the URB doesn't match the endpoint’s actual type.")
+        self.assertEqual(str(error), "a failure, self.errno=32/EPIPE, "
+                                     "The pipe type specified in the URB doesn't match the endpoint’s actual type.")
 
     def test_hardware_id_formatting(self):
         """simple test to get coverage on the HardwareID"""

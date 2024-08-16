@@ -25,7 +25,7 @@ class TestPacketGeneration(CommonTestBase):
     """test packet generation using py-datastruct"""
 
     @dataclass
-    class MockUSBIP_Connection(USBIP_Connection):
+    class MockUSBIP_Connection(USBIP_Connection):  # pylint: disable=invalid-name
         """mock the USBIP Connection for testing"""
 
         def __init__(self, **kwargs):

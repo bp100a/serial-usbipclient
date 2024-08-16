@@ -1,4 +1,4 @@
-
+"""test the URB descriptors"""
 from common_test_base import CommonTestBase
 
 import serial_usbipclient.protocol.urb_packets as urb

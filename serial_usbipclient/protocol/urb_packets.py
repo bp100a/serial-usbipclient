@@ -21,6 +21,8 @@ from serial_usbipclient.protocol.usbip_protocol import (
     URBStandardInterfaceRequest,
 )
 
+# pylint: disable=invalid-name
+
 
 @dataclass
 class BaseDescriptor(URBBase):
@@ -56,8 +58,9 @@ class DeviceDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/moment
 
 
 @dataclass
-class ConfigurationDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_configuration_descriptor.html
+class ConfigurationDescriptor(BaseDescriptor):
     """URB configuration descriptor"""
+    # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_configuration_descriptor.html
     wTotalLength: int = field("H", default=0x0)
     bNumInterfaces: int = field("B", default=0x0)
     bConfigurationValue: int = field("B", default=0x0)
@@ -76,10 +79,10 @@ class ConfigurationDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx
         return len({item.bInterfaceNumber: item for item in self.interfaces})
 
 
-
 @dataclass
-class InterfaceDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_interface_descriptor.html
+class InterfaceDescriptor(BaseDescriptor):
     """interface descriptor"""
+    # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_interface_descriptor.html
     bInterfaceNumber: int = field("B", default=0x0)
     bAlternateSetting: int = field("B", default=0x0)
     bNumEndpoints: int = field("B", default=0x0)
@@ -168,8 +171,9 @@ class CallManagementFunctionalDescriptor(FunctionalDescriptor):
 
 
 @dataclass
-class EndPointDescriptor(BaseDescriptor):  # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_endpoint_descriptor.html
+class EndPointDescriptor(BaseDescriptor):
     """Endpoint descriptor packet"""
+    # https://www.mikecramer.com/qnx/momentics_nc_docs/ddk_en/usb/usbd_endpoint_descriptor.html
     bEndpointAddress: int = field("B", default=0x0)
     bmAttributes: int = field("B", default=0x0)
     wMaxPacketSize: int = field("H", default=0x0)
@@ -228,23 +232,21 @@ class GenericDescriptor:
             DescriptorType.STRING_DESCRIPTOR: self._string_handler,
         }
 
-    def _configuration_handler(
-        self, data: bytes, length: int
-    ) -> ConfigurationDescriptor:
+    def _configuration_handler(self, data: bytes, length: int) -> ConfigurationDescriptor:  # pylint: disable=unused-argument
         """handle Configuration descriptors"""
         configuration_desc: ConfigurationDescriptor = ConfigurationDescriptor.unpack(data)
         offset: int = configuration_desc.size
-        interface_desc_size: int = InterfaceDescriptor.size
+        interface_desc_size: int = InterfaceDescriptor.size  # pylint: disable=comparison-with-callable
         idx_interface: int = 0
         while idx_interface < configuration_desc.bNumInterfaces:
-            if len(data[offset:]) < BaseDescriptor.size:
+            if len(data[offset:]) < BaseDescriptor.size:  # pylint: disable=comparison-with-callable
                 break
             desc_type: DescriptorType = self._descriptor_type(data[offset:])
             if desc_type == DescriptorType.INTERFACE_ASSOCIATION:
                 offset += InterfaceAssociation.size
             elif desc_type == DescriptorType.INTERFACE_DESCRIPTOR:
                 idx_interface += 1
-                if len(data[offset:]) >= interface_desc_size:
+                if len(data[offset:]) >= interface_desc_size:  # pylint: disable=comparison-with-callable
                     interface_desc: InterfaceDescriptor = self._interface_handler(data[offset:], length=interface_desc_size)
                     configuration_desc.interfaces.append(interface_desc)
                     offset += interface_desc.size + sum(item.size for item in interface_desc.descriptors)
@@ -278,7 +280,7 @@ class GenericDescriptor:
         base_desc: BaseDescriptor = BaseDescriptor.new(data[: BaseDescriptor().size])
         return DescriptorType(base_desc.bDescriptorType)
 
-    def _interface_handler(self, data: bytes, length) -> InterfaceDescriptor | InterfaceAssociation:
+    def _interface_handler(self, data: bytes, length) -> InterfaceDescriptor | InterfaceAssociation:  # pylint: disable=unused-argument
         """handle interface descriptors"""
         interface_desc: InterfaceDescriptor = InterfaceDescriptor.unpack(data)
         offset: int = interface_desc.size
@@ -316,7 +318,7 @@ class GenericDescriptor:
 
         return func_desc
 
-    def _string_handler(self, data: bytes, length: int) -> StringDescriptor:
+    def _string_handler(self, data: bytes, length: int) -> StringDescriptor:  # pylint: disable=unused-argument
         """handle string descriptors"""
         str_desc: StringDescriptor = StringDescriptor.unpack(data)
         return str_desc
@@ -355,7 +357,7 @@ class UrbSetupPacket(URBBase):
         return Direction.USBIP_DIR_IN  # device -> host (READ)
 
     @property
-    def bRequest(self) -> str:
+    def bRequest(self) -> str:  # pylint: disable=invalid-name
         """return a string representing the request this setup packet represents"""
         try:
             return URBStandardDeviceRequest(self.request).name
@@ -374,7 +376,7 @@ class UrbSetupPacket(URBBase):
             return DescriptorType.INVALID_DESCRIPTOR
 
     @property
-    def wValue(self) -> str:
+    def wValue(self) -> str:  # pylint: disable=invalid-name
         """return a string represent the value that is contextually aware"""
         if self.bRequest == URBStandardDeviceRequest.GET_DESCRIPTOR.name:
             # wValue = Descriptor Type & Index

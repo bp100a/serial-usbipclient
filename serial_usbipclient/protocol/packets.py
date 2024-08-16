@@ -14,11 +14,17 @@ from datastruct.utils.config import (
 
 from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
 
+# pylint suppression rational:
+# ===========================
+#  - names are chosen to match USB/URB conventional naming
+#  - long lines for comments
+# pylint: disable=invalid-name, line-too-long
+
 
 class MetaStruct(type):
     """holds class property"""
     @classmethod
-    def packet_size(cls):
+    def packet_size(mcs):
         """compute the packet size"""
         return 0
 

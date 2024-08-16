@@ -4,7 +4,7 @@ import os
 from socket import AF_INET, SHUT_RDWR, SOCK_STREAM, socket
 
 from common_test_base import CommonTestBase
-from mock_usbip import MockUSBDevice, MockUSBIP, Parse_lsusb
+from mock_usbip import MockUSBDevice, MockUSBIP, ParseLSUSB
 
 from serial_usbipclient.usbip_client import USBIPClient
 
@@ -61,6 +61,7 @@ class TestMockUSBIPServer(CommonTestBase):
         port: int = 3240 + self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
         server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
         paths: list = server.read_paths()
+        self.assertEqual(2, len(paths))
 
 
 class TestDeviceConfiguration(CommonTestBase):
@@ -68,7 +69,7 @@ class TestDeviceConfiguration(CommonTestBase):
     def test_lsusb_parsing(self):
         """test parsing the lsusb output file"""
         error: list[str] = []
-        lsusb_parsed: Parse_lsusb = Parse_lsusb(self.logger)
+        lsusb_parsed: ParseLSUSB = ParseLSUSB(self.logger)
         self.assertTrue(lsusb_parsed)
         self.assertTrue(lsusb_parsed.devices)  # we have a device descriptor
         for usb in lsusb_parsed.devices:
@@ -82,7 +83,7 @@ class TestDeviceConfiguration(CommonTestBase):
 
     def test_usbip_path(self):
         """test we generate a USBIP path for our devices"""
-        parsed_devices: Parse_lsusb = Parse_lsusb(self.logger)
+        parsed_devices: ParseLSUSB = ParseLSUSB(self.logger)
         devices: MockUSBDevice = MockUSBDevice(parsed_devices.devices)
         devices.setup()  # create our USBIP protocol image
         response: bytes = devices.pack()
