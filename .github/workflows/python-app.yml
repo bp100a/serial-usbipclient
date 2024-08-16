@@ -43,7 +43,7 @@ jobs:
         pip install -r tool_requirements.txt
     - name: lint
       run: |
-        pylint *.py
+        pylint serial_usbipclient/*
     - name: Test & generate coverage
       run: |
         chmod +x run_pytest.sh
