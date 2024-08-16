@@ -50,7 +50,7 @@ class TestMockUSBIPServer(CommonTestBase):
         client.connect_server()
         published = client.list_published()
         self.assertTrue(published.paths)
-        self.assertEqual(len(published.paths), 3)  # should be 2 paths
+        self.assertEqual(len(published.paths), 4)  # should be 4 paths
 
         client.shutdown()
         server.shutdown()

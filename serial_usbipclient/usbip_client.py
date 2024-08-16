@@ -917,14 +917,22 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             self.shutdown_connection(connection)
 
     def is_device(self, usb: USBIP_Connection, path: OP_REP_DEV_PATH) -> bool:
-        """determine if the path is the device we want to reconnect to"""
-        if usb.busnum == path.busnum and usb.devnum == path.devnum:
-            return True
+        """
+        Determine if the lost USB connection is in the USBIPD server's published list of
+        devices (paths).
+        :param usb: usb connection that was "lost"
+        :type usb: USBIP device connection context
+        :param path: list of USB devices published by the USBIPD server
+        :type path:
+        :return: =True, lost connection "found" in current path, =False, try another path
+        :rtype: bool
+        """
+        # The connection to the usb device has been lost. Check the path to see if this
+        # matches the usb device we are looking to restore
 
-        # if the device is plugged into a different USB receptacle, it's bus/dev information
-        # will change, but it's pid/vid will not. Since its possible to have
-        # multiple devices with the same pid/vid, discard paths that map existing connections.
         for current_connection in self._connections:
+            if current_connection.busnum == usb.busnum and current_connection.devnum == usb.devnum:
+                continue
             if current_connection.busnum == path.busnum and current_connection.devnum == path.devnum:
                 return False  # path matches an existing connection
 

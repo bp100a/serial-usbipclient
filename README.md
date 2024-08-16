@@ -40,10 +40,10 @@ connections[0].response_data(size=0)  # reads until delimiter
 ```
 
 ## SOUP
-| Module          | Version | comments                                    |
-|-----------------|---------|---------------------------------------------|
-| Python          | 3.12    | Python interpreter                          |
-| py-datastruct   | 1.0.0   | Serialization of binary to/from dataclasses |
+| Module          | Version    | comments                                    |
+|-----------------|------------|---------------------------------------------|
+| Python          | 3.11, 3.12 | Python interpreter                          |
+| py-datastruct   | 1.0.0      | Serialization of binary to/from dataclasses |
 
 
 ## Useful Resources
@@ -58,10 +58,11 @@ Just capture the output of the `lsusb` command and save with the `.lsusb` suffix
 ```text
 1-1.lsusb
 1-2.lsusb
-2-1.lsusb
+1-3.lsusb
+99-99.lsusb
 ```
-Would result in 3 devices with busid values of `1-1`, `1-2` and `2-1`. Please note the file `99-99.lsusb` is reserved to provide a device to generate
-failing USBIPD attachments.
+Would result in 4 devices with busid values of `1-1`, `1-2`, `1-3` and `99-99`. Please note the file `99-99.lsusb` is reserved to provide a device to generate
+failing USBIPD attachments, and `1-2` & `1-3` have the same VID/PID (for testing multiple identical device connections).
 
 During testing, the `MockUSBIP` service acts as a stand-in for an actual USBIP server. Since the tests are run in parallel, 
 the port on which the service listens must be unique for each unit test. This is accomplished by the `conftest.py::pytest_sessionstart` which is run
