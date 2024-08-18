@@ -495,6 +495,21 @@ class MockUSBIP:
         self.logger.info(f"[usbip-server] unlink #{cmd_unlink.unlink_seqnum} for {busnum}-{devnum}")
         return ret_unlink.pack()
 
+    def generate_mock_response(self, usb: MockDevice, request: CMD_SUBMIT) -> bytes:
+        """create a mocked response"""
+        ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=request.seqnum, transfer_buffer=bytes())
+        response: bytes = ret_submit.pack()
+        queued_read: CMD_SUBMIT = usb.dequeue_read(seq=0)  # get the first one available
+
+        # we can send behavioral messages over as JSON
+        if request.transfer_buffer.startswith(b'{'):
+            cmd: dict = json.loads(request.transfer_buffer.decode('utf-8'))
+            self.logger.info(f"[usbip-server] tunneled command: {cmd=}")
+
+        ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=queued_read.seqnum, transfer_buffer=request.transfer_buffer)
+        self.logger.info("[usbip-server] generate_mock_response()")
+        return response + ret_submit.pack()  # send the read values back immediately
+
     def mock_urb_responses(self, client: USBIPClient, message: bytes) -> bytes:
         """return URB packets"""
         urb_header: HEADER_BASIC = HEADER_BASIC.unpack(message)
@@ -504,6 +519,8 @@ class MockUSBIP:
         if urb_header.command == BasicCommands.CMD_SUBMIT:
             cmd_submit: CMD_SUBMIT = CMD_SUBMIT.unpack(message)
             if cmd_submit.ep and cmd_submit.direction == Direction.USBIP_DIR_IN:  # a read is being issued
+                # mock the read. Reads are "pending", a URB is queued and returned when the device has
+                # data to return to the host.
                 busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
                 usb: MockDevice = self.usb_devices.device(busnum, devnum)
                 usb.enqueue_read(cmd_submit)  # associate this read with the device it's intended
@@ -511,16 +528,13 @@ class MockUSBIP:
                                  f"for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
                 return bytes()  # there is no response (yet!)
             if cmd_submit.ep and cmd_submit.direction == Direction.USBIP_DIR_OUT:  # write to the device
+                # mock the writing of the device. For now returns an "echo" of what was written as the
+                # URB response.
                 busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
                 usb: MockDevice = self.usb_devices.device(busnum, devnum)
                 self.logger.info(f"[usbip-server] device write #{cmd_submit.seqnum} "
                                  f"for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
-                ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=cmd_submit.seqnum, transfer_buffer=bytes())
-                response: bytes = ret_submit.pack()
-                queued_read: CMD_SUBMIT = usb.dequeue_read(seq=0)  # get the first one available
-                ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=queued_read.seqnum, transfer_buffer=cmd_submit.transfer_buffer)
-                self.logger.info("[usbip-server] ")
-                return response + ret_submit.pack()  # send the read values back immediately
+                return self.generate_mock_response(usb, cmd_submit)
 
             urb_setup: UrbSetupPacket = UrbSetupPacket.unpack(cmd_submit.setup)
             self.logger.info(f"[usbip-server] Setup flags: {str(urb_setup)}\n{client.busid.hex()=}")

@@ -136,3 +136,16 @@ class TestReadWrite(CommonTestBase):
         self._connect()  # first connect as usual
         with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='Devices not found'):
             self.client.attach(devices=[HardwareID(pid=0, vid=0)], published=None)
+
+    def test_write_json(self):
+        """test we can read with a delimiter"""
+        usb: USBIP_Connection = self._connect()
+        test_data: list[str] = ['{"CMD": "RESET"}\r\n']
+        errors: list[str] = []
+        for data in test_data:
+            self.client.send(usb=usb, data=data)  # send URB writing data to device
+            response: bytes = usb.response_data(size=0)  # wait for delimiter
+            if data != response.decode('utf-8'):
+                errors.append(f"{data.encode('utf-8').hex()=} != {response.hex()=}")
+
+        self.assertFalse(errors)  # all data responses should match

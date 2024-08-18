@@ -432,18 +432,14 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     URB_QUEUE_MIN: int = 10
     URB_QUEUE_MAX: int = 50
 
-    def __init__(self, remote: tuple[str, int],
-                 command_timeout: float = PAYLOAD_TIMEOUT,
-                 logger: Optional[logging.Logger] = None):
+    def __init__(self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT, logger: Optional[logging.Logger] = None):
         """establish connection to server for devices"""
         # Note: in docker the host/port will most likely be `host.docker.internal:3420`
         self._host: str = remote[0]
         self._port: int = remote[1]
         self._socket: Optional[socket.socket] = None
         self._connections: list[USBIP_Connection] = []  # track our attachments
-        self._socket_timeout: Optional[float] = (
-            0.005  # timeout on waiting for a "receive" from the socket (transactions)
-        )
+        self._socket_timeout: Optional[float] = 0.005  # timeout on waiting for a "receive" from the socket (transactions)
         self._stats: USBStats = USBStats()
         self._command_timeout: float = command_timeout
         self._logger: Optional[logging.Logger] = logger if logger else logging.getLogger(__name__)
@@ -949,12 +945,10 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         published: OP_REP_DEVLIST_HEADER = self.list_published()
         self.disconnect_server()  # disconnect the socket
         for path in published.paths:
-            if self.is_device(usb=lost_usb, path=path):
-                # device has returned! we can re-establish a link to it
-                device: HardwareID = lost_usb.device
+            if self.is_device(usb=lost_usb, path=path):  # device has returned! we can re-establish a link to it
                 try:
                     response: OP_REP_IMPORT = self.import_device(busid=path.busid)
-                    usb: USBIP_Connection = self.create_connection(device, response)
+                    usb: USBIP_Connection = self.create_connection(lost_usb.device, response)
                     self.setup(usb=usb)  # get configuration & all that
                     return usb
                 except USBAttachError as device_error:
@@ -964,7 +958,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     return None
                 except ValueError as attach_error:
                     raise ValueError(
-                        f"Attach error for vid:0x{device.vid:04x}, pid:0x{device.pid:04x}, "
+                        f"Attach error for vid:0x{lost_usb.device.vid:04x}, pid:0x{lost_usb.device.pid:04x}, "
                         f"busid={path.busnum}-{path.devnum} @{self._host}:{self._port}"
                     ) from attach_error
         self._logger.warning(f"timed out restoring connection {lost_usb.devid:04x}")
