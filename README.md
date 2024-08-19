@@ -2,18 +2,24 @@
 ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/python-app.yml/badge.svg?branch=develop)</br>
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue)</br>
 ![coverage badge](./coverage.svg)</br>
+
+## Overview
 This package supports connecting to a CDC (serial) USB device exposed by a USBIPD server. USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
-The protocol specification can be found [here](https://docs.kernel.org/usb/usbip_protocol.html), a local copy is [USBIP.pdf](usb_usbip_protocol.pdf)
+The protocol specification can be found [here](https://docs.kernel.org/usb/usbip_protocol.html), a local copy is [USBIP.pdf](usb_usbip_protocol.pdf). This package should be capable of running on any system that supports Python.
 
 There are some issues sharing USB devices to docker containers, a major one being if the USB connection is lost
 it is difficult to recover the connection between the docker container and the hosting server.
 
-Here's a [link](https://marc.merlins.org/perso/linux/post_2018-12-20_Accessing-USB-Devices-In-Docker-_ttyUSB0_-dev-bus-usb-_-for-fastboot_-adb_-without-using-privileged.html
-) that discusses this issue and another solution.
+Here's a [link](https://marc.merlins.org/perso/linux/post_2018-12-20_Accessing-USB-Devices-In-Docker-_ttyUSB0_-dev-bus-usb-_-for-fastboot_-adb_-without-using-privileged.html) that discusses this issue and another solution.
 
 The USBIP client implementation will only address USB devices that implemented the CDC protocol, basically simple
-serial devices. This allows for a simple connection to the USBIP server without the need for mapping USB devices into
+serial devices. This allows for a direction connection to the USBIP server without the need for mapping USB devices into
 the container.
+
+* Project Homepage: https://github.com/bp100a/serial-usbipclient
+
+## Installation
+`pip install serial-usbipclient` should work for most users.
 
 ## Usage
 
