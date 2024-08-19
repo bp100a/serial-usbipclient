@@ -678,10 +678,15 @@ class MockUSBIP:
                         message: bytes = socket_read.recv(socket_read.size)
                         self.logger.info(f"[usbip-server] wait_for_message: {message.hex()=}")
                         return socket_read, message
+            except ValueError:
+                if self.server_socket.fileno() < 0:
+                    self.logger.warning(f"[usbip-server] server socket closed prior to exit")
+                else:
+                    raise  # something else, pass it on up
             except OSError as os_error:
                 self.logger.error(f"[usbip-server] wait_for_message: OSError: {str(os_error)}")
 
-        raise OrderlyExit("[usbip-server] wait_for_message(), event set!")
+        raise OrderlyExit("wait_for_message(), event set!")
 
     def read_message(self, client: Optional[USBIPClient] = None) -> tuple[USBIPClient, bytes]:
         """read a single message from the socket"""
@@ -739,9 +744,8 @@ class MockUSBIP:
         except Exception as bad_error:  # pylint: disable=broad-exception-caught
             failure: str = traceback.format_exc()
             self.logger.error(f"[usbip-server] Exception = {str(bad_error)}\n{failure=}")
-        except OrderlyExit:
-            # we are exiting as part of a shutdown
-            self.logger.info("[usbip-server] Orderly System Shutdown")
+        except OrderlyExit as exit_error:
+            self.logger.info(f"[usbip-server] Orderly System Shutdown ({str(exit_error)})")  # we are exiting as part of a shutdown
         finally:
             self.event.set()  # indicate we are exiting
             self.logger.info("[usbip-server] server stopped @%s:%s", self.host, self.port)
