@@ -509,12 +509,14 @@ class MockUSBIP:
         # we can send behavioral messages over as JSON
         if request.transfer_buffer.startswith(b'{'):
             cmd: dict = json.loads(request.transfer_buffer.decode('utf-8'))
-            self.logger.info(f"[usbip-server] tunneled command: {cmd=}")
-            if cmd.get('cmd', '') in MockUSBIP.DebugCommands:
-                if MockUSBIP.DebugCommands.NO_WRITE_RESPONSE == cmd['cmd']:
-                    return bytes()  # no RET_SUBMIT response, write will fail
-                elif MockUSBIP.DebugCommands.NO_READ_RESPONSE == cmd['cmd']:
-                    return response  # no expected echo of write data, so subsequent read fails
+            debug_command: str = cmd.get('cmd', '')
+            self.logger.info(f"[usbip-server] tunneled command: {debug_command}")
+            if debug_command == MockUSBIP.DebugCommands.NO_WRITE_RESPONSE:
+                self.logger.info("[usbip-server] no-write-response, expect TimeoutError")
+                return bytes()  # no RET_SUBMIT response, write will fail
+            elif debug_command == MockUSBIP.DebugCommands.NO_READ_RESPONSE:
+                self.logger.info("[usbip-server] no-read-response, expect TimeoutError")
+                return response  # no expected echo of write data, so subsequent read fails
 
         ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=queued_read.seqnum, transfer_buffer=request.transfer_buffer)
         self.logger.info("[usbip-server] generate_mock_response()")
