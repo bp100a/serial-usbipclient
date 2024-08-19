@@ -3,7 +3,6 @@
 # https://docs.kernel.org/usb/usbip_protocol.html
 
 import errno
-import struct
 from enum import IntEnum
 from os import strerror
 
