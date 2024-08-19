@@ -21,9 +21,9 @@ class TestReadWrite(CommonTestBase):
         super().__init__(methodName)
 
         # this is the 8.8 inch Turing smart screen (CPU monitor)
-        self.vid: int = 0x525  # Netchip Technology, Inc.
-        self.pid: int = 0xA4A7 # Linux-USB Serial Gadget (CDC ACM mode)
-        self.hardware_id: HardwareID = HardwareID(vid=self.vid, pid=self.pid)
+        vid: int = 0x525  # Netchip Technology, Inc.
+        pid: int = 0xA4A7 # Linux-USB Serial Gadget (CDC ACM mode)
+        self.hardware_id: HardwareID = HardwareID(vid=vid, pid=pid)
 
     def setUp(self):
         """set up our connection test"""
@@ -101,6 +101,14 @@ class TestReadWrite(CommonTestBase):
 
         self.assertFalse(errors)  # all data responses should match
 
+    def test_readline_timeout(self):
+        """test we can read delimited strings"""
+        usb: USBIP_Connection = self._connect()
+        command: str = '{"cmd": "no-read-response"}\r\n'
+        self.client.send(usb=usb, data=command)  # send URB writing data to device
+        with self.assertRaisesRegex(expected_exception=USBIPResponseTimeoutError, expected_regex='Timeout error'):
+            USBIPClient.readline(usb)  # wait for delimiter
+
     def test_read_timeout(self):
         """test we time out on empty reads"""
         usb: USBIP_Connection = self._connect()
@@ -149,3 +157,15 @@ class TestReadWrite(CommonTestBase):
         self.client.send(usb=usb, data=command)  # send URB writing data to device
         with self.assertRaisesRegex(expected_exception=USBIPResponseTimeoutError, expected_regex='Timeout error'):
             usb.response_data(size=len(command))  # there should be no response (suppressed)
+
+    def test_failed_attachment(self):
+        """handle failure to attach"""
+        self.hardware_id = HardwareID(vid=0x8087, pid=0x0aa7) # busid 99-99, usbip server will fail
+        with self.assertRaisesRegex(expected_exception=USBAttachError, expected_regex='Error attaching to device'):
+            self._connect()
+
+    def test_configuration(self):
+        """test the configuration was properly returned"""
+        usb: USBIP_Connection = self._connect()
+        self.assertEqual(1, len(usb.device_desc.configurations))
+        self.assertEqual(2, usb.configuration.bNumInterfaces)

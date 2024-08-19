@@ -71,7 +71,7 @@ is used to determine the offset to be added to the port base (typically **3240**
 
 
 ## Tooling
-This package was created using JetBrains PyCharm IDE, the repository does not contain any IDE specific files.
+This package was created using JetBrains PyCharm Professional IDE, the repository does not contain any IDE specific files.
 
 ### Packages required to run tests
 | Module         | Version | comments                                           |

@@ -623,9 +623,10 @@ class MockUSBIP:
                 if path.busid == req_import.busid:
                     device: MockDevice = self.usb_devices.device(busnum=path.busnum, devnum=path.devnum)
                     was_already_attached: bool = device.attach  # attach the device (returns previous state
+                    status: int = errno.ENODEV if device.devnum == 99 and device.busnum == 99 else 0
                     if was_already_attached:
                         self.logger.warning(f"[usbip-server]Device is already attached! {str(device)}")
-                    rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=0, path=path.path,
+                    rep_import: OP_REP_IMPORT = OP_REP_IMPORT(status=status, path=path.path,
                                                               busid=req_import.busid, busnum=path.busnum,
                                                               devnum=path.devnum, speed=path.speed,
                                                               idVendor=path.idVendor,

@@ -27,7 +27,7 @@ from .protocol.packets import (
     OP_REQ_DEVLIST,
     OP_REQ_IMPORT,
     RET_SUBMIT_PREFIX,
-    RET_UNLINK,
+    RET_UNLINK, CommonHeader,
 )
 from .protocol.urb_packets import (
     ConfigurationDescriptor,
@@ -40,7 +40,6 @@ from .protocol.urb_packets import (
 # enums needed for USBIP and URBs
 from .protocol.usb_descriptors import DescriptorType, DeviceInterfaceClass
 from .protocol.usbip_defs import (  # just the basics
-    BaseProtocolPacket,
     BasicCommands,
     CDCControl,
     Direction,
@@ -236,6 +235,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     @configuration.setter
     def configuration(self, configuration: ConfigurationDescriptor) -> None:
         """set the configuration to the device, locate endpoints"""
+        if configuration not in self._device.configurations:
+            self._device.configurations.append(configuration)
         self._configuration = configuration
         for interface in self._configuration.interfaces:
             if interface.interface_class == DeviceInterfaceClass.CDC_DATA.value:
@@ -349,7 +350,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
         header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
         if header.command == BasicCommands.RET_SUBMIT:  # this is a return from a submit
-            expected_size: int = RET_SUBMIT_PREFIX().size - len(header_data)
+            expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)
             if expected_size:  # if there's more data, read it in
                 with USBStatsManager(self._stats, name="USBIP_Connection.usbip_prefix"):
                     prefix_data: bytes = header_data + USBIPClient.readall(expected_size, self)
@@ -570,15 +571,15 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self.set_tcp_nodelay()
 
         self.usbipd.sendall(request)
-        data: bytes = self.readall(BaseProtocolPacket().size, self.usbipd, timeout=self.USBIP_TIMEOUT)
-        base_response: BaseProtocolPacket = BaseProtocolPacket.new(data=data)
+        data: bytes = self.readall(CommonHeader.size, self.usbipd, timeout=self.USBIP_TIMEOUT)
+        base_response: CommonHeader = CommonHeader.new(data=data)
         if base_response.status != Status.SUCCESS:
             raise USBAttachError("Error attaching to device", an_errno=base_response.status)
 
         more_data: bytes = bytes()
         start_time: float = time()
         while not more_data and time() - start_time < 1.0:
-            more_data += self.readall(OP_REP_IMPORT().size - BaseProtocolPacket().size, self.usbipd)
+            more_data += self.readall(OP_REP_IMPORT.size - CommonHeader.size, self.usbipd)
 
         self._logger.debug(f"[usbip-client] OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
         return OP_REP_IMPORT.unpack(data + more_data)
@@ -638,7 +639,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def set_line_coding(self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection) -> None:
         """set line coding"""
         self.send_setup(setup=setup, usb=usb, data=data)
-        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX().size, usb)
+        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
         if prefix.status != 0:
             raise ValueError(f"set_line_coding failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
@@ -781,7 +782,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self.set_line_control_state(usb=usb)
 
     def attach(self, devices: list[HardwareID], published: Optional[OP_REP_DEVLIST_HEADER] = None) -> None:
-        """attach to the specified devices"""
+        """attach to all instances specified devices"""
         # find the 'busid' for devices we want to attach to
         self.disconnect_server()  # ensure we start with a clean connection
         if published is None:
