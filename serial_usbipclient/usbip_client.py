@@ -539,7 +539,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         except ConnectionError as connection_error:
             raise USBConnectionLostError(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
         except OSError as os_error:
-            if type(os_error) == TimeoutError:
+            if isinstance(os_error, TimeoutError):
                 raise USBIPResponseTimeoutError(size=size, timeout=timeout) from os_error
             raise USBConnectionLostError(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, {str(os_error)}",
                                          connection=usb) from os_error
