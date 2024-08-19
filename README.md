@@ -1,9 +1,7 @@
-# USBIP Serial client
-![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/python-app.yml/badge.svg?branch=develop)</br>
-![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue)</br>
-![coverage badge](./coverage.svg)</br>
-
+# USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/python-app.yml/badge.svg?branch=develop) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![coverage badge](./coverage.svg)
+___
 ## Overview
+___
 This package supports connecting to a CDC (serial) USB device exposed by a USBIPD server. USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
 The protocol specification can be found [here](https://docs.kernel.org/usb/usbip_protocol.html), a local copy is [USBIP.pdf](usb_usbip_protocol.pdf). This package should be capable of running on any system that supports Python.
 
@@ -19,10 +17,11 @@ the container.
 * Project Homepage: https://github.com/bp100a/serial-usbipclient
 
 ## Installation
+___
 `pip install serial-usbipclient` should work for most users.
 
 ## Usage
-
+___
 ```python
 from serial_usbipclient.usbip_client import USBIPClient, HardwareID, USBIP_Connection
 
@@ -46,6 +45,7 @@ connections[0].response_data(size=0)  # reads until delimiter
 ```
 
 ## SOUP
+___
 | Module          | Version    | comments                                    |
 |-----------------|------------|---------------------------------------------|
 | Python          | 3.11, 3.12 | Python interpreter                          |
@@ -53,11 +53,13 @@ connections[0].response_data(size=0)  # reads until delimiter
 
 
 ## Useful Resources
+___
 For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network,
 there are usbipd-clients for Linux & [Windows](https://github.com/cezanne/usbip-win).
 
 
 ## Testing
+___
 A `MockUSBIP` service reads configuration information from the output of `lsusb` (e.g `lsusb -d 1f46:1b01 -v`). **MockUSBIP** will then play back this configuration.
 Just capture the output of the `lsusb` command and save with the `.lsusb` suffix in the test folder. The file name should be the `busnum`/`devnum` number.
 
@@ -77,9 +79,11 @@ is used to determine the offset to be added to the port base (typically **3240**
 
 
 ## Tooling
+___
 This package was created using JetBrains PyCharm Professional IDE, the repository does not contain any IDE specific files.
 
 ### Packages required to run tests
+___
 | Module         | Version | comments                                           |
 |----------------|---------|----------------------------------------------------|
 | pytest         | 8.3.2   | unit testing framework                             |
@@ -92,6 +96,7 @@ This package was created using JetBrains PyCharm Professional IDE, the repositor
 | pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
 
 ### Packages required publish to PyPi
+___
 | Module     | Version | comments                      |
 |------------|---------|-------------------------------|
 | setuptools | 72.1.0  | build system                  |
@@ -106,6 +111,7 @@ pip install -r tool_requirements.txt
 Tooling is not needed to run the package but is required for testing & packaging.
 
 ## Build Process
+___
 Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) package, read the docs [here](https://pip-tools.readthedocs.io/en/latest/)
 
 ```bash
