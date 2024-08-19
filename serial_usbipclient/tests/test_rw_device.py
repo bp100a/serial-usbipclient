@@ -104,10 +104,8 @@ class TestReadWrite(CommonTestBase):
     def test_read_timeout(self):
         """test we time out on empty reads"""
         usb: USBIP_Connection = self._connect()
-        # with self.assertRaisesRegex(expected_exception=TimeoutError, expected_regex='timeout'):
-        #     usb.response_data(size=12)  # shouldn't be any data for us, time out!
-        with self.assertRaisesRegex(expected_exception=USBConnectionLostError,
-                                    expected_regex='connection lost'):
+        with self.assertRaisesRegex(expected_exception=USBIPResponseTimeoutError,
+                                    expected_regex='Timeout error'):
             usb.response_data(size=12)  # shouldn't be any data for us, time out!
 
     def test_restore_connection(self):
@@ -137,15 +135,17 @@ class TestReadWrite(CommonTestBase):
         with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='Devices not found'):
             self.client.attach(devices=[HardwareID(pid=0, vid=0)], published=None)
 
-    def test_write_json(self):
+    def test_no_write_response(self):
         """test we can read with a delimiter"""
         usb: USBIP_Connection = self._connect()
-        test_data: list[str] = ['{"CMD": "RESET"}\r\n']
-        errors: list[str] = []
-        for data in test_data:
-            self.client.send(usb=usb, data=data)  # send URB writing data to device
-            response: bytes = usb.response_data(size=0)  # wait for delimiter
-            if data != response.decode('utf-8'):
-                errors.append(f"{data.encode('utf-8').hex()=} != {response.hex()=}")
+        command: str = '{"cmd": "no-write-response"}\r\n'
+        with self.assertRaisesRegex(expected_exception=USBIPResponseTimeoutError, expected_regex='Timeout error'):
+            self.client.send(usb=usb, data=command)  # send URB writing data to device
 
-        self.assertFalse(errors)  # all data responses should match
+    def test_no_read_response(self):
+        """test we can read with a delimiter"""
+        usb: USBIP_Connection = self._connect()
+        command: str = '{"cmd": "no-read-response"}\r\n'
+        self.client.send(usb=usb, data=command)  # send URB writing data to device
+        with self.assertRaisesRegex(expected_exception=USBIPResponseTimeoutError, expected_regex='Timeout error'):
+            usb.response_data(size=len(command))  # there should be no response (suppressed)

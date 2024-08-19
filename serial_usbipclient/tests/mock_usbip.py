@@ -11,7 +11,7 @@ import select
 import socket
 import struct
 import traceback
-from enum import EnumType
+from enum import EnumType, StrEnum
 from pathlib import Path
 from threading import Event, Thread
 from time import sleep, time
@@ -420,6 +420,11 @@ class MockUSBIP:
     """mock USBIP server"""
     STARTUP_TIMEOUT: float = 5.0
 
+    class DebugCommands(StrEnum):
+        """commands that are tunneled and their expected behavior"""
+        NO_WRITE_RESPONSE = 'no-write-response'  # write does not return acknowledgement
+        NO_READ_RESPONSE = 'no-read-response'  # suppress an expected read
+
     def __init__(self, host: str, port: int, logger: logging.Logger):
         """set up our instance"""
         self.host: str = host
@@ -505,6 +510,11 @@ class MockUSBIP:
         if request.transfer_buffer.startswith(b'{'):
             cmd: dict = json.loads(request.transfer_buffer.decode('utf-8'))
             self.logger.info(f"[usbip-server] tunneled command: {cmd=}")
+            if cmd.get('cmd', '') in MockUSBIP.DebugCommands:
+                if MockUSBIP.DebugCommands.NO_WRITE_RESPONSE == cmd['cmd']:
+                    return bytes()  # no RET_SUBMIT response, write will fail
+                elif MockUSBIP.DebugCommands.NO_READ_RESPONSE == cmd['cmd']:
+                    return response  # no expected echo of write data, so subsequent read fails
 
         ret_submit = USBIP_RET_SUBMIT(status=0, seqnum=queued_read.seqnum, transfer_buffer=request.transfer_buffer)
         self.logger.info("[usbip-server] generate_mock_response()")

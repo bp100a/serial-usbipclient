@@ -362,12 +362,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             # we need to check if the command was a CONTROL or INPUT endpoint, which will have
             # an additional set of payload data we need to read in.
             if prefix.seqnum in self._commands:
-                if (
-                    self._commands[prefix.seqnum].ep
-                    in [self.endpoint.control.number, self.endpoint.input.number]
-                    and self._commands[prefix.seqnum].direction
-                    == Direction.USBIP_DIR_IN
-                ):
+                if (self._commands[prefix.seqnum].ep in [self.endpoint.control.number, self.endpoint.input.number] and
+                        self._commands[prefix.seqnum].direction == Direction.USBIP_DIR_IN):
                     with USBStatsManager(self._stats, "USBIP_Connection.payload"):
                         payload = USBIPClient.readall(prefix.actual_length, self)
                 prefix.ep = self._commands[prefix.seqnum].ep  # makes correlation with endpoints easier
@@ -543,8 +539,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         except ConnectionError as connection_error:
             raise USBConnectionLostError(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
         except OSError as os_error:
-            raise USBConnectionLostError(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, "
-                                           f"{os.strerror}",
+            if type(os_error) == TimeoutError:
+                raise USBIPResponseTimeoutError(size=size, timeout=timeout) from os_error
+            raise USBConnectionLostError(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, {str(os_error)}",
                                          connection=usb) from os_error
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
