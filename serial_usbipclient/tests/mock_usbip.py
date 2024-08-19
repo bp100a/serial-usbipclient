@@ -680,7 +680,7 @@ class MockUSBIP:
                         return socket_read, message
             except ValueError:
                 if self.server_socket.fileno() < 0:
-                    self.logger.warning(f"[usbip-server] server socket closed prior to exit")
+                    self.logger.warning("[usbip-server] server socket closed prior to exit")
                 else:
                     raise  # something else, pass it on up
             except OSError as os_error:

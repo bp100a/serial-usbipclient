@@ -1,3 +1,4 @@
+"""definitions for serial-usbipclient interface"""
 from .usbip_client import *
 import version
 
