@@ -1,4 +1,4 @@
-USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/python-app.yml/badge.svg?branch=develop) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/cython) ![coverage badge](./coverage.svg)
+USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/python-app.yml/badge.svg?branch=develop) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/cython) ![coverage](https://raw.githubusercontent.com/bp100a/serial-usbipclient/51c0942d35dc104f3af654f12273496388be9919/coverage.svg)
 ========================================================================================================
 
 ___
