@@ -1,11 +1,18 @@
-from typing import Optional
-from tests.common_test_base import CommonTestBase
+"""test connection to usbip server"""
 import os
 from time import sleep
+from typing import Optional
 
-from protocol.packets import OP_REP_DEVLIST_HEADER
-from usbip_client import USBIPClient, HardwareID, USBAttachError, USBIP_Connection
-from tests.mock_usbip import MockUSBIP
+from common_test_base import CommonTestBase
+from mock_usbip import MockUSBIP
+
+from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
+from serial_usbipclient.usbip_client import (
+    HardwareID,
+    USBAttachError,
+    USBIP_Connection,
+    USBIPClient,
+)
 
 
 class TestUSBIPConnection(CommonTestBase):
@@ -18,7 +25,7 @@ class TestUSBIPConnection(CommonTestBase):
 
         # this is the 8.8 inch Turing smart screen (CPU monitor)
         self.vid: int = 0x525  # Netchip Technology, Inc.
-        self.pid: int = 0xA4A7 # Linux-USB Serial Gadget (CDC ACM mode)
+        self.pid: int = 0xA4A7  # Linux-USB Serial Gadget (CDC ACM mode)
         self.hardware_id: HardwareID = HardwareID(vid=self.vid, pid=self.pid)
 
     def setUp(self):
@@ -40,7 +47,7 @@ class TestUSBIPConnection(CommonTestBase):
         try:
             self.client.attach(devices=[self.hardware_id], published=published)
             connections: list[USBIP_Connection] = self.client.get_connection(device=self.hardware_id)
-            self.assertEqual(len(connections), 1)  # should be a single connection
+            self.assertEqual(len(connections), 2)  # 2 devices with same PID/VID is possible!
         except USBAttachError as a_error:
             self.logger.error(a_error.detail)
             raise
@@ -66,7 +73,7 @@ class TestUSBIPConnection(CommonTestBase):
         try:
             self.client.attach(devices=[self.hardware_id], published=published)
             connections: list[USBIP_Connection] = self.client.get_connection(device=self.hardware_id)
-            self.assertEqual(len(connections), 1)  # should be a single connection
+            self.assertEqual(len(connections), 2)  # should be 2 connections
             self.client.shutdown()  # shut it all down
         except USBAttachError as a_error:
             self.logger.error(a_error.detail)
@@ -79,7 +86,7 @@ class TestUSBIPConnection(CommonTestBase):
         try:
             self.client.attach(devices=[self.hardware_id], published=published)
             connections: list[USBIP_Connection] = self.client.get_connection(device=self.hardware_id)
-            self.assertEqual(len(connections), 1)  # should be a single connection
+            self.assertEqual(len(connections), 2)  # should be a single connection
             self.client.queue_urbs(usb=connections[0])
             sleep(1.0)
             self.client.shutdown()  # shut it all down

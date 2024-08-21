@@ -1,19 +1,30 @@
 """Definitions for USBIP protocol packets"""
 import struct
-from functools import lru_cache
 from dataclasses import dataclass
+from functools import lru_cache
 
 from datastruct import DataStruct
-from datastruct.fields import field, built
-from datastruct.utils.config import Endianness, datastruct_config, Config, datastruct_get_config
+from datastruct.fields import built, field
+from datastruct.utils.config import (
+    Config,
+    Endianness,
+    datastruct_config,
+    datastruct_get_config,
+)
 
-from usbip_defs import BasicCommands, Direction
+from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
+
+# pylint suppression rational:
+# ===========================
+#  - names are chosen to match USB/URB conventional naming
+#  - long lines for comments
+# pylint: disable=invalid-name, line-too-long
 
 
 class MetaStruct(type):
     """holds class property"""
     @classmethod
-    def packet_size(cls):
+    def packet_size(mcs):
         """compute the packet size"""
         return 0
 

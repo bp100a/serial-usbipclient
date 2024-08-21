@@ -1,13 +1,13 @@
 """setup for running tests"""
-import sys
 import json
 import os
-from subprocess import Popen, PIPE
+import sys
+from subprocess import PIPE, Popen
 
 
-def pytest_sessionstart(session):
+def pytest_sessionstart(session):  # pylint: disable=unused-argument
     """perform setup before any tests are run"""
-    print(f"Generating list of all tests to run for unique port assignment")
+    print("Generating list of all tests to run for unique port assignment")
     pytest_output: list[str] = []
     base_dir: str = os.path.join(os.path.dirname(__file__), '..')
     if 'collect-only' in "".join(sys.argv):  # avoid recursion

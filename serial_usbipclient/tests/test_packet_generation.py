@@ -1,23 +1,32 @@
 """test packet generation using py-datastruct"""
-from time import time
 from dataclasses import dataclass
+from time import time
 
-from tests.common_test_base import CommonTestBase
+from common_test_base import CommonTestBase
 
-from usbip_defs import BasicCommands, Direction
-from usb_descriptors import DescriptorType
-from usbip_protocol import URBSetupRequestType, URBStandardDeviceRequest
-from protocol.urb_packets import DeviceDescriptor
-from protocol.packets import OP_REQ_DEVLIST, CMD_SUBMIT, USBIP_RET_SUBMIT, OP_REP_DEV_INTERFACE, OP_REP_DEVLIST_HEADER
-from protocol.urb_packets import UrbSetupPacket
-from usbip_client import USBIPClient, USBIP_Connection, USB_Endpoint
+from serial_usbipclient.protocol.packets import (
+    CMD_SUBMIT,
+    OP_REP_DEV_INTERFACE,
+    OP_REP_DEVLIST_HEADER,
+    OP_REQ_DEVLIST,
+    USBIP_RET_SUBMIT,
+    MetaStruct
+)
+from serial_usbipclient.protocol.urb_packets import DeviceDescriptor, UrbSetupPacket
+from serial_usbipclient.protocol.usb_descriptors import DescriptorType
+from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
+from serial_usbipclient.protocol.usbip_protocol import (
+    URBSetupRequestType,
+    URBStandardDeviceRequest,
+)
+from serial_usbipclient.usbip_client import USB_Endpoint, USBIP_Connection, USBIPClient
 
 
 class TestPacketGeneration(CommonTestBase):
     """test packet generation using py-datastruct"""
 
     @dataclass
-    class MockUSBIP_Connection(USBIP_Connection):
+    class MockUSBIP_Connection(USBIP_Connection):  # pylint: disable=invalid-name
         """mock the USBIP Connection for testing"""
 
         def __init__(self, **kwargs):
@@ -71,6 +80,7 @@ class TestPacketGeneration(CommonTestBase):
                                       '0000000000000000000000000000000000000000000000000000000000000000')
 
         submit: CMD_SUBMIT = CMD_SUBMIT.unpack(cmd_in)
+        self.assertIsNone(submit.iso_packet_descriptors)  # not an iso transfer
         self.assertEqual(submit.command, BasicCommands.CMD_SUBMIT)
         self.assertEqual(submit.seqnum, 0xd06)
         self.assertEqual(submit.direction, Direction.USBIP_DIR_OUT)
@@ -156,3 +166,26 @@ class TestPacketGeneration(CommonTestBase):
             length=DeviceDescriptor.size)
 
         self.assertEqual(setup.pack().hex(), '8006000100001200')
+
+    def test_metastruct_size(self):
+        """ensure the metastruct packet size is always zero!"""
+        self.assertEqual(0, MetaStruct.packet_size())
+
+    def test_iso_packet_descriptor(self):
+        """check iso packet handling"""
+        cmd_in: bytes = bytes.fromhex('00000001'  # command
+                                      '00000d06'  # sequence #
+                                      '0001000f'  # device/bus id (1-15)
+                                      '00000000'  # direction (USBIP_DIR_OUT)
+                                      '00000001'  # endpoint
+                                      '00000000'  # transfer_flags
+                                      '00000040'  # transfer_buffer_length
+                                      '00000000'  # start_frame (0 -> not iso transfer)
+                                      '000000004'  # number_of_packets (iso transfer)
+                                      '000000004'  # interval
+                                      '0000000000000000'  # setup
+                                      # transfer_buffer
+                                      'ffffffff860008a784ce5ae21237630000000000000000000000000000000000'
+                                      '0000000000000000000000000000000000000000000000000000000000000000')
+        cmd_submit: CMD_SUBMIT = CMD_SUBMIT.unpack(cmd_in)
+        self.assertIsNotNone(cmd_submit.iso_packet_descriptors)

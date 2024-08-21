@@ -1,6 +1,7 @@
+"""test the URB descriptors"""
+from common_test_base import CommonTestBase
 
-from tests.common_test_base import CommonTestBase
-import protocol.urb_packets as urb
+import serial_usbipclient.protocol.urb_packets as urb
 
 
 class TestInterfaceDescriptor(CommonTestBase):

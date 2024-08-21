@@ -1,17 +1,17 @@
 """base for all unit tests"""
 
-import sys
-from os import getenv
+import json
 import logging
 import os
 import re
-import json
+import sys
+from os import getenv
 from typing import Optional
-
 from unittest import TestCase
 
-from tests.mock_usbip import MockUSBIP
-from usbip_client import USBIPClient
+from mock_usbip import MockUSBIP
+
+from serial_usbipclient.usbip_client import USBIPClient
 
 
 class CommonTestBase(TestCase):
@@ -26,12 +26,12 @@ class CommonTestBase(TestCase):
 
     def skip_on_ci(self, reason='incompatible with CI'):
         """skip the test if running on a CI/CD system"""
-        if self.CI:
+        if self.continuous_integration:
             self.skipTest(reason=reason)
 
     def __init__(self, methodName):
         """need some special variables"""
-        self.CI: bool = CommonTestBase.is_truthy('CI', False)
+        self.continuous_integration: bool = CommonTestBase.is_truthy('CI', False)
         self.logger: logging.Logger = logging.getLogger(__name__)
         self.mock_usbip: Optional[MockUSBIP] = None
         self.client: Optional[USBIPClient] = None
@@ -61,7 +61,7 @@ class CommonTestBase(TestCase):
     def get_test_index(self, name: str) -> int:
         """get index of test, can be used as offset for port assignments"""
         qualified_name: str = name.replace(os.sep, '.').lower()
-        with open(os.path.join(os.path.dirname(__file__), 'list_of_tests.json'), 'r') as tests:
+        with open(os.path.join(os.path.dirname(__file__), 'list_of_tests.json'), 'r', encoding='utf-8') as tests:
             all_tests: dict = json.load(tests)
 
         for i in range(len(all_tests)):

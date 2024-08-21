@@ -1,12 +1,12 @@
 """test the mock usbip server for basic behavior"""
-import os
-from socket import socket, AF_INET, SOCK_STREAM, SHUT_RDWR
 import logging
+import os
+from socket import AF_INET, SHUT_RDWR, SOCK_STREAM, socket
 
-from tests.common_test_base import CommonTestBase
-from tests.mock_usbip import MockUSBIP, Parse_lsusb, MockUSBDevice
+from common_test_base import CommonTestBase
+from mock_usbip import MockUSBDevice, MockUSBIP, ParseLSUSB
 
-from usbip_client import USBIPClient
+from serial_usbipclient.usbip_client import USBIPClient
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class TestMockUSBIPServer(CommonTestBase):
         client.connect_server()
         published = client.list_published()
         self.assertTrue(published.paths)
-        self.assertEqual(len(published.paths), 2)  # should be 2 paths
+        self.assertEqual(len(published.paths), 4)  # should be 4 paths
 
         client.shutdown()
         server.shutdown()
@@ -61,6 +61,7 @@ class TestMockUSBIPServer(CommonTestBase):
         port: int = 3240 + self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
         server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
         paths: list = server.read_paths()
+        self.assertEqual(2, len(paths))
 
 
 class TestDeviceConfiguration(CommonTestBase):
@@ -68,19 +69,21 @@ class TestDeviceConfiguration(CommonTestBase):
     def test_lsusb_parsing(self):
         """test parsing the lsusb output file"""
         error: list[str] = []
-        lsusb_parsed: Parse_lsusb = Parse_lsusb(self.logger)
+        lsusb_parsed: ParseLSUSB = ParseLSUSB(self.logger)
         self.assertTrue(lsusb_parsed)
         self.assertTrue(lsusb_parsed.devices)  # we have a device descriptor
         for usb in lsusb_parsed.devices:
             for configuration in usb.device.configurations:
-                if configuration.bNumInterfaces != len(configuration.interfaces):
-                    error.append(f"[0x{usb.vendor:0x4x}:0x{usb.product:0x4x}] Incorrect # interfaces {configuration.descriptor_type.name=}")
+                if configuration.bNumInterfaces != configuration.num_interfaces:
+                    error.append(f"[0x{usb.vendor:04x}:0x{usb.product:04x}] Incorrect # interfaces "
+                                 f"(expected {configuration.bNumInterfaces} found {len(configuration.interfaces)} "
+                                 f"{configuration.descriptor_type.name=}")
 
         self.assertFalse(error)
 
     def test_usbip_path(self):
         """test we generate a USBIP path for our devices"""
-        parsed_devices: Parse_lsusb = Parse_lsusb(self.logger)
+        parsed_devices: ParseLSUSB = ParseLSUSB(self.logger)
         devices: MockUSBDevice = MockUSBDevice(parsed_devices.devices)
         devices.setup()  # create our USBIP protocol image
         response: bytes = devices.pack()

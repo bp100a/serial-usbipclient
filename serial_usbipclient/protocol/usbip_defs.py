@@ -3,9 +3,8 @@
 # https://docs.kernel.org/usb/usbip_protocol.html
 
 import errno
-from os import strerror
 from enum import IntEnum
-import struct
+from os import strerror
 
 # To keep with names used by the URB specification
 # pylint: disable=invalid-name, too-many-arguments, too-many-instance-attributes, too-many-locals
@@ -73,7 +72,7 @@ class ErrorCodes:  # pylint: disable=line-too-long
         "c. ISO: attempted to change transfer interval\n"
         "d. ISO: number_of_packets is < 0\n"
         "e. various other cases",
-        errno.EXDEV: "ISO: URB_ISO_ASAP wasn’t specified and all the frames the URB would be scheduled in have already expired.",
+        errno.EXDEV: "ISO: URB_ISO_ASAP wasn't specified and all the frames the URB would be scheduled in have already expired.",
         errno.EFBIG: "Host controller driver can’t schedule that many ISO frames.",
         errno.EPIPE: "The pipe type specified in the URB doesn't match the endpoint’s actual type.",
         errno.EMSGSIZE: "a. endpoint maxpacket size is zero; it is not usable in the current interface altsetting.\n"
@@ -90,50 +89,3 @@ class ErrorCodes:  # pylint: disable=line-too-long
     def readable_errno(err_no: int) -> str:
         """return a user readable version of the error code"""
         return ErrorCodes.ERRNO.get(err_no, strerror(err_no))
-
-
-class BaseProtocolPacket:  # pylint: disable = too-few-public-methods
-    """Base Class for USBIP protocol packages"""
-
-    format: dict = {
-        0: ("H", "usbip_version"),
-        2: ("H", "command"),
-        4: ("I", "status"),
-    }
-    fmt: str = ""
-    args: list[str] = []
-    endianness: str = "!"  # ! or > is big endian, empty is little endian
-
-    def __init__(self, version: int = 0x0111, command: int = 0, status: int = 0):
-        self.usbip_version: int = version  # v1.1.1 default
-        self.command: int = command
-        self.status: int = status
-        self.struct_formatting()
-
-    def struct_formatting(self) -> None:
-        """create formatting strings"""
-        # formatting strings are **class** variables so should only be initialized once
-        if not self.fmt:
-            self.fmt = self.endianness + "".join(
-                [value[0] for _, value in self.format.items()]
-            )
-            self.args = [value[1] for _, value in self.format.items()]
-
-    def packet(self) -> bytes:
-        """Turn this structure into binary representation"""
-        return struct.pack(self.fmt, *[getattr(self, item) for item in self.args])
-
-    @classmethod
-    def new(cls, data: bytes):
-        """Create (and return) a new instance based on the binary data"""
-        try:
-            return cls(*struct.unpack(cls().fmt, data[: cls().size]))
-        except struct.error as s_error:
-            raise ValueError(
-                f"error binary data:'{data.hex()}', expected(format):'{cls().fmt}'"
-            ) from s_error
-
-    @property
-    def size(self) -> int:
-        """return the size of the data to retrieve"""
-        return struct.calcsize(self.fmt)

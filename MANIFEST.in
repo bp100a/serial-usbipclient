@@ -1,0 +1,5 @@
+include AUTHORS CHANGES LICENSE README.md version.py
+recursive-include serial_usbipclient *.py
+recursive-exclude serial_usbipclient test*.py *.lsusb *test*.py *.json mock_usbip.py
+exclude version.py .coveragerc pull_request_template.md
+global-exclude *.pyc *~ .DS_Store *__pycache__* *.pyo
