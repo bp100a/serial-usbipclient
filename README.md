@@ -1,4 +1,4 @@
-USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/python-app.yml/badge.svg?branch=develop) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/cython) ![coverage](https://raw.githubusercontent.com/bp100a/serial-usbipclient/51c0942d35dc104f3af654f12273496388be9919/coverage.svg)
+USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/python-app.yml/badge.svg?branch=develop) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/cython) ![coverage](https://raw.githubusercontent.com/bp100a/serial-usbipclient/master/coverage.svg)
 ========================================================================================================
 
 ___
@@ -6,7 +6,7 @@ Overview
 --------------------------------------------------------------------------
 ___
 This package supports connecting to a CDC (serial) USB device exposed by a USBIPD server. USBIP is a protocol that allows sharing USB devices over a TCP/IP connection.
-The protocol specification can be found [here](https://docs.kernel.org/usb/usbip_protocol.html), a local copy is [USBIP.pdf](usb_usbip_protocol.pdf). This package should be capable of running on any system that supports Python.
+The protocol specification can be found [here](https://docs.kernel.org/usb/usbip_protocol.html). This package should be capable of running on any system that supports Python.
 
 There are some issues sharing USB devices to docker containers, a major one being if the USB connection is lost
 it is difficult to recover the connection between the docker container and the hosting server.
