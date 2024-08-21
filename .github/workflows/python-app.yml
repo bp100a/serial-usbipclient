@@ -49,6 +49,7 @@ jobs:
         chmod +x run_pytest.sh
         ./run_pytest.sh
     - name: Generate Coverage badge
+      if: github.ref_name != 'master'
       uses: tj-actions/coverage-badge-py@v2
     - name: Verify Changed files
       uses: tj-actions/verify-changed-files@v20
