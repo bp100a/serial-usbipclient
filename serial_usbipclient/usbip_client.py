@@ -306,7 +306,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         except ConnectionError as connection_error:
             raise USBConnectionLostError(detail="send_unlink() connection lost", connection=self) from connection_error
 
-    def readall(self, size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
+    @staticmethod
+    def readall(size: int, usb: USBIP_Connection | socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
         return USBIPClient.readall(size, usb, timeout)
 

@@ -318,7 +318,8 @@ class GenericDescriptor:
 
         return func_desc
 
-    def _string_handler(self, data: bytes, length: int) -> StringDescriptor:  # pylint: disable=unused-argument
+    @staticmethod
+    def _string_handler(data: bytes, length: int) -> StringDescriptor:  # pylint: disable=unused-argument
         """handle string descriptors"""
         str_desc: StringDescriptor = StringDescriptor.unpack(data)
         return str_desc
