@@ -1,6 +1,6 @@
 """definitions for serial-usbipclient interface"""
 from .usbip_client import *
-import version
+from . import version
 
 __versions__: str = version.__version__
 

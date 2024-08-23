@@ -127,3 +127,17 @@ Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) pa
 ```bash
 pip-compile requirements.in
 ```
+
+Release to PyPi
+----------------------------------------------------------------------------
+Store the PyPi API token
+```bash
+keyring set https://upload.pypi.org/legacy/ __token__
+```
+when prompted enter the API token you created using PyPi.
+
+To build the distribution and upload to PyPi
+```bash
+python -m build
+twine upload dist\*
+```
