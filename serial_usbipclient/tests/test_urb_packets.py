@@ -28,7 +28,7 @@ class TestURBPackets(CommonTestBase):
     def __init__(self, methodName):
         """set up local variables"""
         super().__init__(methodName)
-        self.mock_usbip: MockUSBIP = MockUSBIP(host='', port=0, logger=self.logger)  # won't launch thread, just the instance
+        self.mock_usbip: MockUSBIP = MockUSBIP(host='', port=0)  # won't launch thread, just the instance
 
     def test_configuration_descriptor(self):
         """test the generation of the ConfigurationDescriptor"""

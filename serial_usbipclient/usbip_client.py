@@ -52,6 +52,9 @@ from .protocol.usbip_protocol import (
     URBTransferFlags,
 )
 
+LOGGER: logging.Logger = logging.getLogger('serial-usbipclient')
+LOGGER.addHandler(logging.NullHandler())  # in case wrapping application hasn't set a default handler
+
 PAYLOAD_TIMEOUT: float = 0.250  # maximum time (seconds) we'll wait for pieces of our payload
 
 
@@ -274,7 +277,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             self.sendall(command.pack())
             self._commands[command.seqnum] = command
             if command.ep and command.direction == Direction.USBIP_DIR_IN:  # a read is being issued
-                self._logger.info(f"[usbip-connection] queued read #{command.seqnum}")
+                self._logger.info(f"queued read #{command.seqnum}")
 
             # If this is a *write* to the device, then wait for confirmation
             # it was successful
@@ -297,7 +300,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     def send_unlink(self, command: CMD_UNLINK) -> bool:
         """send an unlink command"""
         try:
-            self._logger.info(f"[usbip-connection] UNLINK #{command.unlink_seqnum}")
+            self._logger.info(f"UNLINK #{command.unlink_seqnum}")
             self.sendall(command.pack())
             unlink_response: Optional[RET_UNLINK] = self.wait_for_unlink()
             if unlink_response and abs(unlink_response.status) in USBConnectionLostError.USB_DISCONNECT:
@@ -324,7 +327,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 unlink: RET_UNLINK = RET_UNLINK.unpack(unlink_data)
                 return unlink
             if header.command == BasicCommands.RET_SUBMIT:  # response for a submit
-                self._logger.warning(f"[usbip-connection] wait_for_unlink() read a RET_SUBMIT {header_data.hex()=}")
+                self._logger.warning(f"wait_for_unlink() read a RET_SUBMIT {header_data.hex()=}")
                 self.wait_for_response(header_data=header_data)
                 return None
 
@@ -415,7 +418,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     URB_QUEUE_MIN: int = 10
     URB_QUEUE_MAX: int = 50
 
-    def __init__(self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT, logger: Optional[logging.Logger] = None):
+    def __init__(self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT):
         """establish connection to server for devices"""
         # Note: in docker the host/port will most likely be `host.docker.internal:3420`
         self._host: str = remote[0]
@@ -424,7 +427,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self._connections: list[USBIP_Connection] = []  # track our attachments
         self._socket_timeout: Optional[float] = 0.005  # timeout on waiting for a "receive" from the socket (transactions)
         self._command_timeout: float = command_timeout
-        self._logger: Optional[logging.Logger] = logger if logger else logging.getLogger(__name__)
+        self._logger: logging.Logger = LOGGER
 
     @property
     def command_timeout(self) -> float:
@@ -437,7 +440,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             try:
                 self._socket.shutdown(socket.SHUT_RDWR)  # we are done
                 self._socket.close()
-                self._logger.info(f"usbip-client, disconnected from {self._host}:{self._port}")
+                self._logger.info(f"[usbip-client], disconnected from {self._host}:{self._port}")
             except OSError:
                 pass
             finally:
