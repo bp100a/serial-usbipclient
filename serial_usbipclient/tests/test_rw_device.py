@@ -123,6 +123,26 @@ class TestReadWrite(CommonTestBase):
         restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)
         self.assertIsNotNone(restored_usb)
 
+    def test_restore_unknown_connection(self):
+        """test restore a connection that is no longer known"""
+        usb: USBIP_Connection = self._connect()
+        self.assertEqual(self.client.command_timeout, PAYLOAD_TIMEOUT)
+        # use a VID/PID that doesn't exist to test we fail properly
+        usb.device.vid = 0
+        usb.device.pid = 0
+        restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)
+        self.assertIsNone(restored_usb)
+
+    def test_restore_unattachable_connection(self):
+        """test restore a connection that is no longer known"""
+        usb: USBIP_Connection = self._connect()
+        self.assertEqual(self.client.command_timeout, PAYLOAD_TIMEOUT)
+        # use a VID/PID that doesn't exist to test we fail properly
+        usb.device.vid = 0x8087
+        usb.device.pid = 0x0aa7
+        restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)
+        self.assertIsNone(restored_usb)
+
     def test_timeout_error(self):
         """test formatting of the timeout error"""
         error = USBIPResponseTimeoutError(timeout=0.2, request=b'\01\02', size=3)

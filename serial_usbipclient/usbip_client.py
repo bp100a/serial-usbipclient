@@ -440,7 +440,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             try:
                 self._socket.shutdown(socket.SHUT_RDWR)  # we are done
                 self._socket.close()
-                self._logger.info(f"[usbip-client], disconnected from {self._host}:{self._port}")
+                self._logger.info(f"disconnected from {self._host}:{self._port}")
             except OSError:
                 pass
             finally:
@@ -455,7 +455,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                 self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self._socket.connect((self._host, self._port))
                 self._socket.settimeout(self._socket_timeout)
-                self._logger.info(f"[usbip-client] connected to {self._host}:{self._port} from {self._socket.getsockname()[1]}")
+                self._logger.info(f"connected to {self._host}:{self._port} from {self._socket.getsockname()[1]}")
             except socket.gaierror as gai_error:
                 raise USBIPConnectionError(
                     f"connection attempt to {self._host}:{self._port} '{str(gai_error)}'"
@@ -517,7 +517,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     size -= len(just_read)
                 except TimeoutError as timeout_error:
                     if perf_counter() - start > timeout:
-                        print(f"[usbip-client] Timeout Error, {size=}, {timeout=}, {data.hex()=}")
+                        LOGGER.info(f"Timeout Error, {size=}, {timeout=}, {data.hex()=}")
                         raise timeout_error
             return data
         except ConnectionError as connection_error:
@@ -564,7 +564,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         while not more_data and time() - start_time < 1.0:
             more_data += self.readall(OP_REP_IMPORT.size - CommonHeader.size, self.usbipd)
 
-        self._logger.debug(f"[usbip-client] OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
+        self._logger.debug(f"OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
         return OP_REP_IMPORT.unpack(data + more_data)
 
     def send_setup(self, setup: UrbSetupPacket, usb: USBIP_Connection, data: Optional[bytes] = None) -> None:
@@ -596,7 +596,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = USBIPClient.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
-        self._logger.debug(f"[usbip-client] {len(prefix_data)=}, {prefix_data.hex()=}")
+        self._logger.debug(f"{len(prefix_data)=}, {prefix_data.hex()=}")
         if not prefix_data:
             raise USBConnectionLostError("connection lost while fetching URB descriptor", connection=usb)
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(prefix_data)
@@ -605,11 +605,11 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         try:
             generic_handler: GenericDescriptor = GenericDescriptor()
             data: bytes = self.readall(prefix.actual_length, usb)
-            self._logger.debug(f"[usbip-client] {prefix.actual_length=}, {data.hex()=}")
+            self._logger.debug(f"{prefix.actual_length=}, {data.hex()=}")
             descriptor = generic_handler.packet(data=data)
             return descriptor
         except Exception as descriptor_error:
-            self._logger.error(f"[usbip-client] GenericDescriptor() error! {prefix.actual_length=}, {str(descriptor_error)}")
+            self._logger.error(f"GenericDescriptor() error! {prefix.actual_length=}, {str(descriptor_error)}")
             raise
 
     def set_line_coding(self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection) -> None:
@@ -865,7 +865,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """shutdown this connection"""
         # Any commands that are "pending", we need to unlink them
         if usb.pending_commands:
-            self._logger.info(f"[usbip-client] unlink for {len(usb.pending_commands)} commands")
+            self._logger.info(f"unlink for {len(usb.pending_commands)} commands")
 
         for submit in usb.pending_commands:
             usb.seqnum += 1
@@ -910,7 +910,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def restore_connection(self, lost_usb: USBIP_Connection) -> Optional[USBIP_Connection]:
         """A USB connection has been lost, attempt to restore it"""
         # get the list of published devices from the USBIPD server
-        self._logger.info("[usbip-client] restoring connection")
+        self._logger.info("restoring connection")
         if lost_usb in self._connections:
             self._connections.remove(lost_usb)
 
