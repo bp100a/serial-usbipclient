@@ -14,7 +14,7 @@ it is difficult to recover the connection between the docker container and the h
 Here's a [link](https://marc.merlins.org/perso/linux/post_2018-12-20_Accessing-USB-Devices-In-Docker-_ttyUSB0_-dev-bus-usb-_-for-fastboot_-adb_-without-using-privileged.html) that discusses this issue and another solution.
 
 The USBIP client implementation will only address USB devices that implemented the CDC protocol, basically simple
-serial devices. This allows for a direction connection to the USBIP server without the need for mapping USB devices into
+serial devices. This allows for a direct connection to the USBIP server without the need for mapping USB devices into
 the container.
 
 * Project Homepage: https://github.com/bp100a/serial-usbipclient
@@ -46,7 +46,7 @@ connections[0].sendall(data=b'\01\02\03\04')
 # response, or if 0 size is specified, up to a delimiter. The delimiter is a property of
 # the connection and can be set, default=b'\r\n'
 connections[0].delimiter = b'\n'
-connections[0].response_data(size=0)  # reads until delimiter
+response: bytes = connections[0].response_data(size=0)  # reads until delimiter
 ```
 
 SOUP
@@ -100,7 +100,6 @@ ___
 | coverage       | 7.6.1   | coverage of unit tests                             |
 | pylint         | 3.2.6   | linter, ensures adherence to PEP-8 standards       |
 | pip-tools      | 7.4.1   | provides `pip-compile` to create requirement files |
-| black          | 24.8.0  | Pythonic formatter                                 |
 | pytest-cov     | 5.0.0   | integrates coverage with pytest                    |
 | pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
 

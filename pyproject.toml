@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "serial-usbipclient"
 authors = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
 maintainers = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
-version = "0.0.6"
+version = "0.0.7"
 description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
 readme = "README.md"
 license = {text = "BSD License"}
@@ -33,7 +33,6 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Natural Language :: English",
-    "Topic :: Text Processing :: Markup :: HTML",
     "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Communications Device Class (CDC)",
 
     # Specify the Python versions you support here.
