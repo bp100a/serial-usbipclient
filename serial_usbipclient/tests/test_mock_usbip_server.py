@@ -18,7 +18,7 @@ class TestMockUSBIPServer(CommonTestBase):
         # verify we can start the listening thread and shut it down
         # before any client connects
         port: int = 3240 + self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
-        server: MockUSBIP = MockUSBIP(host='localhost', port=port, logger=self.logger)
+        server: MockUSBIP = MockUSBIP(host='localhost', port=port)
         self.logger.info(f"MockUSBIP @{server.host}:{server.port}")
         server.shutdown()
 
@@ -28,7 +28,7 @@ class TestMockUSBIPServer(CommonTestBase):
         # before any client connects
         host: str = 'localhost'
         port: int = 3240 + self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
-        server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
+        server: MockUSBIP = MockUSBIP(host=host, port=port)
 
         client: socket = socket(AF_INET, SOCK_STREAM)
         client.connect((host, port))
@@ -44,9 +44,9 @@ class TestMockUSBIPServer(CommonTestBase):
         """test against mocked data responses"""
         host: str = 'localhost'
         port: int = 3240 + self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
-        server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
+        server: MockUSBIP = MockUSBIP(host=host, port=port)
 
-        client: USBIPClient = USBIPClient(remote=(host, port), logger=self.logger)
+        client: USBIPClient = USBIPClient(remote=(host, port))
         client.connect_server()
         published = client.list_published()
         self.assertTrue(published.paths)
@@ -59,7 +59,7 @@ class TestMockUSBIPServer(CommonTestBase):
         """test reading the path information from the json file"""
         host: str = 'localhost'
         port: int = 3240 + self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
-        server: MockUSBIP = MockUSBIP(host=host, port=port, logger=self.logger)
+        server: MockUSBIP = MockUSBIP(host=host, port=port)
         paths: list = server.read_paths()
         self.assertEqual(2, len(paths))
 
@@ -69,7 +69,7 @@ class TestDeviceConfiguration(CommonTestBase):
     def test_lsusb_parsing(self):
         """test parsing the lsusb output file"""
         error: list[str] = []
-        lsusb_parsed: ParseLSUSB = ParseLSUSB(self.logger)
+        lsusb_parsed: ParseLSUSB = ParseLSUSB()
         self.assertTrue(lsusb_parsed)
         self.assertTrue(lsusb_parsed.devices)  # we have a device descriptor
         for usb in lsusb_parsed.devices:
@@ -83,7 +83,7 @@ class TestDeviceConfiguration(CommonTestBase):
 
     def test_usbip_path(self):
         """test we generate a USBIP path for our devices"""
-        parsed_devices: ParseLSUSB = ParseLSUSB(self.logger)
+        parsed_devices: ParseLSUSB = ParseLSUSB()
         devices: MockUSBDevice = MockUSBDevice(parsed_devices.devices)
         devices.setup()  # create our USBIP protocol image
         response: bytes = devices.pack()

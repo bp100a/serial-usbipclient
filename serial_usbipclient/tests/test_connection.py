@@ -33,7 +33,7 @@ class TestUSBIPConnection(CommonTestBase):
         # make sure that each instance of MockUSBIP() has a unique port, even when running in a parallel environment
         self.port += self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
         super().setUp()
-        self.mock_usbip = MockUSBIP(host=self.host, port=self.port, logger=self.logger)
+        self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
 
     def test_connection(self):
         """test simple connection"""
@@ -62,7 +62,7 @@ class TestUSBIPConnection(CommonTestBase):
 
     def connect_server(self) -> OP_REP_DEVLIST_HEADER:
         """connect to the USBIP server"""
-        self.client: USBIPClient = USBIPClient(remote=(self.host, self.port), logger=self.logger)
+        self.client: USBIPClient = USBIPClient(remote=(self.host, self.port))
         self.client.connect_server()
         return self.client.list_published()
 

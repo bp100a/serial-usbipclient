@@ -13,6 +13,14 @@ from mock_usbip import MockUSBIP
 
 from serial_usbipclient.usbip_client import USBIPClient
 
+LOG_FORMAT: str = '%(asctime)s\t%(levelname)s \t[%(filename)s:%(lineno)d] - %(message)s'
+logging.basicConfig(
+    force=True,
+    level=logging.DEBUG,
+    format=LOG_FORMAT,
+    handlers=[logging.StreamHandler(stream=sys.stdout), logging.StreamHandler(stream=sys.stderr)],
+)
+
 
 class CommonTestBase(TestCase):
     """base class for common behavior to all unit tests"""
@@ -32,24 +40,11 @@ class CommonTestBase(TestCase):
     def __init__(self, methodName):
         """need some special variables"""
         self.continuous_integration: bool = CommonTestBase.is_truthy('CI', False)
-        self.logger: logging.Logger = logging.getLogger(__name__)
         self.mock_usbip: Optional[MockUSBIP] = None
         self.client: Optional[USBIPClient] = None
         self.host: str = 'localhost'
         self.port: int = self.DEFAULT_USBIP_SERVER_PORT  # will be updated by subclasses
-        formatter: logging.Formatter = logging.Formatter('%(asctime)s \t%(levelname)s \t%(name)s \t%(message)s')
-        if not self.logger.handlers:
-            handler: logging.Handler = logging.StreamHandler(sys.stdout)
-            handler.setFormatter(formatter)
-            handler.setLevel(logging.DEBUG)
-            self.logger.addHandler(handler)
-            self.logger.setLevel(logging.DEBUG)
-        # elif not [item for item in self.logger.root.handlers if type(item) == logging.StreamHandler]:
-        #     self.logger.root.setLevel(level=logging.DEBUG)
-        #     handler = logging.StreamHandler(sys.stdout)
-        #     handler.setFormatter(formatter)
-        #     self.logger.root.addHandler(handler)
-
+        self.logger: logging.Logger = logging.getLogger(__name__)
         super().__init__(methodName)
 
         if methodName != 'runTest':

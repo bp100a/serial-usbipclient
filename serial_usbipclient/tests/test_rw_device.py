@@ -11,7 +11,7 @@ from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
 from serial_usbipclient.usbip_client import (HardwareID, USBIP_Connection, USBIPClient,
                                              PAYLOAD_TIMEOUT, USBIPResponseTimeoutError, USBAttachError)
 
-logger = logging.getLogger(__name__)
+LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class TestReadWrite(CommonTestBase):
@@ -29,14 +29,14 @@ class TestReadWrite(CommonTestBase):
         """set up our connection test"""
         super().setUp()
         self.port += self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
-        self.mock_usbip = MockUSBIP(host=self.host, port=self.port, logger=self.logger)
+        self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
 
     def _connect(self) -> USBIP_Connection:
         """connect to the USBIPD server"""
         if self.mock_usbip is None:
-            self.mock_usbip: MockUSBIP = MockUSBIP(host=self.host, port=self.port, logger=self.logger)
+            self.mock_usbip: MockUSBIP = MockUSBIP(host=self.host, port=self.port)
 
-        self.client = USBIPClient(remote=(self.host, self.port), logger=self.logger)
+        self.client = USBIPClient(remote=(self.host, self.port))
         self.client.connect_server()
         published: OP_REP_DEVLIST_HEADER = self.client.list_published()
         self.client.attach(devices=[self.hardware_id], published=published)

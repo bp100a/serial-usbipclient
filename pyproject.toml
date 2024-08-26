@@ -3,3 +3,43 @@ requires =["setuptools>=72", "wheel", "setuptools_scm[toml]>=8.1.0"]
 build-backend = "setuptools.build_meta"
 
 [tools.setuptools_scm]
+
+[project]
+name = "serial-usbipclient"
+authors = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
+maintainers = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
+version = "0.0.7"
+description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
+readme = "README.md"
+license = {text = "BSD License"}
+dependencies = [
+  "py-datastruct>=1.0.0",
+]
+requires-python = ">= 3.11"
+keywords = ["usb", "usbipd", "serial"]
+
+# https://pypi.org/classifiers/
+classifiers = [
+     # How mature is this project? Common values are
+     #   3 - Alpha
+     #   4 - Beta
+     #   5 - Production/Stable
+    "Development Status :: 4 - Beta",
+    # Indicate who your project is intended for
+    "Intended Audience :: Developers",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Communications Device Class (CDC)",
+
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Natural Language :: English",
+    "Topic :: System :: Hardware :: Universal Serial Bus (USB) :: Communications Device Class (CDC)",
+
+    # Specify the Python versions you support here.
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Repository = "https://github.com/bp100a/serial-usbipclient"
