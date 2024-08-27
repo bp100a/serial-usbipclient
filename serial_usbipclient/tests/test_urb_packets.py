@@ -78,7 +78,7 @@ class TestURBPackets(CommonTestBase):
         generic_handler: GenericDescriptor = GenericDescriptor()
         descriptor = generic_handler.packet(data=endpoint_desc)
         self.assertTrue(isinstance(descriptor, EndPointDescriptor))
-        self.assertEqual(descriptor.__repr__(), "bEndpointAddress=0x83[IN #3], bDescriptorType=ENDPOINT_DESCRIPTOR")
+        self.assertEqual(repr(descriptor), "bEndpointAddress=0x83[IN #3], bDescriptorType=ENDPOINT_DESCRIPTOR")
 
     def test_interface_association_handlers(self):
         """test interface associations"""
