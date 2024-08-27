@@ -95,7 +95,8 @@ is used to determine the offset to be added to the port base (typically **3240**
 Tooling
 --------------------------------------------------------------------------
 ___
-This package was created using JetBrains PyCharm Professional IDE, the repository does not contain any IDE specific files.
+This package was created using JetBrains PyCharm Professional IDE, the repository does not contain any IDE specific files. 
+Development work was done using Windows 11 & Python 3.12.5, with final verification on an Ubuntu 20.04 system.
 
 ### Packages required to run tests
 ___
@@ -142,7 +143,7 @@ keyring set https://upload.pypi.org/legacy/ __token__
 when prompted enter the API token you created using PyPi.
 
 To build the distribution and upload to PyPi
-```bash
+```cmd
 python -m build
 twine upload --skip-existing dist\*
 ```
