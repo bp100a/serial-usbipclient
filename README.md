@@ -2,7 +2,7 @@ USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/act
 ========================================================================================================
 <div>
 
-![](https://github.com/bp100a/serial-usbipclient/blob/add-logo/logo.png?raw=true)
+![](https://github.com/bp100a/serial-usbipclient/blob/master/logo.png?raw=true)
 
 </div>
 
