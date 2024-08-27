@@ -7,9 +7,12 @@ from typing import Optional
 from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
 
-from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
-from serial_usbipclient.usbip_client import (HardwareID, USBIP_Connection, USBIPClient,
-                                             PAYLOAD_TIMEOUT, USBIPResponseTimeoutError, USBAttachError)
+from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER, HEADER_BASIC
+from serial_usbipclient.protocol.usbip_defs import BasicCommands
+from serial_usbipclient.usbip_client import (PAYLOAD_TIMEOUT, HardwareID,
+                                             USBAttachError, USBIP_Connection,
+                                             USBIPClient,
+                                             USBIPResponseTimeoutError)
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -123,6 +126,26 @@ class TestReadWrite(CommonTestBase):
         restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)
         self.assertIsNotNone(restored_usb)
 
+    def test_restore_unknown_connection(self):
+        """test restore a connection that is no longer known"""
+        usb: USBIP_Connection = self._connect()
+        self.assertEqual(self.client.command_timeout, PAYLOAD_TIMEOUT)
+        # use a VID/PID that doesn't exist to test we fail properly
+        usb.device.vid = 0
+        usb.device.pid = 0
+        restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)
+        self.assertIsNone(restored_usb)
+
+    def test_restore_unattachable_connection(self):
+        """test restore a connection that is no longer known"""
+        usb: USBIP_Connection = self._connect()
+        self.assertEqual(self.client.command_timeout, PAYLOAD_TIMEOUT)
+        # use a VID/PID that doesn't exist to test we fail properly
+        usb.device.vid = 0x8087
+        usb.device.pid = 0x0aa7
+        restored_usb: Optional[USBIP_Connection] = self.client.restore_connection(lost_usb=usb)
+        self.assertIsNone(restored_usb)
+
     def test_timeout_error(self):
         """test formatting of the timeout error"""
         error = USBIPResponseTimeoutError(timeout=0.2, request=b'\01\02', size=3)
@@ -169,3 +192,13 @@ class TestReadWrite(CommonTestBase):
         usb: USBIP_Connection = self._connect()
         self.assertEqual(1, len(usb.device_desc.configurations))
         self.assertEqual(2, usb.configuration.bNumInterfaces)
+
+    def test_invalid_response(self):
+        """test we handle invalid response"""
+        usb: USBIP_Connection = self._connect()
+        header: HEADER_BASIC = HEADER_BASIC()
+        header.command = BasicCommands.RET_UNLINK
+        self.assertFalse(usb.wait_for_response(header_data=header.pack()))
+
+        with self.assertRaisesRegex(expected_exception=USBIPResponseTimeoutError, expected_regex='Timeout error'):
+            usb.wait_for_response()

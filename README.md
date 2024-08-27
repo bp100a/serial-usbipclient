@@ -1,5 +1,10 @@
 USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/python-app.yml/badge.svg?branch=develop) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/cython) ![coverage](https://raw.githubusercontent.com/bp100a/serial-usbipclient/master/coverage.svg)
 ========================================================================================================
+<div>
+
+![](https://github.com/bp100a/serial-usbipclient/blob/add-logo/logo.png?raw=true)
+
+</div>
 
 ___
 Overview
@@ -64,6 +69,7 @@ ___
 For a Windows version of the usbipd server, look [here](https://github.com/dorssel/usbipd-win). You can run this to share USB devices across a network,
 there are usbipd-clients for Linux & [Windows](https://github.com/cezanne/usbip-win).
 
+Here's a USBIP server for testing written in RUST, https://github.com/jiegec/usbip.
 
 Testing
 --------------------------------------------------------------------------
@@ -89,7 +95,8 @@ is used to determine the offset to be added to the port base (typically **3240**
 Tooling
 --------------------------------------------------------------------------
 ___
-This package was created using JetBrains PyCharm Professional IDE, the repository does not contain any IDE specific files.
+This package was created using JetBrains PyCharm Professional IDE, the repository does not contain any IDE specific files. 
+Development work was done using Windows 11 & Python 3.12.5, with final verification on an Ubuntu 20.04 system.
 
 ### Packages required to run tests
 ___
@@ -107,7 +114,7 @@ ___
 ___
 | Module     | Version | comments                      |
 |------------|---------|-------------------------------|
-| setuptools | 72.2.0  | build system                  |
+| setuptools | 73.0.1  | build system                  |
 | wheel      | 0.44.0  | platform independent builds   |
 | twine      | 5.1.1   | utilities for pypi publishing |
 
@@ -136,7 +143,7 @@ keyring set https://upload.pypi.org/legacy/ __token__
 when prompted enter the API token you created using PyPi.
 
 To build the distribution and upload to PyPi
-```bash
+```cmd
 python -m build
-twine upload dist\*
+twine upload --skip-existing dist\*
 ```

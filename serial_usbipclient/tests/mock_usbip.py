@@ -17,36 +17,20 @@ from threading import Event, Thread
 from time import sleep, time
 from typing import Any, Optional, cast
 
-from serial_usbipclient.protocol.packets import (
-    CMD_SUBMIT,
-    CMD_SUBMIT_PREFIX,
-    CMD_UNLINK,
-    HEADER_BASIC,
-    OP_REP_DEV_INTERFACE,
-    OP_REP_DEV_PATH,
-    OP_REP_DEVLIST_HEADER,
-    OP_REP_IMPORT,
-    OP_REQ_IMPORT,
-    RET_UNLINK,
-    USBIP_RET_SUBMIT,
-    CommonHeader,
-)
+from serial_usbipclient.protocol.packets import (CMD_SUBMIT, CMD_SUBMIT_PREFIX,
+                                                 CMD_UNLINK, HEADER_BASIC,
+                                                 OP_REP_DEV_INTERFACE,
+                                                 OP_REP_DEV_PATH,
+                                                 OP_REP_DEVLIST_HEADER,
+                                                 OP_REP_IMPORT, OP_REQ_IMPORT,
+                                                 RET_UNLINK, USBIP_RET_SUBMIT,
+                                                 CommonHeader)
 from serial_usbipclient.protocol.urb_packets import (
-    ACMFunctionalDescriptor,
-    CallManagementFunctionalDescriptor,
-    ConfigurationDescriptor,
-    DeviceDescriptor,
-    EndPointDescriptor,
-    HeaderFunctionalDescriptor,
-    InterfaceAssociation,
-    InterfaceDescriptor,
-    StringDescriptor,
-    UnionFunctionalDescriptor,
-    URBBase,
-    URBCDCRequestType,
-    UrbSetupPacket,
-    URBStandardDeviceRequest,
-)
+    ACMFunctionalDescriptor, CallManagementFunctionalDescriptor,
+    ConfigurationDescriptor, DeviceDescriptor, EndPointDescriptor,
+    HeaderFunctionalDescriptor, InterfaceAssociation, InterfaceDescriptor,
+    StringDescriptor, UnionFunctionalDescriptor, URBBase, URBCDCRequestType,
+    UrbSetupPacket, URBStandardDeviceRequest)
 from serial_usbipclient.protocol.usb_descriptors import DescriptorType
 from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
 
