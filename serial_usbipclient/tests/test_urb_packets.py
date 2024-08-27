@@ -5,14 +5,12 @@ from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP, USBIPClient
 
 from serial_usbipclient.protocol.packets import RET_SUBMIT_PREFIX
-from serial_usbipclient.protocol.urb_packets import (
-    CDCDescriptorSubType,
-    ConfigurationDescriptor,
-    EndPointDescriptor,
-    GenericDescriptor,
-    InterfaceDescriptor,
-    StringDescriptor,
-)
+from serial_usbipclient.protocol.urb_packets import (CDCDescriptorSubType,
+                                                     ConfigurationDescriptor,
+                                                     EndPointDescriptor,
+                                                     GenericDescriptor,
+                                                     InterfaceDescriptor,
+                                                     StringDescriptor)
 
 
 class MockUSBIPClient(USBIPClient):

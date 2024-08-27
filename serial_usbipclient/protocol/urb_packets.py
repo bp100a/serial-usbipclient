@@ -5,21 +5,15 @@ from typing import Any, Optional
 
 from datastruct.fields import field
 
-from serial_usbipclient.protocol.packets import URBBase  # URBs are "little-endian"
+from serial_usbipclient.protocol.packets import \
+    URBBase  # URBs are "little-endian"
 from serial_usbipclient.protocol.usb_descriptors import (
-    CDCDescriptorSubType,
-    DescriptorType,
-    DeviceInterfaceClass,
-    EndpointAttributesTransferType,
-)
+    CDCDescriptorSubType, DescriptorType, DeviceInterfaceClass,
+    EndpointAttributesTransferType)
 from serial_usbipclient.protocol.usbip_defs import Direction
 from serial_usbipclient.protocol.usbip_protocol import (
-    URBCDCRequestType,
-    URBSetupRequestType,
-    URBStandardDeviceRequest,
-    URBStandardEndpointRequest,
-    URBStandardInterfaceRequest,
-)
+    URBCDCRequestType, URBSetupRequestType, URBStandardDeviceRequest,
+    URBStandardEndpointRequest, URBStandardInterfaceRequest)
 
 # pylint: disable=invalid-name
 

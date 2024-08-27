@@ -14,43 +14,22 @@ from dataclasses import dataclass
 from time import perf_counter, time
 from typing import Optional, cast
 
-from .protocol.packets import (
-    CMD_SUBMIT,
-    CMD_UNLINK,
-    HEADER_BASIC,
-    OP_REP_DEV_INTERFACE,
-    OP_REP_DEV_PATH,
-    OP_REP_DEVLIST_HEADER,
-    OP_REP_IMPORT,
-    OP_REQ_DEVLIST,
-    OP_REQ_IMPORT,
-    RET_SUBMIT_PREFIX,
-    RET_UNLINK, CommonHeader,
-)
-from .protocol.urb_packets import (
-    ConfigurationDescriptor,
-    DeviceDescriptor,
-    EndPointDescriptor,
-    GenericDescriptor,
-    StringDescriptor,
-    UrbSetupPacket,
-)
+from .protocol.packets import (CMD_SUBMIT, CMD_UNLINK, HEADER_BASIC,
+                               OP_REP_DEV_INTERFACE, OP_REP_DEV_PATH,
+                               OP_REP_DEVLIST_HEADER, OP_REP_IMPORT,
+                               OP_REQ_DEVLIST, OP_REQ_IMPORT,
+                               RET_SUBMIT_PREFIX, RET_UNLINK, CommonHeader)
+from .protocol.urb_packets import (ConfigurationDescriptor, DeviceDescriptor,
+                                   EndPointDescriptor, GenericDescriptor,
+                                   StringDescriptor, UrbSetupPacket)
 # enums needed for USBIP and URBs
 from .protocol.usb_descriptors import DescriptorType, DeviceInterfaceClass
-from .protocol.usbip_defs import (  # just the basics
-    BasicCommands,
-    CDCControl,
-    Direction,
-    ErrorCodes,
-    Status,
-)
+from .protocol.usbip_defs import (BasicCommands, CDCControl,  # just the basics
+                                  Direction, ErrorCodes, Status)
 # USBIP & URB packet definitions
-from .protocol.usbip_protocol import (
-    URBCDCRequestType,
-    URBSetupRequestType,
-    URBStandardDeviceRequest,
-    URBTransferFlags,
-)
+from .protocol.usbip_protocol import (URBCDCRequestType, URBSetupRequestType,
+                                      URBStandardDeviceRequest,
+                                      URBTransferFlags)
 
 LOGGER: logging.Logger = logging.getLogger('serial-usbipclient')
 LOGGER.addHandler(logging.NullHandler())  # in case wrapping application hasn't set a default handler

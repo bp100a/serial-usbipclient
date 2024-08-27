@@ -8,8 +8,10 @@ from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
 
 from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
-from serial_usbipclient.usbip_client import (HardwareID, USBIP_Connection, USBIPClient,
-                                             PAYLOAD_TIMEOUT, USBIPResponseTimeoutError, USBAttachError)
+from serial_usbipclient.usbip_client import (PAYLOAD_TIMEOUT, HardwareID,
+                                             USBAttachError, USBIP_Connection,
+                                             USBIPClient,
+                                             USBIPResponseTimeoutError)
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
 
