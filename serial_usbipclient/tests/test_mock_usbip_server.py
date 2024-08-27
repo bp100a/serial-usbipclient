@@ -88,3 +88,6 @@ class TestDeviceConfiguration(CommonTestBase):
         devices.setup()  # create our USBIP protocol image
         response: bytes = devices.pack()
         print(f"{response.hex()=}")
+
+        self.assertIsNotNone(devices.device(busnum=1, devnum=1))
+        self.assertIsNone(devices.device(busnum=0, devnum=0))
