@@ -10,7 +10,7 @@ from serial_usbipclient.protocol.urb_packets import (CDCDescriptorSubType,
                                                      EndPointDescriptor,
                                                      GenericDescriptor,
                                                      InterfaceDescriptor,
-                                                     StringDescriptor)
+                                                     StringDescriptor, InterfaceAssociation)
 
 
 class MockUSBIPClient(USBIPClient):
@@ -71,3 +71,18 @@ class TestURBPackets(CommonTestBase):
         generic_handler: GenericDescriptor = GenericDescriptor()
         descriptor = generic_handler.packet(data=string_desc)
         self.assertTrue(isinstance(descriptor, StringDescriptor))
+
+    def test_endpoint_descriptor_handlers(self):
+        """test endpoint descriptors"""
+        endpoint_desc: bytes = bytes.fromhex('07058303080020')
+        generic_handler: GenericDescriptor = GenericDescriptor()
+        descriptor = generic_handler.packet(data=endpoint_desc)
+        self.assertTrue(isinstance(descriptor, EndPointDescriptor))
+        self.assertEqual(descriptor.__repr__(), "bEndpointAddress=0x83[IN #3], bDescriptorType=ENDPOINT_DESCRIPTOR")
+
+    def test_interface_association_handlers(self):
+        """test interface associations"""
+        ia_desc: bytes = bytes.fromhex('080b020108065000')
+        generic_handler: GenericDescriptor = GenericDescriptor()
+        descriptor = generic_handler.packet(data=ia_desc)
+        self.assertTrue(isinstance(descriptor, InterfaceAssociation))
