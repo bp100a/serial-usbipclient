@@ -7,7 +7,8 @@ from typing import Optional
 from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
 
-from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER
+from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER, HEADER_BASIC
+from serial_usbipclient.protocol.usbip_defs import BasicCommands
 from serial_usbipclient.usbip_client import (PAYLOAD_TIMEOUT, HardwareID,
                                              USBAttachError, USBIP_Connection,
                                              USBIPClient,
@@ -191,3 +192,13 @@ class TestReadWrite(CommonTestBase):
         usb: USBIP_Connection = self._connect()
         self.assertEqual(1, len(usb.device_desc.configurations))
         self.assertEqual(2, usb.configuration.bNumInterfaces)
+
+    def test_invalid_response(self):
+        """test we handle invalid response"""
+        usb: USBIP_Connection = self._connect()
+        header: HEADER_BASIC = HEADER_BASIC()
+        header.command = BasicCommands.RET_UNLINK
+        self.assertFalse(usb.wait_for_response(header_data=header.pack()))
+
+        with self.assertRaisesRegex(expected_exception=USBIPResponseTimeoutError, expected_regex='Timeout error'):
+            usb.wait_for_response()
