@@ -282,7 +282,8 @@ class MockUSBDevice:
                                                     bDeviceProtocol=usb.device.bDeviceProtocol,
                                                     bConfigurationValue=0x0,
                                                     bNumConfigurations=len(usb.device.configurations),
-                                                    bNumInterfaces=sum([len(item.interfaces) for item in usb.device.configurations]))
+                                                    bNumInterfaces=sum([len(item.interfaces)
+                                                                        for item in usb.device.configurations]))
             usbip_dev_header.paths.append(path)
             for configuration in usb.device.configurations:
                 for interface in configuration.interfaces:
@@ -312,7 +313,7 @@ class SocketPair:
         """create our socket pair"""
         self._near: Optional[socket.socket] = None
         self._far: Optional[socket.socket] = None
-        family: socket.AddressFamily = socket.AF_INET if sys.platform == 'win32' else socket.AF_UNIX  # mypy: disable-error-code="attr-defined"
+        family: socket.AddressFamily = socket.AF_INET if sys.platform == 'win32' else socket.AF_UNIX
         self._near, self._far = socket.socketpair(family=family, type=socket.SOCK_STREAM)
 
     def wakeup(self):
@@ -766,7 +767,7 @@ class MockUSBIP:
     def read_paths(self) -> list[OP_REP_DEV_PATH]:
         """read the paths from the JSON file"""
         devlist: bytes = bytes.fromhex("".join([item for item in self._protocol_responses['OP_REP_DEVLIST']]))
-        devlist_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])  # mypy: disable-error-code="misc"
+        devlist_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])
         devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]  # mypy: disable-error-code="misc"
         paths: list[OP_REP_DEV_PATH] = []
         for _ in range(0, devlist_header.num_exported_devices):
