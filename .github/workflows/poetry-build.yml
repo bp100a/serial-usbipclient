@@ -47,6 +47,7 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install
+          pip install -r tool_requirements.txt
 
       - name: lint
         run: |
