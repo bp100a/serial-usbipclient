@@ -112,11 +112,9 @@ ___
 
 ### Packages required publish to PyPi
 ___
-| Module     | Version | comments                      |
-|------------|---------|-------------------------------|
-| setuptools | 73.0.1  | build system                  |
-| wheel      | 0.44.0  | platform independent builds   |
-| twine      | 5.1.1   | utilities for pypi publishing |
+| Module      | Version  | comments                       |
+|-------------|----------|--------------------------------|
+| poetry-core | 1.9.0    | build system                   |
 
 All tooling is defined in the `tool_requirements.txt` and should be installed on the build system as follows:
 ```shell
@@ -134,7 +132,7 @@ Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) pa
 pip-compile requirements.in
 ```
 
-Release to PyPi
+Release to PyPi (_now using Poetry!_)
 ----------------------------------------------------------------------------
 Store the PyPi API token
 ```bash
@@ -144,6 +142,6 @@ when prompted enter the API token you created using PyPi.
 
 To build the distribution and upload to PyPi
 ```cmd
-python -m build
-twine upload --skip-existing dist\*
+poetry build
+poetry publish
 ```
