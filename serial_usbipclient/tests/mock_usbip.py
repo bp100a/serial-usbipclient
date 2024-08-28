@@ -767,7 +767,8 @@ class MockUSBIP:
     def read_paths(self) -> list[OP_REP_DEV_PATH]:
         """read the paths from the JSON file"""
         devlist: bytes = bytes.fromhex("".join([item for item in self._protocol_responses['OP_REP_DEVLIST']]))
-        devlist_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])  # type: ignore[misc]
+        devlist_header: OP_REP_DEVLIST_HEADER = (
+            OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size]))  # type: ignore[misc]
         devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]  # type: ignore[misc]
         paths: list[OP_REP_DEV_PATH] = []
         for _ in range(0, devlist_header.num_exported_devices):

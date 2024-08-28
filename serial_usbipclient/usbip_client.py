@@ -120,7 +120,7 @@ class USBIPResponseTimeoutError(USBIPError):
 class USBConnectionLostError(USBIPError):
     """the connection to the USB device has been lost"""
 
-    USB_DISCONNECT: list[errno] = [errno.ENOENT, errno.ENODEV]
+    USB_DISCONNECT: list[int] = [errno.ENOENT, errno.ENODEV]
 
     def __init__(self, detail: str, connection: USBIP_Connection):
         """details of the connection to assist recovery"""
@@ -153,7 +153,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         self._device: Optional[DeviceDescriptor] = None
         self._endpoints: CDCEndpoints = CDCEndpoints()
         self._commands: dict[int, CMD_SUBMIT] = {}  # seqnum/command
-        self._responses: dict[int, (RET_SUBMIT_PREFIX, Optional[bytes])] = {}  # seqnum/(ret/data)
+        self._responses: dict[int, tuple[RET_SUBMIT_PREFIX, bytes]] = {}  # seqnum/(ret/data)
         self._logger: Optional[logging.Logger] = None
         self._delimiter: bytes = b'\r\n'
 
@@ -178,11 +178,6 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         return self.busnum << 16 | self.devnum
 
     @property
-    def configuration(self) -> ConfigurationDescriptor:
-        """configuration of the device"""
-        return self._configuration
-
-    @property
     def device_desc(self) -> DeviceDescriptor | None:
         """return the device descriptor"""
         return self._device
@@ -204,9 +199,19 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         """set the logger"""
         self._logger = logger
 
+    @property
+    def configuration(self) -> ConfigurationDescriptor:
+        """configuration of the device"""
+        if self._configuration is None:
+            raise ValueError("no configuration for device")
+        return self._configuration
+
     @configuration.setter
     def configuration(self, configuration: ConfigurationDescriptor) -> None:
         """set the configuration to the device, locate endpoints"""
+        if self._device is None:
+            raise ValueError("cannot set configuration if there's no device!")
+
         if configuration not in self._device.configurations:
             self._device.configurations.append(configuration)
         self._configuration = configuration
@@ -297,7 +302,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         """wait for the unlink response"""
         start_time: float = time()
         while time() - start_time < 10.0:  # wade through any residual packets to get the unlink response
-            header_data: bytes = USBIPClient.readall(HEADER_BASIC.size, self.socket, timeout=1.0)
+            header_data: bytes = USBIPClient.readall(HEADER_BASIC.size, self.socket, timeout=1.0)  # type: ignore[arg-type]
             if not header_data:
                 return None
             header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
@@ -310,17 +315,19 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 self.wait_for_response(header_data=header_data)
                 return None
 
+        raise TimeoutError("timeout waiting for unlink response")
+
     def wait_for_response(self, header_data: Optional[bytes] = None) -> bool:
         """wait for response"""
         # Read any response packet that is waiting and save it in our 'queue'
         if not header_data:
-            header_data = self.readall(HEADER_BASIC.size, self)
+            header_data = self.readall(HEADER_BASIC.size, self)  # type: ignore[arg-type]
             if not header_data:
                 return False
 
         header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
         if header.command == BasicCommands.RET_SUBMIT:  # this is a return from a submit
-            expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)
+            expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)  # type: ignore[arg-type]
             if expected_size:  # if there's more data, read it in
                 prefix_data: bytes = header_data + self.readall(expected_size, self)
                 if not prefix_data:
@@ -510,16 +517,16 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self.connect_server()  # connect to usbipd service is required
         request: bytes = OP_REQ_DEVLIST().packet()
         self.usbipd.sendall(request)
-        data: bytes = self.readall(OP_REP_DEVLIST_HEADER.size, self.usbipd)
+        data: bytes = self.readall(OP_REP_DEVLIST_HEADER.size, self.usbipd)  # type: ignore[arg-type]
         response_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.new(data=data)
         for _ in range(0, response_header.num_exported_devices):
             # read a device path
-            data = self.readall(OP_REP_DEV_PATH.size, self.usbipd)
+            data = self.readall(OP_REP_DEV_PATH.size, self.usbipd)  # type: ignore[arg-type]
             device_path: OP_REP_DEV_PATH = OP_REP_DEV_PATH.new(data=data)
             response_header.paths.append(device_path)
             for _ in range(0, device_path.bNumInterfaces):
                 # read an interface associated with the device
-                interface_data: bytes = self.readall(OP_REP_DEV_INTERFACE.size, self.usbipd)
+                interface_data: bytes = self.readall(OP_REP_DEV_INTERFACE.size, self.usbipd)  # type: ignore[arg-type]
                 interface: OP_REP_DEV_INTERFACE = OP_REP_DEV_INTERFACE.new(data=interface_data)
                 device_path.interfaces.append(interface)
         return response_header
@@ -531,7 +538,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self.set_tcp_nodelay()
 
         self.usbipd.sendall(request)
-        data: bytes = self.readall(CommonHeader.size, self.usbipd, timeout=self.USBIP_TIMEOUT)
+        data: bytes = self.readall(CommonHeader.size, self.usbipd, timeout=self.USBIP_TIMEOUT)  # type: ignore[arg-type]
         base_response: CommonHeader = CommonHeader.new(data=data)
         if base_response.status != Status.SUCCESS:
             raise USBAttachError("Error attaching to device", an_errno=base_response.status)
@@ -539,7 +546,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         more_data: bytes = bytes()
         start_time: float = time()
         while not more_data and time() - start_time < 1.0:
-            more_data += self.readall(OP_REP_IMPORT.size - CommonHeader.size, self.usbipd)
+            more_data += self.readall(OP_REP_IMPORT.size - CommonHeader.size, self.usbipd)  # type: ignore[operator]
 
         self._logger.debug(f"OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
         return OP_REP_IMPORT.unpack(data + more_data)
@@ -572,7 +579,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             DeviceDescriptor | ConfigurationDescriptor | StringDescriptor):
         """request a descriptor"""
         self.send_setup(setup=setup, usb=usb)
-        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)
+        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb, timeout=3.0)  # type: ignore[arg-type]
         self._logger.debug(f"{len(prefix_data)=}, {prefix_data.hex()=}")
         if not prefix_data:
             raise USBConnectionLostError("connection lost while fetching URB descriptor", connection=usb)
@@ -592,7 +599,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def set_line_coding(self, setup: UrbSetupPacket, data: bytes, usb: USBIP_Connection) -> None:
         """set line coding"""
         self.send_setup(setup=setup, usb=usb, data=data)
-        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)
+        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)  # type: ignore[arg-type]
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
         if prefix.status != 0:
             raise ValueError(f"set_line_coding failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
@@ -618,7 +625,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self.send_setup(setup=setup, usb=usb)
         prefix_data: bytes = bytes()
         try:
-            prefix_data = self.readall(RET_SUBMIT_PREFIX.size, usb)
+            prefix_data = self.readall(RET_SUBMIT_PREFIX.size, usb)  # type: ignore[arg-type]
             prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
             if prefix.status != 0:
                 raise ValueError(f"set_descriptor failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
@@ -673,7 +680,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
             request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
             value=DescriptorType.DEVICE_DESCRIPTOR.value << 8,
-            length=DeviceDescriptor.size,
+            length=DeviceDescriptor.size,  # type: ignore[arg-type]
         )
         usb.device_desc = self.request_descriptor(setup=setup, usb=usb)
 
@@ -682,7 +689,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             request_type=URBSetupRequestType.DEVICE_TO_HOST.value,
             request=URBStandardDeviceRequest.GET_DESCRIPTOR.value,
             value=DescriptorType.CONFIGURATION_DESCRIPTOR.value << 8,
-            length=ConfigurationDescriptor.size,
+            length=ConfigurationDescriptor.size,  # type: ignore[arg-type]
         )
         config_desc: ConfigurationDescriptor = self.request_descriptor(setup=setup, usb=usb)
 
@@ -851,9 +858,10 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             usb.send_unlink(unlink)  # waits for response
 
         # we are all done, shutdown the socket connection
-        usb.socket.shutdown(socket.SHUT_RDWR)  # tell the server we are done
-        usb.socket.close()
-        usb.socket = None
+        if usb.socket:
+            usb.socket.shutdown(socket.SHUT_RDWR)  # tell the server we are done
+            usb.socket.close()
+            usb.socket = None
 
     def shutdown(self):
         """shutdown all connections"""
