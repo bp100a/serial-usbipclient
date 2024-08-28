@@ -57,7 +57,7 @@ python = "^3.11"
 py-datastruct = "^1.0.0"
 
 [tool.mypy]
-name = "serial-usbipclient"
+check_untyped_defs = true
 exclude = [
     'test_',
     'common_test_base.py'

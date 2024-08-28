@@ -247,7 +247,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
     def sendall(self, data: bytes) -> None:
         """wrapper for socket sendall"""
-        self.socket.sendall(data)
+        if self.socket:
+            self.socket.sendall(data)
 
     def send_command(self, command: CMD_SUBMIT) -> int:
         """send the command"""
