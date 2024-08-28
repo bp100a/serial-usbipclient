@@ -1,8 +1,6 @@
 [build-system]
-requires =["setuptools>=72", "wheel", "setuptools_scm[toml]>=8.1.0"]
-build-backend = "setuptools.build_meta"
-
-[tools.setuptools_scm]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "serial-usbipclient"
@@ -43,3 +41,17 @@ classifiers = [
 
 [project.urls]
 Repository = "https://github.com/bp100a/serial-usbipclient"
+
+# poetry settings
+[tool.poetry]
+name = "serial-usbipclient"
+authors = ["Harry J. Collins <bp100a@gmail.com>"]
+maintainers = ["Harry J. Collins <bp100a@gmail.com>"]
+version = "0.0.8"
+description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
+readme = "README.md"
+package-mode = true
+
+[tool.poetry.dependencies]
+python = "^3.11"
+py-datastruct = "^1.0.0"
