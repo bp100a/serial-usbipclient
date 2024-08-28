@@ -55,3 +55,14 @@ package-mode = true
 [tool.poetry.dependencies]
 python = "^3.11"
 py-datastruct = "^1.0.0"
+
+[tool.mypy]
+name = "serial-usbipclient"
+exclude = [
+    'test_',
+    'common_test_base.py'
+]
+
+[[tool.mypy.overrides]]
+module = ["datastruct.*", "common_test_base", "mock_usbip"]
+ignore_missing_imports = true

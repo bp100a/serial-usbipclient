@@ -195,6 +195,7 @@ class EndPointDescriptor(BaseDescriptor):
     def __repr__(self):
         """for display purposes"""
         ep_dir: str = "IN" if self.bEndpointAddress & 0x80 else "OUT"
+
         number: int = self.bEndpointAddress & 0xF
         response: str = f"bEndpointAddress=0x{self.bEndpointAddress:02x}[{ep_dir} #{number}]"
         response += f", bDescriptorType={self.bDescriptorType.name}"

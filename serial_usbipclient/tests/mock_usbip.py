@@ -414,7 +414,7 @@ class MockUSBIP:
         self.host: str = host
         self.port: int = port
         self.logger: logging.Logger = LOGGER
-        self.server_socket: socket.socket | None = None
+        self.server_socket: Optional[socket.socket] = None
         self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run_server, daemon=True)
         self.event: Event = Event()
         self._is_windows: bool = platform.system() == 'Windows'

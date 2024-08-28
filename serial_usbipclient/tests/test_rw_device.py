@@ -37,7 +37,7 @@ class TestReadWrite(CommonTestBase):
     def _connect(self) -> USBIP_Connection:
         """connect to the USBIPD server"""
         if self.mock_usbip is None:
-            self.mock_usbip: MockUSBIP = MockUSBIP(host=self.host, port=self.port)
+            self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
 
         self.client = USBIPClient(remote=(self.host, self.port))
         self.client.connect_server()
