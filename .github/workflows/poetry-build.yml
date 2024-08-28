@@ -51,7 +51,7 @@ jobs:
 
       - name: lint
         run: |
-          pylint serial_usbipclient/*
+          python -m poetry run python -m pylint serial_usbipclient/*
       - name: Test & generate coverage
         run: |
           chmod +x run_pytest.sh
