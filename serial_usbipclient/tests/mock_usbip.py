@@ -313,7 +313,7 @@ class SocketPair:
         """create our socket pair"""
         self._near: Optional[socket.socket] = None
         self._far: Optional[socket.socket] = None
-        family: socket.AddressFamily = socket.AF_INET if sys.platform == 'win32' else socket.AF_UNIX
+        family: socket.AddressFamily = socket.AF_INET if sys.platform == 'win32' else socket.AF_UNIX  # type: ignore[attr-defined]
         self._near, self._far = socket.socketpair(family=family, type=socket.SOCK_STREAM)
 
     def wakeup(self):
@@ -347,7 +347,7 @@ class USBIPClient:
         self.socket: socket.socket = connection
         self.address: tuple[str, int] = address
         self.socket.settimeout(None)  # default to blocking connections
-        self._size: int = size if size else CommonHeader.size
+        self._size: int = size if size else CommonHeader.size  # type: ignore[assignment]
         self._busid: Optional[bytes] = None
         self._name: str = f"@{self.address[0]}"
 
@@ -404,7 +404,7 @@ class USBIPClient:
     @busid.setter
     def busid(self, busid: bytes) -> None:
         """set the busid for this client"""
-        self._size = CMD_SUBMIT_PREFIX.size if busid else CommonHeader.size
+        self._size = CMD_SUBMIT_PREFIX.size if busid else CommonHeader.size  # type: ignore[assignment]
         self._busid = busid
 
     def __repr__(self) -> str:
@@ -723,7 +723,7 @@ class MockUSBIP:
             if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
                 return client, message
             elif usbip_cmd.command == BasicCommands.REQ_IMPORT:
-                remaining_size: int = OP_REQ_IMPORT.size - len(message)
+                remaining_size: int = OP_REQ_IMPORT.size - len(message)  # type: ignore[operator]
                 remainder = client.recv(remaining_size)
                 if not remainder:
                     raise ValueError(f"Unexpected lack of response {usbip_cmd.command.name}, expected {remaining_size} bytes")
@@ -767,16 +767,16 @@ class MockUSBIP:
     def read_paths(self) -> list[OP_REP_DEV_PATH]:
         """read the paths from the JSON file"""
         devlist: bytes = bytes.fromhex("".join([item for item in self._protocol_responses['OP_REP_DEVLIST']]))
-        devlist_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])
-        devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]  # mypy: disable-error-code="misc"
+        devlist_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])  # type: ignore[misc]
+        devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]  # type: ignore[misc]
         paths: list[OP_REP_DEV_PATH] = []
         for _ in range(0, devlist_header.num_exported_devices):
             path: OP_REP_DEV_PATH = OP_REP_DEV_PATH.unpack(devices)
             paths.append(path)
-            devices = devices[OP_REP_DEV_PATH.size:]  # mypy: disable-error-code="misc"
+            devices = devices[OP_REP_DEV_PATH.size:]  # type: ignore[misc]
             for _ in range(0, path.bNumInterfaces):
                 interface: OP_REP_DEV_INTERFACE = OP_REP_DEV_INTERFACE.unpack(devices)
                 path.interfaces.append(interface)
-                devices = devices[OP_REP_DEV_INTERFACE.size:]  # mypy: disable-error-code="misc"
+                devices = devices[OP_REP_DEV_INTERFACE.size:]  # type: ignore[misc]
 
         return paths
