@@ -13,7 +13,7 @@ def get_version(package_name: str) -> str:
     # from the toml file, otherwise we are an installed package and need to fetch from
     # the package's metadata
     try:
-        from tomlkit import parse
+        from tomlkit import parse  # pylint: disable=import-outside-toplevel
         toml_filepath: Path = Path(os.path.join(os.path.dirname(__file__), "..", "pyproject.toml"))
         if toml_filepath.is_file():
             with open(toml_filepath, "r", encoding='utf-8') as toml_file:

@@ -24,10 +24,6 @@ class MockUSBIPClient(USBIPClient):
 
 class TestURBPackets(CommonTestBase):
     """test URB packets"""
-    def __init__(self, methodName):
-        """set up local variables"""
-        super().__init__(methodName)
-
     def setUp(self):
         """get ready for the test!"""
         self.mock_usbip: MockUSBIP = MockUSBIP(host='', port=0)  # won't launch thread, just the instance
