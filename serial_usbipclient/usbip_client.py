@@ -122,9 +122,9 @@ class USBConnectionLostError(USBIPError):
 
     USB_DISCONNECT: list[int] = [errno.ENOENT, errno.ENODEV]
 
-    def __init__(self, detail: str, connection: USBIP_Connection):
+    def __init__(self, detail: str, connection: USBIP_Connection | socket.socket):
         """details of the connection to assist recovery"""
-        self.connection: USBIP_Connection = connection
+        self.connection: USBIP_Connection | socket.socket = connection
         super().__init__(detail=detail)
 
 
@@ -254,7 +254,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     @property
     def pending_reads(self) -> int:
         """calculate buffer size available for pending read operations"""
-        if self.endpoint is None:
+        if self.endpoint is None or self.endpoint.input is None:
             raise ValueError("no endpoint!")
         return len([seqnum for seqnum, cmd in self._commands.items() if cmd.ep == self.endpoint.input.number])
 
@@ -348,6 +348,9 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
             # we need to check if the command was a CONTROL or INPUT endpoint, which will have
             # an additional set of payload data we need to read in.
+            if self.endpoint is None or self.endpoint.control is None or self.endpoint.input is None:
+                raise ValueError("missing endpoint(s)")
+
             if prefix.seqnum in self._commands:
                 if (self._commands[prefix.seqnum].ep in [self.endpoint.control.number, self.endpoint.input.number] and
                         self._commands[prefix.seqnum].direction == Direction.USBIP_DIR_IN):
@@ -381,6 +384,9 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         #           i) commands not removed will be "unlinked" when connection terminated
         #      b) once we reach the specified 'size' we are done
         #
+        if self.endpoint is None or self.endpoint.input is None:
+            raise ValueError("missing input endpoint")
+
         data: bytes = bytes()
         start_time: float = perf_counter()
         while perf_counter() - start_time < timeout:
@@ -555,7 +561,8 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def import_device(self, busid: bytes) -> OP_REP_IMPORT:
         """import the specified device"""
         request: bytes = OP_REQ_IMPORT(busid=busid).packet()
-        self.connect_server()
+        if self.usbipd is None:
+            raise ValueError("no usbipd server connection")
         self.set_tcp_nodelay()
 
         self.usbipd.sendall(request)
@@ -637,7 +644,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                                                length=0,
                                                )
         self.send_setup(setup=setup, usb=usb)
-        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)
+        prefix_data: bytes = self.readall(RET_SUBMIT_PREFIX.size, usb)  # type: ignore[arg-type]
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.unpack(prefix_data)
         if prefix.status != 0:
             raise ValueError(f"set_line_control_state failure! {prefix.status=}, errno='{os.strerror(abs(prefix.status))}'")
@@ -920,6 +927,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def restore_connection(self, lost_usb: USBIP_Connection) -> Optional[USBIP_Connection]:
         """A USB connection has been lost, attempt to restore it"""
         # get the list of published devices from the USBIPD server
+        if lost_usb is None or lost_usb.device is None:
+            raise ValueError("no connection to restore")
+
         self._logger.debug("restoring connection")
         if lost_usb in self._connections:
             self._connections.remove(lost_usb)
