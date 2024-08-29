@@ -52,6 +52,10 @@ jobs:
       - name: lint
         run: |
           python -m poetry run python -m pylint serial_usbipclient/*
+      - name: mypy type checking
+        run: |
+          python -m poetry run python -m mypy serial_usbipclient
+
       - name: Test & generate coverage
         run: |
           chmod +x run_pytest.sh
