@@ -24,9 +24,11 @@ def get_version(package_name: str) -> str:
                     LOGGER.warning(f"{os.path.basename(toml_filepath)} has project name of {name} does not match {package_name}!")
                 return toml_contents['tool']['poetry']['version']
     except ImportError:
-        # We are an installed package, so get version from metadata
-        try:
-            return importlib.metadata.version(package_name)
-        except importlib.metadata.PackageNotFoundError:
-            LOGGER.error(f"package name {package_name} not found!")
-            return f'?.?.?.{package_name}'
+        pass  # we are a package
+
+    # We are an installed package, so get version from metadata
+    try:
+        return importlib.metadata.version(package_name)
+    except importlib.metadata.PackageNotFoundError:
+        LOGGER.error(f"package name {package_name} not found!")
+        return f'?.?.?.{package_name}'
