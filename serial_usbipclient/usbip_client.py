@@ -154,7 +154,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         self._endpoints: CDCEndpoints = CDCEndpoints()
         self._commands: dict[int, CMD_SUBMIT] = {}  # seqnum/command
         self._responses: dict[int, tuple[RET_SUBMIT_PREFIX, bytes]] = {}  # seqnum/(ret/data)
-        self._logger: Optional[logging.Logger] = None
+        self._logger: logging.Logger = LOGGER
         self._delimiter: bytes = b'\r\n'
 
     @property
@@ -228,16 +228,22 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     @property
     def control(self) -> USB_Endpoint:
         """the control endpoint"""
+        if self.endpoint is None or self.endpoint.control is None:
+            raise ValueError("no control endpoint!")
         return self.endpoint.control
 
     @property
     def output(self) -> USB_Endpoint:
         """the control endpoint"""
+        if self.endpoint is None or self.endpoint.output is None:
+            raise ValueError("no output endpoint!")
         return self.endpoint.output
 
     @property
     def input(self) -> USB_Endpoint:
         """the control endpoint"""
+        if self.endpoint is None or self.endpoint.input is None:
+            raise ValueError("no input endpoint!")
         return self.endpoint.input
 
     @property
@@ -248,6 +254,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     @property
     def pending_reads(self) -> int:
         """calculate buffer size available for pending read operations"""
+        if self.endpoint is None:
+            raise ValueError("no endpoint!")
         return len([seqnum for seqnum, cmd in self._commands.items() if cmd.ep == self.endpoint.input.number])
 
     def sendall(self, data: bytes) -> None:
@@ -307,7 +315,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 return None
             header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
             if header.command == BasicCommands.RET_UNLINK:  # unlink command
-                unlink_data: bytes = header_data + USBIPClient.readall(RET_UNLINK.size - HEADER_BASIC.size, self)
+                unlink_data: bytes = (header_data +
+                                      USBIPClient.readall(RET_UNLINK.size - HEADER_BASIC.size, self))  # type: ignore[operator]
                 unlink: RET_UNLINK = RET_UNLINK.unpack(unlink_data)
                 return unlink
             if header.command == BasicCommands.RET_SUBMIT:  # response for a submit
@@ -327,14 +336,15 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
         header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
         if header.command == BasicCommands.RET_SUBMIT:  # this is a return from a submit
-            expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)  # type: ignore[arg-type]
+            expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)  # type: ignore[arg-type, operator]
+            prefix_data: bytes = bytes()
             if expected_size:  # if there's more data, read it in
-                prefix_data: bytes = header_data + self.readall(expected_size, self)
+                prefix_data = header_data + self.readall(expected_size, self)
                 if not prefix_data:
                     return True
 
             prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
-            payload: Optional[bytes] = None
+            payload: bytes = bytes()
 
             # we need to check if the command was a CONTROL or INPUT endpoint, which will have
             # an additional set of payload data we need to read in.
@@ -342,15 +352,18 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 if (self._commands[prefix.seqnum].ep in [self.endpoint.control.number, self.endpoint.input.number] and
                         self._commands[prefix.seqnum].direction == Direction.USBIP_DIR_IN):
                     payload = USBIPClient.readall(prefix.actual_length, self)
-                prefix.ep = self._commands[prefix.seqnum].ep  # makes correlation with endpoints easier
+                prefix.ep = self._commands[prefix.seqnum].ep  # simplifies correlation with endpoints
 
             self._responses[prefix.seqnum] = (prefix, payload)
             return True
+
         return False
 
     def response_data(self, timeout: float = PAYLOAD_TIMEOUT, size: int = 0) -> bytes:
         """
         Read device data from the USBIP device
+        :param self:
+        :type self:
         :param timeout: time in seconds we will wait for the response
         :type timeout: float
         :param size: how many bytes we expect to read, 0 if response terminated
@@ -403,6 +416,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     READ_BUFFER_SIZE: int = 512  # number of bytes of pending reads to enqueue
     URB_QUEUE_MIN: int = 10
     URB_QUEUE_MAX: int = 50
+    SERVER_CONNECT_TIMEOUT: float = 1.0
 
     def __init__(self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT):
         """establish connection to server for devices"""
@@ -435,9 +449,8 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     def connect_server(self) -> None:
         """connect to the remote usbipd server"""
         if self._socket is None:
-            server_timeout: float = 1.0
             try:
-                socket.setdefaulttimeout(server_timeout)
+                socket.setdefaulttimeout(self.SERVER_CONNECT_TIMEOUT)
                 self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self._socket.connect((self._host, self._port))
                 self._socket.settimeout(self._socket_timeout)
@@ -449,23 +462,27 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             except (socket.timeout, OSError) as timeout_error:
                 raise USBIPServerTimeoutError(
                     f"connection attempt to {self._host}:{self._port} timed out "
-                    f"after {server_timeout} seconds"
+                    f"after {self.SERVER_CONNECT_TIMEOUT} seconds"
                 ) from timeout_error
             finally:
                 socket.setdefaulttimeout(self._socket_timeout)  # restore the transaction timeout
 
     def set_tcp_nodelay(self):
         """set TCP nodelay for the current socket"""
+        if self._socket is None:
+            raise ValueError("no socket to set options on!")
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
     @property
-    def usbipd(self) -> socket.socket:
+    def usbipd(self) -> Optional[socket.socket]:
         """return the socket connection"""
         self.connect_server()
         return self._socket
 
     def _remove_connection(self) -> socket.socket:
         """detach the connection"""
+        if self._socket is None:
+            raise ValueError("no socket to remove")
         socket_connection: socket.socket = self._socket
         self._socket = None
         if socket_connection is not None:
@@ -488,7 +505,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     @staticmethod
     def readall(size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
-        sock: socket.socket = usb.socket if isinstance(usb, USBIP_Connection) else usb
+        sock: socket.socket | None = usb.socket if isinstance(usb, USBIP_Connection) else usb
+        if sock is None:
+            raise ValueError("no socket to read!")
         try:
             data: bytes = bytes()
             start: float = perf_counter()
@@ -514,7 +533,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
         """get list of remote devices"""
-        self.connect_server()  # connect to usbipd service is required
+        if self.usbipd is None:
+            raise ValueError("no connection to USBIPD server")
+
         request: bytes = OP_REQ_DEVLIST().packet()
         self.usbipd.sendall(request)
         data: bytes = self.readall(OP_REP_DEVLIST_HEADER.size, self.usbipd)  # type: ignore[arg-type]
@@ -546,7 +567,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         more_data: bytes = bytes()
         start_time: float = time()
         while not more_data and time() - start_time < 1.0:
-            more_data += self.readall(OP_REP_IMPORT.size - CommonHeader.size, self.usbipd)  # type: ignore[operator]
+            more_data += self.readall(OP_REP_IMPORT.size - CommonHeader.size, self.usbipd)  # type: ignore[arg-type, operator]
 
         self._logger.debug(f"OP_REP_IMPORT: {data.hex()}{more_data.hex()}")
         return OP_REP_IMPORT.unpack(data + more_data)
@@ -571,9 +592,10 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
             direction=setup.direction,
             transfer_buffer=data if data else bytes(),
         )
-        data: bytes = command.pack()
-        usb.sendall(data)
-        self._logger.debug(f"send_setup(): {str(setup)}\n{data.hex()=}")
+        command_data: bytes = command.pack()
+        usb.sendall(command_data)
+        command_hex_data: str = command_data.hex() if command_data else 'None'
+        self._logger.debug(f"send_setup(): {str(setup)}\ncommand_data.hex()={command_hex_data}")
 
     def request_descriptor(self, setup: UrbSetupPacket, usb: USBIP_Connection) -> (
             DeviceDescriptor | ConfigurationDescriptor | StringDescriptor):
@@ -882,6 +904,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """
         # The connection to the usb device has been lost. Check the path to see if this
         # matches the usb device we are looking to restore
+
+        if usb.device is None:
+            raise ValueError("no device specified in connection")
 
         for current_connection in self._connections:
             if current_connection.busnum == usb.busnum and current_connection.devnum == usb.devnum:
