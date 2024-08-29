@@ -1,7 +1,7 @@
 """definitions for URB packets"""
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 from datastruct.fields import field
 
@@ -209,7 +209,8 @@ class StringDescriptor(BaseDescriptor):
 
     def __post_init__(self) -> None:
         """set the size of the string descriptor"""
-        self.bLength = BaseDescriptor.size + 2  # for now, support a single language
+        # for now, support a single language
+        self.bLength = BaseDescriptor.size + 2  # type: ignore[operator]
         self.bDescriptorType = DescriptorType.STRING_DESCRIPTOR
 
 
@@ -217,7 +218,7 @@ class GenericDescriptor:
     """handle a generic descriptor and return correct type"""
     def __init__(self):
         """initialize all instance data we need"""
-        self._handlers: dict[DescriptorType, callable] = {
+        self._handlers: dict[DescriptorType, Callable] = {
             DescriptorType.CONFIGURATION_DESCRIPTOR: self._configuration_handler,
             DescriptorType.ENDPOINT_DESCRIPTOR: self._endpoint_handler,
             DescriptorType.INTERFACE_DESCRIPTOR: self._interface_handler,
@@ -231,14 +232,14 @@ class GenericDescriptor:
         """handle Configuration descriptors"""
         configuration_desc: ConfigurationDescriptor = ConfigurationDescriptor.unpack(data)
         offset: int = configuration_desc.size
-        interface_desc_size: int = InterfaceDescriptor.size  # pylint: disable=comparison-with-callable
+        interface_desc_size: int = InterfaceDescriptor.packet_size()
         idx_interface: int = 0
         while idx_interface < configuration_desc.bNumInterfaces:
-            if len(data[offset:]) < BaseDescriptor.size:  # pylint: disable=comparison-with-callable
+            if len(data[offset:]) < BaseDescriptor.packet_size():
                 break
             desc_type: DescriptorType = self._descriptor_type(data[offset:])
             if desc_type == DescriptorType.INTERFACE_ASSOCIATION:
-                offset += InterfaceAssociation.size
+                offset += InterfaceAssociation.packet_size()
             elif desc_type == DescriptorType.INTERFACE_DESCRIPTOR:
                 idx_interface += 1
                 if len(data[offset:]) >= interface_desc_size:  # pylint: disable=comparison-with-callable
@@ -323,7 +324,7 @@ class GenericDescriptor:
         """given a stream of bytes, create appropriate descriptor"""
         descriptor: BaseDescriptor = BaseDescriptor.unpack(data)
         descriptor_type = DescriptorType(descriptor.bDescriptorType)
-        handler: Optional[callable] = self._handlers.get(descriptor_type, None)
+        handler: Optional[Callable] = self._handlers.get(descriptor_type, None)
         if handler:
             return handler(data, descriptor.bLength)
         return None
