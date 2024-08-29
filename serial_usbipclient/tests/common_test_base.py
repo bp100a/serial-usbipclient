@@ -53,7 +53,8 @@ class CommonTestBase(TestCase):
         self.runner_instance: str = os.getenv('PYTEST_XDIST_WORKER', '1')
         self.worker_id: int = int(re.findall(r"(\d+)$", self.runner_instance)[0]) if self.runner_instance else 0
 
-    def get_test_index(self, name: str) -> int:
+    @staticmethod
+    def get_test_index(name: str) -> int:
         """get index of test, can be used as offset for port assignments"""
         qualified_name: str = name.replace(os.sep, '.').lower()
         with open(os.path.join(os.path.dirname(__file__), 'list_of_tests.json'), 'r', encoding='utf-8') as tests:

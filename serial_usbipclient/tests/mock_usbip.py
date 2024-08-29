@@ -7,10 +7,10 @@ import logging
 import os
 import platform
 import re
-import sys
 import select
 import socket
 import struct
+import sys
 import traceback
 from enum import EnumType, StrEnum
 from pathlib import Path

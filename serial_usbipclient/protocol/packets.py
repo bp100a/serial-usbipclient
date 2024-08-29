@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from datastruct import DataStruct  # mypy: disable-error-code="import-untyped"
-from datastruct.fields import built, field  # mypy: disable-error-code="import-untyped"
+from datastruct.fields import (  # mypy: disable-error-code="import-untyped"
+    built, field)
 from datastruct.utils.config import (Config, Endianness, datastruct_config,
                                      datastruct_get_config)
 

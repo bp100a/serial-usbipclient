@@ -1,7 +1,7 @@
 """definitions for URB packets"""
 
 from dataclasses import dataclass
-from typing import Any, Optional, Callable
+from typing import Any, Callable, Optional
 
 from datastruct.fields import field
 

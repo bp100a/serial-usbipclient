@@ -9,8 +9,9 @@ from serial_usbipclient.protocol.urb_packets import (CDCDescriptorSubType,
                                                      ConfigurationDescriptor,
                                                      EndPointDescriptor,
                                                      GenericDescriptor,
+                                                     InterfaceAssociation,
                                                      InterfaceDescriptor,
-                                                     StringDescriptor, InterfaceAssociation)
+                                                     StringDescriptor)
 
 
 class MockUSBIPClient(USBIPClient):
@@ -26,6 +27,9 @@ class TestURBPackets(CommonTestBase):
     def __init__(self, methodName):
         """set up local variables"""
         super().__init__(methodName)
+
+    def setUp(self):
+        """get ready for the test!"""
         self.mock_usbip: MockUSBIP = MockUSBIP(host='', port=0)  # won't launch thread, just the instance
 
     def test_configuration_descriptor(self):

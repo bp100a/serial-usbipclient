@@ -7,7 +7,8 @@ from typing import Optional
 from common_test_base import CommonTestBase
 from mock_usbip import MockUSBIP
 
-from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER, HEADER_BASIC
+from serial_usbipclient.protocol.packets import (HEADER_BASIC,
+                                                 OP_REP_DEVLIST_HEADER)
 from serial_usbipclient.protocol.usbip_defs import BasicCommands
 from serial_usbipclient.usbip_client import (PAYLOAD_TIMEOUT, HardwareID,
                                              USBAttachError, USBIP_Connection,
