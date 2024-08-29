@@ -2,7 +2,7 @@ USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/act
 ========================================================================================================
 <div>
 
-![](https://github.com/bp100a/serial-usbipclient/blob/master/logo.png?raw=true)
+![](https://github.com/bp100a/serial-usbipclient/blob/mypy/logo.png?raw=true#center)
 
 </div>
 
@@ -109,6 +109,7 @@ ___
 | pip-tools      | 7.4.1   | provides `pip-compile` to create requirement files |
 | pytest-cov     | 5.0.0   | integrates coverage with pytest                    |
 | pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
+| mypy           | 1.11.2  | type checking                                      |
 
 ### Packages required publish to PyPi
 ___

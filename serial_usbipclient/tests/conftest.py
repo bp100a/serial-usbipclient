@@ -4,6 +4,8 @@ import os
 import sys
 from subprocess import PIPE, Popen
 
+# mypy: disable-error-code="annotation-unchecked"
+
 
 def pytest_sessionstart(session):  # pylint: disable=unused-argument
     """perform setup before any tests are run"""
@@ -17,8 +19,9 @@ def pytest_sessionstart(session):  # pylint: disable=unused-argument
                 '--collect-only',  # shorter traceback format
                 base_dir], stdout=PIPE, bufsize=1,
                universal_newlines=True) as pytest_process:
-        for line in pytest_process.stdout:
-            pytest_output.append(line.strip(' \n'))
+        if pytest_process.stdout:
+            for line in pytest_process.stdout:
+                pytest_output.append(line.strip(' \n'))
 
     package: str = ''
     test_case: str = ''

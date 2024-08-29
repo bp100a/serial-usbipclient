@@ -10,6 +10,7 @@ import re
 import select
 import socket
 import struct
+import sys
 import traceback
 from enum import EnumType, StrEnum
 from pathlib import Path
@@ -49,7 +50,7 @@ class MockDevice:
         self.product: int = product
         self.busid: bytes = f"{busnum}-{devnum}".encode('utf-8')
         self.busid += b'\0' * (32 - len(self.busid))
-        self.device: Optional[DeviceDescriptor] = device
+        self.device: DeviceDescriptor = device
         self.queued_reads: dict[int, CMD_SUBMIT] = {}  # keyed by the sequence # for easy access
         self._attached: bool = False
 
@@ -66,7 +67,7 @@ class MockDevice:
             cmd_submit: CMD_SUBMIT = self.queued_reads.pop(seq)
             return cmd_submit
         else:
-            LOGGER.error(f"{seq=} not in queue! {self.queued_reads=}")
+            raise ValueError(f"{seq=} not in queue! {self.queued_reads=}")
 
     @property
     def is_attached(self) -> bool:
@@ -151,8 +152,10 @@ class ParseLSUSB:
         hex_value: str = bcd_value.replace('.', '')  # now it's a hex string
         return int(hex_value, 16)  # return as an integer
 
-    def set_attribute(self, urb: URBBase, name: str, value: str):
+    def set_attribute(self, urb: URBBase, name: str, value: Any):
         """set the attribute to the structure"""
+        if not isinstance(value, str):
+            raise ValueError(f"{value=} should be str not {type(value)}")
         if name == 'bMaxPacketSize0':  # indicates max packet size for default endpoint
             name = 'bMaxPacketSize'
 
@@ -212,7 +215,7 @@ class ParseLSUSB:
                 elif section == 'Interface Descriptor:':
                     if not isinstance(urb, ConfigurationDescriptor):
                         return offset - 1
-                    config_descriptor: ConfigurationDescriptor = cast(ConfigurationDescriptor, urb)
+                    config_descriptor = cast(ConfigurationDescriptor, urb)
                     config_descriptor.interfaces.append(InterfaceDescriptor())
                     offset = self.parse_descriptor(usb, offset, config_descriptor.interfaces[-1])
                 elif section == "Endpoint Descriptor:":
@@ -224,25 +227,25 @@ class ParseLSUSB:
                 elif section == 'CDC Header:':
                     if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
+                    if_descriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(HeaderFunctionalDescriptor())
                     offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC Call Management:':
                     if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
+                    if_descriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(CallManagementFunctionalDescriptor())
                     offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC ACM:':
                     if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
+                    if_descriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(ACMFunctionalDescriptor())
                     offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
                 elif section == 'CDC Union:':
                     if not isinstance(urb, InterfaceDescriptor):
                         return offset - 1
-                    if_descriptor: InterfaceDescriptor = cast(InterfaceDescriptor, urb)
+                    if_descriptor = cast(InterfaceDescriptor, urb)
                     if_descriptor.descriptors.append(UnionFunctionalDescriptor())
                     offset = self.parse_descriptor(usb, offset, if_descriptor.descriptors[-1])
 
@@ -280,8 +283,7 @@ class MockUSBDevice:
                                                     bConfigurationValue=0x0,
                                                     bNumConfigurations=len(usb.device.configurations),
                                                     bNumInterfaces=sum([len(item.interfaces)
-                                                                        for item in usb.device.configurations]),
-                                                    )
+                                                                        for item in usb.device.configurations]))
             usbip_dev_header.paths.append(path)
             for configuration in usb.device.configurations:
                 for interface in configuration.interfaces:
@@ -294,6 +296,9 @@ class MockUSBDevice:
 
     def pack(self) -> bytes:  # create the byte representation of the data
         """walk the USBIP representation and create the byte stream"""
+        if self.usbip is None:
+            raise ValueError("usbip not initialized")
+
         response: bytes = self.usbip.pack()
         for path in self.usbip.paths:
             response += path.pack()
@@ -308,7 +313,7 @@ class SocketPair:
         """create our socket pair"""
         self._near: Optional[socket.socket] = None
         self._far: Optional[socket.socket] = None
-        family: socket.AddressFamily = socket.AF_INET if platform.system() == 'Windows' else socket.AF_UNIX
+        family: socket.AddressFamily = socket.AF_INET if sys.platform == 'win32' else socket.AF_UNIX  # type: ignore[attr-defined]
         self._near, self._far = socket.socketpair(family=family, type=socket.SOCK_STREAM)
 
     def wakeup(self):
@@ -319,7 +324,9 @@ class SocketPair:
     @property
     def listener(self) -> socket.socket:
         """return the socket that will be listening"""
-        return self._far
+        if self._far:
+            return self._far
+        raise ValueError("socket pair not specified!")
 
     def shutdown(self):
         """done with our socket pair"""
@@ -340,7 +347,7 @@ class USBIPClient:
         self.socket: socket.socket = connection
         self.address: tuple[str, int] = address
         self.socket.settimeout(None)  # default to blocking connections
-        self._size: int = size if size else CommonHeader.size
+        self._size: int = size if size else CommonHeader.size  # type: ignore[assignment]
         self._busid: Optional[bytes] = None
         self._name: str = f"@{self.address[0]}"
 
@@ -383,19 +390,26 @@ class USBIPClient:
         self._size = size
 
     @property
-    def busid(self) -> Optional[bytes]:
+    def is_attached(self) -> bool:
+        """indicates that client has been imported by remote host"""
+        return bool(self._busid)
+
+    @property
+    def busid(self) -> bytes:
         """return the busid (if assigned)"""
+        if self._busid is None:
+            raise ValueError("busid not assigned!")
         return self._busid
 
     @busid.setter
     def busid(self, busid: bytes) -> None:
         """set the busid for this client"""
-        self._size = CMD_SUBMIT_PREFIX.size if busid else CommonHeader.size
+        self._size = CMD_SUBMIT_PREFIX.size if busid else CommonHeader.size  # type: ignore[assignment]
         self._busid = busid
 
     def __repr__(self) -> str:
         """return a developer readable view"""
-        busid: str = self.busid.strip(b'\0').decode('utf-8') if self.busid else 'None'
+        busid: str = self.busid.strip(b'\0').decode('utf-8') if self.is_attached else 'None'
         return f"{self.name=}, {self.address=}, {self.fileno()=}, {busid=}"
 
 
@@ -414,14 +428,14 @@ class MockUSBIP:
         self.host: str = host
         self.port: int = port
         self.logger: logging.Logger = LOGGER
-        self.server_socket: socket.socket | None = None
-        self.thread: Thread = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run_server, daemon=True)
+        self.server_socket: Optional[socket.socket] = None
+        self.thread: Optional[Thread] = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run_server, daemon=True)
         self.event: Event = Event()
         self._is_windows: bool = platform.system() == 'Windows'
         self._protocol_responses: dict[str, list[str]] = {}
         self.urb_queue: dict[int, Any] = {}  # pending read URBs, queued by seq #
-        self.usb_devices: Optional[MockUSBDevice] = None
-        self._wakeup: SocketPair = SocketPair()
+        self.usb_devices: MockUSBDevice = MockUSBDevice(devices=[])  # to keep mypy & others happy
+        self._wakeup: Optional[SocketPair] = SocketPair()
         self._clients: list[USBIPClient] = []
         self.setup()
         if self.host and self.port:
@@ -477,7 +491,9 @@ class MockUSBIP:
         """unlink the specified read"""
         cmd_unlink: CMD_UNLINK = CMD_UNLINK.unpack(message)
         busnum, devnum = cmd_unlink.devid >> 16, cmd_unlink.devid & 0xFFFF
-        usb: MockDevice = self.usb_devices.device(busnum, devnum)
+        usb: Optional[MockDevice] = self.usb_devices.device(busnum, devnum)
+        if usb is None:
+            raise ValueError(f"{busnum=}/{devnum=} not found for unlink")
         unlinked_command: CMD_SUBMIT = usb.dequeue_read(seq=cmd_unlink.unlink_seqnum)
         status: int = ~errno.ECONNRESET if not unlinked_command else 0
         ret_unlink: RET_UNLINK = RET_UNLINK(status=status, seqnum=cmd_unlink.seqnum, devid=cmd_unlink.devid)
@@ -518,7 +534,9 @@ class MockUSBIP:
                 # mock the read. Reads are "pending", a URB is queued and returned when the device has
                 # data to return to the host.
                 busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
-                usb: MockDevice = self.usb_devices.device(busnum, devnum)
+                usb: Optional[MockDevice] = self.usb_devices.device(busnum, devnum)
+                if usb is None:
+                    raise ValueError(f"{busnum=}/{devnum=} not found for queueing read")
                 usb.enqueue_read(cmd_submit)  # associate this read with the device it's intended
                 self.logger.info(f"queued read #{cmd_submit.seqnum} "
                                  f"for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
@@ -527,7 +545,9 @@ class MockUSBIP:
                 # mock the writing of the device. For now returns an "echo" of what was written as the
                 # URB response.
                 busnum, devnum = cmd_submit.devid >> 16, cmd_submit.devid & 0xFFFF
-                usb: MockDevice = self.usb_devices.device(busnum, devnum)
+                usb = self.usb_devices.device(busnum, devnum)
+                if usb is None:
+                    raise ValueError(f"{busnum=}/{devnum=} not found for write")
                 self.logger.info(f"device write #{cmd_submit.seqnum} "
                                  f"for {busnum}-{devnum} ({len(usb.queued_reads)} in queue)")
                 return self.generate_mock_response(usb, cmd_submit)
@@ -536,7 +556,7 @@ class MockUSBIP:
             self.logger.info(f"Setup flags: {str(urb_setup)}\n{client.busid.hex()=}")
             for device in self.usb_devices.devices:
                 if device.busid == client.busid:
-                    transfer_buffer: Optional[bytes] = None
+                    transfer_buffer: bytes = bytes()
                     if urb_setup.descriptor_type == DescriptorType.DEVICE_DESCRIPTOR:
                         transfer_buffer = device.device.pack()
                     elif urb_setup.descriptor_type == DescriptorType.CONFIGURATION_DESCRIPTOR:
@@ -576,18 +596,19 @@ class MockUSBIP:
                         return response
 
             # device not found, return error
-            busid: str = client.busid.strip(b'\0').decode('utf-8') if client.busid else 'None'
+            busid: str = client.busid.strip(b'\0').decode('utf-8') if client.is_attached else 'None'
             devices: str = ",".join([device.busid.strip(b'\0').decode('utf-8') for device in self.usb_devices.devices])
             self.logger.warning(f"operation not recognized: {urb_setup.descriptor_type.name=}, {busid=}, {devices=}")
-            failure: CommonHeader = CommonHeader(command=BasicCommands.RET_SUBMIT, status=errno.ENODEV)
-            client.busid = None
-            return failure.pack()
+
+        failure: CommonHeader = CommonHeader(command=BasicCommands.RET_SUBMIT, status=errno.ENODEV)
+        client.busid = bytes()
+        return failure.pack()
 
     def mock_response(self, client: USBIPClient, message: bytes) -> None:
         """use the lsusb devices to mock a response"""
-        busid: str = client.busid.strip(b'\0').decode('utf-8') if client.busid else 'None'
+        busid: str = client.busid.strip(b'\0').decode('utf-8') if client.is_attached else 'None'
         self.logger.info(f"{busid=}, {message.hex()=}")
-        if client.busid is not None:  # we have imported a device
+        if client.is_attached:  # we have imported a device
             response: bytes = self.mock_urb_responses(client, message)
             if response:
                 client.sendall(response)
@@ -595,17 +616,23 @@ class MockUSBIP:
 
         header: CommonHeader = CommonHeader.unpack(message)
         if header.command == BasicCommands.REQ_DEVLIST:
-            response: bytes = self.usb_devices.pack()
+            response = self.usb_devices.pack()
             self.logger.info(f"REP_DEVLIST: {response.hex()=}")
             if response:
                 client.sendall(response)
             return
         elif header.command == BasicCommands.REQ_IMPORT:
             req_import: OP_REQ_IMPORT = OP_REQ_IMPORT.unpack(message)
-            self.logger.info(f"REQ_IMPORT {req_import.busid}")
+            self.logger.info(f"REQ_IMPORT {req_import.busid.hex()}")
+            if self.usb_devices.usbip is None or self.usb_devices.usbip.paths is None:
+                self.logger.error("REQ_IMPORT from unrecognized device, no connection to USBIP server available")
+                return
+
             for path in self.usb_devices.usbip.paths:
                 if path.busid == req_import.busid:
-                    device: MockDevice = self.usb_devices.device(busnum=path.busnum, devnum=path.devnum)
+                    device: Optional[MockDevice] = self.usb_devices.device(busnum=path.busnum, devnum=path.devnum)
+                    if device is None:
+                        raise ValueError(f"{path.busnum=}/{path.devnum=} path not found!")
                     was_already_attached: bool = device.attach  # attach the device (returns previous state
                     status: int = errno.ENODEV if device.devnum == 99 and device.busnum == 99 else 0
                     if was_already_attached:
@@ -632,6 +659,9 @@ class MockUSBIP:
     def wait_for_message(self, conn: Optional[USBIPClient] = None) -> tuple[USBIPClient, bytes]:
         """wait for a response (or a shutdown)"""
         self.logger.info(f"wait_for_message({conn=}), {self._clients=}")
+        if self._wakeup is None or self.server_socket is None:
+            raise ValueError("neither the wakeup or server socket can be emptyed!")
+
         rlist: list[socket.socket | USBIPClient] = [self._wakeup.listener, self.server_socket]
         if conn:
             if conn not in self._clients:
@@ -675,7 +705,7 @@ class MockUSBIP:
     def read_message(self, client: Optional[USBIPClient] = None) -> tuple[USBIPClient, bytes]:
         """read a single message from the socket"""
         client, message = self.wait_for_message(client)
-        if client.busid and message:  # reading URBs
+        if client.is_attached and message:  # reading URBs
             try:
                 urb_cmd: CMD_SUBMIT_PREFIX = CMD_SUBMIT_PREFIX.unpack(message)
             except struct.error:
@@ -693,7 +723,7 @@ class MockUSBIP:
             if usbip_cmd.command == BasicCommands.REQ_DEVLIST:
                 return client, message
             elif usbip_cmd.command == BasicCommands.REQ_IMPORT:
-                remaining_size: int = OP_REQ_IMPORT.size - len(message)
+                remaining_size: int = OP_REQ_IMPORT.size - len(message)  # type: ignore[operator]
                 remainder = client.recv(remaining_size)
                 if not remainder:
                     raise ValueError(f"Unexpected lack of response {usbip_cmd.command.name}, expected {remaining_size} bytes")
@@ -726,7 +756,7 @@ class MockUSBIP:
             failure: str = traceback.format_exc()
             self.logger.error(f"Exception {str(os_error)}\n{failure=}")
         except Exception as bad_error:  # pylint: disable=broad-exception-caught
-            failure: str = traceback.format_exc()
+            failure = traceback.format_exc()
             self.logger.error(f"Exception = {str(bad_error)}\n{failure=}")
         except OrderlyExit as exit_error:
             self.logger.info(f"Orderly System Shutdown ({str(exit_error)})")  # we are exiting as part of a shutdown
@@ -737,16 +767,17 @@ class MockUSBIP:
     def read_paths(self) -> list[OP_REP_DEV_PATH]:
         """read the paths from the JSON file"""
         devlist: bytes = bytes.fromhex("".join([item for item in self._protocol_responses['OP_REP_DEVLIST']]))
-        devlist_header: OP_REP_DEVLIST_HEADER = OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size])
-        devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]
+        devlist_header: OP_REP_DEVLIST_HEADER = (
+            OP_REP_DEVLIST_HEADER.unpack(devlist[:OP_REP_DEVLIST_HEADER.size]))  # type: ignore[misc]
+        devices: bytes = devlist[OP_REP_DEVLIST_HEADER.size:]  # type: ignore[misc]
         paths: list[OP_REP_DEV_PATH] = []
         for _ in range(0, devlist_header.num_exported_devices):
             path: OP_REP_DEV_PATH = OP_REP_DEV_PATH.unpack(devices)
             paths.append(path)
-            devices = devices[OP_REP_DEV_PATH.size:]
+            devices = devices[OP_REP_DEV_PATH.size:]  # type: ignore[misc]
             for _ in range(0, path.bNumInterfaces):
                 interface: OP_REP_DEV_INTERFACE = OP_REP_DEV_INTERFACE.unpack(devices)
                 path.interfaces.append(interface)
-                devices = devices[OP_REP_DEV_INTERFACE.size:]
+                devices = devices[OP_REP_DEV_INTERFACE.size:]  # type: ignore[misc]
 
         return paths

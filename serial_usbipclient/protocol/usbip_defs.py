@@ -61,7 +61,7 @@ class CDCControl(IntEnum):
 class ErrorCodes:  # pylint: disable=line-too-long
     """mappings for errno -> description"""
 
-    ERRNO: dict[errno, str] = {
+    ERRNO: dict[int, str] = {
         errno.ENOMEM: "no memory for allocation of internal structures",
         errno.EBUSY: "The URB is already active.",
         errno.ENODEV: "specified USB-device or bus doesn't exist",

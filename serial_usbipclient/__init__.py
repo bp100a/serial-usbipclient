@@ -2,10 +2,21 @@
 from . import version
 from .usbip_client import *
 
-__versions__: str = version.__version__
+PACKAGE_NAME: str = 'serial-usbipclient'
+
+__versions__: str = version.get_version(PACKAGE_NAME)
 
 __all__: list[str] = [
     'USBIPClient',  # manages connections USBIPD service
     'USBIP_Connection',  # a connection, via USBIPD, to a device
-    'HardwareID'  # hardware ids to form connections to (pid/vid)
+    'HardwareID',  # hardware ids to form connections to (pid/vid)
+
+    # exceptions
+    'USBIPError',
+    'USBIPServerTimeoutError',
+    'USBIPConnectionError',
+    'USBIPResponseTimeoutError',
+    'USBConnectionLostError',
+    'USBAttachError',
+
 ]

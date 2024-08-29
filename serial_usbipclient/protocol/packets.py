@@ -3,8 +3,9 @@ import struct
 from dataclasses import dataclass
 from functools import lru_cache
 
-from datastruct import DataStruct
-from datastruct.fields import built, field
+from datastruct import DataStruct  # mypy: disable-error-code="import-untyped"
+from datastruct.fields import (  # mypy: disable-error-code="import-untyped"
+    built, field)
 from datastruct.utils.config import (Config, Endianness, datastruct_config,
                                      datastruct_get_config)
 
@@ -196,7 +197,7 @@ class CMD_SUBMIT(CMD_SUBMIT_PREFIX):
     transfer_buffer: bytes = field(lambda ctx: ctx.transfer_buffer_length if ctx.direction == Direction.USBIP_DIR_OUT else 0, default=b'')
 
     @property
-    def iso_packet_descriptors(self) -> bytes:
+    def iso_packet_descriptors(self) -> bytes | None:
         """return the iso packet descriptor"""
         return self.transfer_buffer if self.number_of_packets != 0xFFFFFFFF else None
 

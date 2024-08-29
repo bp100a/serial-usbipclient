@@ -47,7 +47,7 @@ Repository = "https://github.com/bp100a/serial-usbipclient"
 name = "serial-usbipclient"
 authors = ["Harry J. Collins <bp100a@gmail.com>"]
 maintainers = ["Harry J. Collins <bp100a@gmail.com>"]
-version = "0.0.9"
+version = "0.1.1"
 description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
 readme = "README.md"
 package-mode = true
@@ -55,3 +55,14 @@ package-mode = true
 [tool.poetry.dependencies]
 python = "^3.11"
 py-datastruct = "^1.0.0"
+
+[tool.mypy]
+check_untyped_defs = true
+exclude = [
+    'test_',
+    'common_test_base.py'
+]
+
+[[tool.mypy.overrides]]
+module = ["datastruct.*", "common_test_base", "mock_usbip"]
+ignore_missing_imports = true
