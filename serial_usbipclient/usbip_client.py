@@ -193,8 +193,6 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     @property
     def logger(self) -> logging.Logger:
         """return the current logger"""
-        if self._logger is None:
-            raise ValueError("no logger!")
         return self._logger
 
     @logger.setter
