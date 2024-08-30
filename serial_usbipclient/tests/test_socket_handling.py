@@ -3,14 +3,12 @@ import json
 import os
 import socket
 from socket import AddressFamily, SocketKind
-from typing import Optional, cast
+from typing import Optional
 
 from common_test_base import CommonTestBase
 
-from serial_usbipclient import (USBConnectionLostError, USBIPConnectionError,
-                                USBIPServerTimeoutError)
-from serial_usbipclient.protocol.packets import (OP_REP_DEVLIST_HEADER,
-                                                 BasicCommands, CommonHeader)
+from serial_usbipclient import USBConnectionLostError, USBIPConnectionError, USBIPServerTimeoutError
+from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER, BasicCommands, CommonHeader
 from serial_usbipclient.socket_wrapper import SocketWrapper
 from serial_usbipclient.usbip_client import HardwareID, USBIPClient
 
@@ -104,7 +102,6 @@ class TestSocketWrapper(CommonTestBase):
         """Test connecting to a mocked remote"""
         self.client.connect_server()
         self.assertTrue(isinstance(self.client.usbipd, MockSocketWrapper))
-        socket: MockSocketWrapper = cast(MockSocketWrapper, self.client.usbipd)
 
     def test_list_published(self):
         """test attaching via MockSocketWrapper"""
