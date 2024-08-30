@@ -7,7 +7,7 @@ from typing import Optional
 
 from common_test_base import CommonTestBase
 
-from serial_usbipclient import USBConnectionLostError, USBIPConnectionError, USBIPServerTimeoutError
+from serial_usbipclient import USBConnectionLostError, USBIPConnectionError, USBIPServerTimeoutError, USBIP_Connection
 from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER, BasicCommands, CommonHeader
 from serial_usbipclient.socket_wrapper import SocketWrapper
 from serial_usbipclient.usbip_client import HardwareID, USBIPClient
@@ -82,6 +82,17 @@ class RecvOSErrorSocketWrapper(MockSocketWrapper):
         raise OSError('mock error handling')
 
 
+class URBErrorSocketWrapper(MockSocketWrapper):
+    """raise error on URB"""
+
+    def sendall(self, data: bytes) -> None:
+        """sending data to the device"""
+        super().sendall(data)
+        header: CommonHeader = CommonHeader.unpack(data)
+        if header.command == BasicCommands.CMD_SUBMIT:
+            raise ValueError('fail URB request')
+
+
 class TestSocketWrapper(CommonTestBase):
     """test injected failures"""
     def __init__(self, methodName):
@@ -134,3 +145,25 @@ class TestSocketWrapper(CommonTestBase):
         self.client.connect_server()
         with self.assertRaisesRegex(expected_exception=USBConnectionLostError, expected_regex='connection lost'):
             self.client.list_published()  # trigger a read
+
+    def test_restore_connection_no_device(self):
+        """test failure modes when restoring a connection"""
+        self.client.connect_server()
+        published: OP_REP_DEVLIST_HEADER = self.client.list_published()
+        no_device: USBIP_Connection = USBIP_Connection(devnum=published.paths[0].devnum, busnum=published.paths[0].busnum)
+        with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='no connection to restore'):
+            self.client.restore_connection(lost_usb=no_device)
+
+    def test_restore_connection(self):
+        """test failure modes when restoring a connection"""
+        self.client = USBIPClient(remote=(self.host, self.port), socket_class=URBErrorSocketWrapper)
+        self.client.connect_server()
+        published: OP_REP_DEVLIST_HEADER = self.client.list_published()
+        lost_usb: USBIP_Connection = USBIP_Connection(devnum=published.paths[0].devnum,
+                                                      busnum=published.paths[0].busnum,
+                                                      seqnum=0,
+                                                      device=HardwareID(published.paths[0].idVendor, published.paths[0].idProduct),
+                                                      sock=MockSocketWrapper(family=socket.AF_INET, kind=socket.SOCK_STREAM))
+
+        with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='Attach error'):
+            self.client.restore_connection(lost_usb=lost_usb)
