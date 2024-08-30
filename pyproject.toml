@@ -6,7 +6,6 @@ build-backend = "poetry.core.masonry.api"
 name = "serial-usbipclient"
 authors = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
 maintainers = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
-version = "0.0.7"
 description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
 readme = "README.md"
 license = {text = "BSD License"}

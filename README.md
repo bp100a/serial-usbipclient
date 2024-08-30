@@ -124,17 +124,9 @@ pip install -r tool_requirements.txt
 
 Tooling is not needed to run the package but is required for testing & packaging.
 
-Build Process
+Build Process (_now using Poetry!_)
 --------------------------------------------------------------------------
 ___
-Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) package, read the docs [here](https://pip-tools.readthedocs.io/en/latest/)
-
-```bash
-pip-compile requirements.in
-```
-
-Release to PyPi (_now using Poetry!_)
-----------------------------------------------------------------------------
 Store the PyPi API token
 ```bash
 keyring set https://upload.pypi.org/legacy/ __token__
