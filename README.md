@@ -89,7 +89,7 @@ failing USBIPD attachments, and `1-2` & `1-3` have the same VID/PID (for testing
 During testing, the `MockUSBIP` service acts as a stand-in for an actual USBIP server. Since the tests are run in parallel, 
 the port on which the service listens must be unique for each unit test. This is accomplished by the `conftest.py::pytest_sessionstart` which is run
 when the pytest session is started and collects all tests being run into a file called `lists_of_tests.json`. The unit test's index into this array
-is used to determine the offset to be added to the port base (typically **3240**).
+is used to determine the offset to be added to the port base (typically **3240**). The `SocketWrapper` class is overridden in unit tests to inject low-level socket failures.
 
 
 Tooling
@@ -124,17 +124,9 @@ pip install -r tool_requirements.txt
 
 Tooling is not needed to run the package but is required for testing & packaging.
 
-Build Process
+Build Process (_now using Poetry!_)
 --------------------------------------------------------------------------
 ___
-Using `pip-compile` from the [pip-tools](https://pypi.org/project/pip-tools/) package, read the docs [here](https://pip-tools.readthedocs.io/en/latest/)
-
-```bash
-pip-compile requirements.in
-```
-
-Release to PyPi (_now using Poetry!_)
-----------------------------------------------------------------------------
 Store the PyPi API token
 ```bash
 keyring set https://upload.pypi.org/legacy/ __token__

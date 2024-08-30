@@ -14,6 +14,9 @@ from dataclasses import dataclass
 from time import perf_counter, time
 from typing import Optional, cast
 
+# wrapper for sockets
+from serial_usbipclient.socket_wrapper import SocketWrapper
+
 from .protocol.packets import (CMD_SUBMIT, CMD_UNLINK, HEADER_BASIC,
                                OP_REP_DEV_INTERFACE, OP_REP_DEV_PATH,
                                OP_REP_DEVLIST_HEADER, OP_REP_IMPORT,
@@ -122,9 +125,9 @@ class USBConnectionLostError(USBIPError):
 
     USB_DISCONNECT: list[int] = [errno.ENOENT, errno.ENODEV]
 
-    def __init__(self, detail: str, connection: USBIP_Connection | socket.socket):
+    def __init__(self, detail: str, connection: USBIP_Connection | SocketWrapper):
         """details of the connection to assist recovery"""
-        self.connection: USBIP_Connection | socket.socket = connection
+        self.connection: USBIP_Connection | SocketWrapper = connection
         super().__init__(detail=detail)
 
 
@@ -142,13 +145,13 @@ class USBAttachError(USBIPError):
 class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid-name
     """a connection to an usbip device we attached to"""
     def __init__(self, busnum: int = 0, devnum: int = 0, seqnum: int = 0,
-                 device: Optional[HardwareID] = None, sock: Optional[socket.socket] = None):
+                 device: Optional[HardwareID] = None, sock: Optional[SocketWrapper] = None):
         """fill in our local variables"""
         self.busnum: int = busnum
         self.devnum: int = devnum
         self.seqnum: int = seqnum  # tracks request/response for all endpoints of device connection
         self.device: Optional[HardwareID] = device
-        self.socket: Optional[socket.socket] = sock
+        self.socket: Optional[SocketWrapper] = sock
         self._configuration: Optional[ConfigurationDescriptor] = None
         self._device: Optional[DeviceDescriptor] = None
         self._endpoints: CDCEndpoints = CDCEndpoints()
@@ -190,8 +193,6 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     @property
     def logger(self) -> logging.Logger:
         """return the current logger"""
-        if self._logger is None:
-            raise ValueError("no logger!")
         return self._logger
 
     @logger.setter
@@ -302,7 +303,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             raise USBConnectionLostError(detail="send_unlink() connection lost", connection=self) from connection_error
 
     @staticmethod
-    def readall(size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
+    def readall(size: int, usb: USBIP_Connection | SocketWrapper, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
         return USBIPClient.readall(size, usb, timeout)
 
@@ -424,16 +425,17 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     URB_QUEUE_MAX: int = 50
     SERVER_CONNECT_TIMEOUT: float = 1.0
 
-    def __init__(self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT):
+    def __init__(self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT, socket_class: type = SocketWrapper):
         """establish connection to server for devices"""
         # Note: in docker the host/port will most likely be `host.docker.internal:3420`
         self._host: str = remote[0]
         self._port: int = remote[1]
-        self._socket: Optional[socket.socket] = None
+        self._socket: Optional[SocketWrapper] = None
         self._connections: list[USBIP_Connection] = []  # track our attachments
         self._socket_timeout: Optional[float] = 0.005  # timeout on waiting for a "receive" from the socket (transactions)
         self._command_timeout: float = command_timeout
         self._logger: logging.Logger = LOGGER
+        self._socket_class: type = socket_class
 
     @property
     def command_timeout(self) -> float:
@@ -456,11 +458,12 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """connect to the remote usbipd server"""
         if self._socket is None:
             try:
-                socket.setdefaulttimeout(self.SERVER_CONNECT_TIMEOUT)
-                self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket = self._socket_class(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket.settimeout(self.SERVER_CONNECT_TIMEOUT)
                 self._socket.connect((self._host, self._port))
                 self._socket.settimeout(self._socket_timeout)
-                self._logger.debug(f"connected to {self._host}:{self._port} from {self._socket.getsockname()[1]}")
+                self._logger.debug(f"connected via {self._socket.__class__.__name__} "
+                                   f"to {self._host}:{self._port} from {self._socket.getsockname()}")
             except socket.gaierror as gai_error:
                 raise USBIPConnectionError(
                     f"connection attempt to {self._host}:{self._port} '{str(gai_error)}'"
@@ -471,7 +474,8 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                     f"after {self.SERVER_CONNECT_TIMEOUT} seconds"
                 ) from timeout_error
             finally:
-                socket.setdefaulttimeout(self._socket_timeout)  # restore the transaction timeout
+                if self._socket:
+                    self._socket.settimeout(self._socket_timeout)  # restore the transaction timeout
 
     def set_tcp_nodelay(self):
         """set TCP nodelay for the current socket"""
@@ -480,16 +484,16 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
     @property
-    def usbipd(self) -> Optional[socket.socket]:
+    def usbipd(self) -> Optional[SocketWrapper]:
         """return the socket connection"""
         self.connect_server()
         return self._socket
 
-    def _remove_connection(self) -> socket.socket:
+    def _remove_connection(self) -> SocketWrapper:
         """detach the connection"""
         if self._socket is None:
             raise ValueError("no socket to remove")
-        socket_connection: socket.socket = self._socket
+        socket_connection: SocketWrapper = self._socket
         self._socket = None
         if socket_connection is not None:
             # Connections will be sending lots of small packets, disable Nagle's
@@ -509,9 +513,9 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         return conn
 
     @staticmethod
-    def readall(size: int, usb: USBIP_Connection | socket.socket, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
+    def readall(size: int, usb: USBIP_Connection | SocketWrapper, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
-        sock: socket.socket | None = usb.socket if isinstance(usb, USBIP_Connection) else usb
+        sock: SocketWrapper | None = usb.socket if isinstance(usb, USBIP_Connection) else usb
         if sock is None:
             raise ValueError("no socket to read!")
         try:
@@ -530,11 +534,11 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         raise timeout_error
             return data
         except ConnectionError as connection_error:
-            raise USBConnectionLostError(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
+            raise USBConnectionLostError(detail="connection error", connection=usb) from connection_error
         except OSError as os_error:
             if isinstance(os_error, TimeoutError):
                 raise USBIPResponseTimeoutError(size=size, timeout=timeout) from os_error
-            raise USBConnectionLostError(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, {str(os_error)}",
+            raise USBConnectionLostError(detail=f"connection lost [{os_error.errno=}, {str(os_error)}",
                                          connection=usb) from os_error
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
