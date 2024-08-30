@@ -1,16 +1,18 @@
 """test handling various strange responses from the socket"""
-import os
 import json
+import os
 import socket
-from typing import cast, Optional
 from socket import AddressFamily, SocketKind
-
-from serial_usbipclient import USBIPConnectionError, USBIPServerTimeoutError, USBConnectionLostError
-from serial_usbipclient.socket_wrapper import SocketWrapper
+from typing import Optional, cast
 
 from common_test_base import CommonTestBase
-from serial_usbipclient.usbip_client import USBIPClient, HardwareID
-from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER, BasicCommands, CommonHeader
+
+from serial_usbipclient import (USBConnectionLostError, USBIPConnectionError,
+                                USBIPServerTimeoutError)
+from serial_usbipclient.protocol.packets import (OP_REP_DEVLIST_HEADER,
+                                                 BasicCommands, CommonHeader)
+from serial_usbipclient.socket_wrapper import SocketWrapper
+from serial_usbipclient.usbip_client import HardwareID, USBIPClient
 
 
 class MockSocketWrapper(SocketWrapper):

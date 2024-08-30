@@ -1,6 +1,7 @@
 """wraps socket so we can abstract if for testing (dependency injection)"""
+from socket import AddressFamily, SocketKind, socket
+
 from typing_extensions import Buffer
-from socket import socket, AddressFamily, SocketKind
 
 
 class SocketWrapper:

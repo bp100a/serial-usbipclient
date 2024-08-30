@@ -14,6 +14,9 @@ from dataclasses import dataclass
 from time import perf_counter, time
 from typing import Optional, cast
 
+# wrapper for sockets
+from serial_usbipclient.socket_wrapper import SocketWrapper
+
 from .protocol.packets import (CMD_SUBMIT, CMD_UNLINK, HEADER_BASIC,
                                OP_REP_DEV_INTERFACE, OP_REP_DEV_PATH,
                                OP_REP_DEVLIST_HEADER, OP_REP_IMPORT,
@@ -30,9 +33,6 @@ from .protocol.usbip_defs import (BasicCommands, CDCControl,  # just the basics
 from .protocol.usbip_protocol import (URBCDCRequestType, URBSetupRequestType,
                                       URBStandardDeviceRequest,
                                       URBTransferFlags)
-
-# wrapper for sockets
-from serial_usbipclient.socket_wrapper import SocketWrapper
 
 LOGGER: logging.Logger = logging.getLogger('serial-usbipclient')
 LOGGER.addHandler(logging.NullHandler())  # in case wrapping application hasn't set a default handler
