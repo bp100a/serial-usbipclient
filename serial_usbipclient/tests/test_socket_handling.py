@@ -1,9 +1,11 @@
 """test handling various strange responses from the socket"""
 import os
 import json
+import socket
 from typing import cast, Optional
 from socket import AddressFamily, SocketKind
 
+from serial_usbipclient import USBIPConnectionError, USBIPServerTimeoutError, USBConnectionLostError
 from serial_usbipclient.socket_wrapper import SocketWrapper
 
 from common_test_base import CommonTestBase
@@ -59,6 +61,27 @@ class MockSocketWrapper(SocketWrapper):
         return bytes()
 
 
+class GiaErrorSocketWrapper(MockSocketWrapper):
+    """raise a gai error on connection"""
+    def connect(self, address: tuple[str, int]):
+        """raise a socket error"""
+        raise socket.gaierror('mock error handling')
+
+
+class TimeoutErrorSocketWrapper(MockSocketWrapper):
+    """raise a timeout error on connection"""
+    def connect(self, address: tuple[str, int]):
+        """raise a socket error"""
+        raise socket.timeout('timeout error handling')
+
+
+class RecvOSErrorSocketWrapper(MockSocketWrapper):
+    """raise an OSError (not a timeout) error on connection"""
+    def recv(self, size: int) -> bytes:
+        """raise our error"""
+        raise OSError('mock error handling')
+
+
 class TestSocketWrapper(CommonTestBase):
     """test injected failures"""
     def __init__(self, methodName):
@@ -93,3 +116,22 @@ class TestSocketWrapper(CommonTestBase):
 
         with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='Attach error'):
             self.client.attach(devices=[HardwareID(vid=0x525, pid=0xa4a7)])
+
+    def test_gai_error(self):
+        """test handling the gai error"""
+        self.client = USBIPClient(remote=(self.host, self.port), socket_class=GiaErrorSocketWrapper)
+        with self.assertRaisesRegex(expected_exception=USBIPConnectionError, expected_regex='mock error handling'):
+            self.client.connect_server()
+
+    def test_timeout_error(self):
+        """test handling the low-level socket timeout error"""
+        self.client = USBIPClient(remote=(self.host, self.port), socket_class=TimeoutErrorSocketWrapper)
+        with self.assertRaisesRegex(expected_exception=USBIPServerTimeoutError, expected_regex='connection attempt'):
+            self.client.connect_server()
+
+    def test_recv_error(self):
+        """test handling the low-level socket oserror during recv"""
+        self.client = USBIPClient(remote=(self.host, self.port), socket_class=RecvOSErrorSocketWrapper)
+        self.client.connect_server()
+        with self.assertRaisesRegex(expected_exception=USBConnectionLostError, expected_regex='connection lost'):
+            self.client.list_published()  # trigger a read

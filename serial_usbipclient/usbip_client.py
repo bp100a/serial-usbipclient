@@ -536,11 +536,11 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
                         raise timeout_error
             return data
         except ConnectionError as connection_error:
-            raise USBConnectionLostError(detail="USBIPClient.readall() connection lost", connection=usb) from connection_error
+            raise USBConnectionLostError(detail="connection error", connection=usb) from connection_error
         except OSError as os_error:
             if isinstance(os_error, TimeoutError):
                 raise USBIPResponseTimeoutError(size=size, timeout=timeout) from os_error
-            raise USBConnectionLostError(detail=f"USBIPClient.readall() connection lost [{os_error.errno=}, {str(os_error)}",
+            raise USBConnectionLostError(detail=f"connection lost [{os_error.errno=}, {str(os_error)}",
                                          connection=usb) from os_error
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
