@@ -427,7 +427,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
     URB_QUEUE_MAX: int = 50
     SERVER_CONNECT_TIMEOUT: float = 1.0
 
-    def __init__(self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT):
+    def __init__(self, remote: tuple[str, int], command_timeout: float = PAYLOAD_TIMEOUT, socket_class: type = SocketWrapper):
         """establish connection to server for devices"""
         # Note: in docker the host/port will most likely be `host.docker.internal:3420`
         self._host: str = remote[0]
@@ -437,6 +437,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self._socket_timeout: Optional[float] = 0.005  # timeout on waiting for a "receive" from the socket (transactions)
         self._command_timeout: float = command_timeout
         self._logger: logging.Logger = LOGGER
+        self._socket_class: type = socket_class
 
     @property
     def command_timeout(self) -> float:
@@ -459,11 +460,12 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """connect to the remote usbipd server"""
         if self._socket is None:
             try:
-                self._socket = SocketWrapper(socket.AF_INET, socket.SOCK_STREAM)
+                self._socket = self._socket_class(socket.AF_INET, socket.SOCK_STREAM)
                 self._socket.settimeout(self.SERVER_CONNECT_TIMEOUT)
                 self._socket.connect((self._host, self._port))
                 self._socket.settimeout(self._socket_timeout)
-                self._logger.debug(f"connected to {self._host}:{self._port} from {self._socket.getsockname()[1]}")
+                self._logger.debug(f"connected via {self._socket.__class__.__name__} "
+                                   f"to {self._host}:{self._port} from {self._socket.getsockname()}")
             except socket.gaierror as gai_error:
                 raise USBIPConnectionError(
                     f"connection attempt to {self._host}:{self._port} '{str(gai_error)}'"

@@ -1,5 +1,4 @@
 """wraps socket so we can abstract if for testing (dependency injection)"""
-from typing import Any
 from typing_extensions import Buffer
 from socket import socket, AddressFamily, SocketKind
 
@@ -39,9 +38,9 @@ class SocketWrapper:
         """close the socket"""
         self._socket.close()
 
-    def getsockname(self) -> Any:
+    def getsockname(self) -> tuple[str, int]:
         """get the socket's name"""
-        return self._socket.getsockname()
+        return self._socket.getsockname()[1]  # always returning (address, port)
 
     def sendall(self, data: bytes) -> None:
         """send out to our socket"""
