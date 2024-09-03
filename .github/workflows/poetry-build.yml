@@ -46,8 +46,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          poetry install
-          python -m poetry run python -m pip install -r tool_requirements.txt
+          poetry install --with tests
 
       - name: lint
         run: |
