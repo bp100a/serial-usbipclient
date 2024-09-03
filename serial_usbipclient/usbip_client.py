@@ -70,19 +70,13 @@ class USB_Endpoint:  # pylint: disable=invalid-name
         return self.endpoint.number if self.endpoint else 0
 
 
-@dataclass
 class CDCEndpoints:
     """endpoints we need to talk to a CDC device"""
-
-    control: Optional[USB_Endpoint] = None
-    input: Optional[USB_Endpoint] = None
-    output: Optional[USB_Endpoint] = None
-
-    def __post_init__(self) -> None:
-        """setup our endpoint defaults"""
-
-        # we always have a control
-        self.control = USB_Endpoint(endpoint=EndPointDescriptor())
+    def __init__(self):
+        """initialize"""
+        self.control: USB_Endpoint = USB_Endpoint(endpoint=EndPointDescriptor())
+        self.input: Optional[USB_Endpoint] = None
+        self.output: Optional[USB_Endpoint] = None
 
 
 class USBIPError(Exception):
@@ -175,7 +169,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         self._delimiter = delimiter
 
     @property
-    def endpoint(self) -> CDCEndpoints | None:
+    def endpoint(self) -> CDCEndpoints:
         """return our accessor the endpoint"""
         return self._endpoints
 
