@@ -660,7 +660,7 @@ class MockUSBIP:
         """wait for a response (or a shutdown)"""
         self.logger.info(f"wait_for_message({conn=}), {self._clients=}")
         if self._wakeup is None or self.server_socket is None:
-            raise ValueError("neither the wakeup or server socket can be emptyed!")
+            raise ValueError("neither the wakeup or server socket can be emptied!")
 
         rlist: list[socket.socket | USBIPClient] = [self._wakeup.listener, self.server_socket]
         if conn:

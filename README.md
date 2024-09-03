@@ -57,10 +57,11 @@ response: bytes = connections[0].response_data(size=0)  # reads until delimiter
 SOUP
 --------------------------------------------------------------------------
 ___
-| Module          | Version    | comments                                    |
-|-----------------|------------|---------------------------------------------|
-| Python          | 3.11, 3.12 | Python interpreter                          |
-| py-datastruct   | 1.0.0      | Serialization of binary to/from dataclasses |
+| Module          | Version    | comments                                     |
+|-----------------|------------|----------------------------------------------|
+| Python          | 3.11, 3.12 | Python interpreter                           |
+| py-datastruct   | 1.0.0      | Serialization of binary to/from dataclasses  |
+| type-extensions | 4.12.2     | extensions for typing (SocketWrapper typing) |
 
 
 Useful Resources
