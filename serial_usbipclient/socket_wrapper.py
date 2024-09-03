@@ -15,7 +15,7 @@ class SocketWrapper:
         self._address: tuple[str, int] = ('', 0)
 
     def raw_socket(self) -> socket:
-        """return the underly, raw socket"""
+        """return the underlying, raw socket"""
         return self._socket
 
     def settimeout(self, timeout: float | None) -> None:

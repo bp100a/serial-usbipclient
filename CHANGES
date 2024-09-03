@@ -1,0 +1,6 @@
+# CHANGES
+
+## [0.1.7] - 2024-09-03
+### Added
+- updated SOUP to include typing-extensions
+- typos fixed in comments
