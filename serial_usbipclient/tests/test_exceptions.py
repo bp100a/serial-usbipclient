@@ -1,7 +1,6 @@
 """test exceptions are properly raised"""
 
 from common_test_base import CommonTestBase
-from serial_usbipclient import USBIPClient
 from serial_usbipclient.usbip_client import USBIPValueError, USBIP_Connection
 
 

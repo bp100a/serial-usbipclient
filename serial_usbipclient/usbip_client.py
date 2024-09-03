@@ -99,7 +99,7 @@ class USBIPError(Exception):
 
 class USBIPValueError(ValueError):
     """wrapper for issues with a value"""
-    
+
 
 class USBIPServerTimeoutError(USBIPError):
     """timeout while trying to connect to the usbip server"""
