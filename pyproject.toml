@@ -48,7 +48,7 @@ Repository = "https://github.com/bp100a/serial-usbipclient"
 name = "serial-usbipclient"
 authors = ["Harry J. Collins <bp100a@gmail.com>"]
 maintainers = ["Harry J. Collins <bp100a@gmail.com>"]
-version = "0.1.4"
+version = "0.1.6"
 description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
 readme = "README.md"
 package-mode = true
@@ -56,6 +56,7 @@ package-mode = true
 [tool.poetry.dependencies]
 python = "^3.11"
 py-datastruct = "^1.0.0"
+typing-extensions="^4.12"
 
 [tool.poetry.group.tests.dependencies]
 pytest = "8.3.2"
