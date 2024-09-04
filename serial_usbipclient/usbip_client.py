@@ -290,10 +290,9 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         except ConnectionError as connection_error:
             raise USBConnectionLostError(detail="connection lost", connection=self) from connection_error
 
-    @staticmethod
-    def readall(size: int, usb: USBIP_Connection | SocketWrapper, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
+    def readall(self, size: int, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
         """read all the expected data from the socket"""
-        return USBIPClient.readall(size, usb, timeout)
+        return USBIPClient.readall(size, self, timeout)
 
     def wait_for_unlink(self) -> Optional[RET_UNLINK]:
         """wait for the unlink response"""
@@ -323,7 +322,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             raise USBIPValueError("missing endpoint(s)")
 
         # get our header data if we don't already have it.
-        header_data = self.readall(HEADER_BASIC.size, self) if not header_data else header_data  # type: ignore[arg-type]
+        header_data = self.readall(HEADER_BASIC.size) if not header_data else header_data  # type: ignore[arg-type]
         if not header_data:
             return False  # nothing to do
 
@@ -335,7 +334,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)  # type: ignore[arg-type, operator]
         prefix_data: bytes = bytes()
         if expected_size:  # if there's more data, read it in
-            prefix_data = self.readall(expected_size, self)
+            prefix_data = self.readall(expected_size)
             if not prefix_data:
                 return False  # no additional data, we are done
             prefix_data = header_data + prefix_data
