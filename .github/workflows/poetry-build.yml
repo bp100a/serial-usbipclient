@@ -61,6 +61,7 @@ jobs:
           python -m poetry run radon cc serial_usbipclient/protocol serial_usbipclient/usbip_client.py serial_usbipclient/socket_wrapper.py -a
 
       - name: xenon code analysis
+        run: |
           # Xenon will run radon and fail if threshold is exceeded.
           python -m poetry run xenon -m C serial_usbipclient
 
