@@ -347,7 +347,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         payload: bytes = bytes()
 
         if prefix.seqnum in self._commands:
-            if (self._commands[prefix.seqnum].ep in [self.endpoint.control.number, self.endpoint.input.number] and
+            if (self._commands[prefix.seqnum].ep in [self.endpoint.control.number, self.endpoint.input.number] and  # type: ignore[union-attr]
                     self._commands[prefix.seqnum].direction == Direction.USBIP_DIR_IN):
                 payload = USBIPClient.readall(prefix.actual_length, self)
             prefix.ep = self._commands[prefix.seqnum].ep  # simplifies correlation with endpoints
@@ -482,9 +482,11 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
     @property
-    def usbipd(self) -> Optional[SocketWrapper]:
+    def usbipd(self) -> SocketWrapper:
         """return the socket connection"""
         self.connect_server()
+        if self._socket is None:
+            raise USBIPValueError("socket not created!")
         return self._socket
 
     def _remove_connection(self) -> SocketWrapper:
