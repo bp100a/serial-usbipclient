@@ -1,64 +1,12 @@
 """test handling various strange responses from the socket"""
-import json
-import os
 import socket
-from socket import AddressFamily, SocketKind
 from typing import Optional
 
-from common_test_base import CommonTestBase
+from common_test_base import CommonTestBase, MockSocketWrapper
 
 from serial_usbipclient import USBConnectionLostError, USBIPConnectionError, USBIPServerTimeoutError, USBIP_Connection
 from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER, BasicCommands, CommonHeader
-from serial_usbipclient.socket_wrapper import SocketWrapper
 from serial_usbipclient.usbip_client import HardwareID, USBIPClient
-
-
-class MockSocketWrapper(SocketWrapper):
-    """for injecting and managing a fake connection"""
-    def __init__(self, family: AddressFamily, kind: SocketKind):
-        """set up local variables"""
-        super().__init__(family, kind)
-        self._protocol_responses: dict[str, bytes] = {}
-        data_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'usbip_packets.json')
-        with open(file=data_path, mode='r', encoding='utf-8') as recording:
-            self._protocol_responses = json.loads(recording.read())
-        self.send_data: list[bytes] = []  # track commands that were sent
-        self.response_data: bytes = bytes()  # buffered responses based on commands sent
-
-    def connect(self, address: tuple[str, int]):
-        """mock connection"""
-        self._address = address
-
-    def getsockname(self) -> tuple[str, int]:
-        """return the socket name"""
-        return self._address
-
-    def shutdown(self, how: int) -> None:
-        """perform mock shutdown"""
-        return
-
-    def sendall(self, data: bytes) -> None:
-        """sending data to the device"""
-        self.send_data.append(data)
-        header: CommonHeader = CommonHeader.unpack(data)
-        response_key: str = ''
-        if header.command == BasicCommands.REQ_DEVLIST:  # asking for the device list
-            response_key = 'OP_REP_DEVLIST'
-        elif header.command == BasicCommands.REQ_IMPORT:
-            response_key = 'OP_REP_IMPORT'
-        if response_key:
-            self.response_data += bytes.fromhex("".join([item for item in self._protocol_responses[response_key]]))
-
-    def recv(self, size: int) -> bytes:
-        """return data corresponding to last send"""
-        if self.response_data:
-            if len(self.response_data) < size:
-                size = len(self.response_data)
-            response: bytes = self.response_data[:size]
-            self.response_data = self.response_data[size:]
-            return response
-
-        return bytes()
 
 
 class GiaErrorSocketWrapper(MockSocketWrapper):
