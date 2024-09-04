@@ -13,6 +13,7 @@ import struct
 from dataclasses import dataclass
 from time import perf_counter, time
 from typing import Optional, cast
+from collections import namedtuple
 
 # wrapper for sockets
 from serial_usbipclient.socket_wrapper import SocketWrapper
@@ -140,6 +141,13 @@ class USBAttachError(USBIPError):
         super().__init__(detail=detail)
 
 
+@dataclass
+class URBResponse:
+    """for storing URB responses"""
+    prefix: RET_SUBMIT_PREFIX
+    payload: bytes
+
+
 class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid-name
     """a connection to an usbip device we attached to"""
     def __init__(self, busnum: int = 0, devnum: int = 0, seqnum: int = 0,
@@ -154,7 +162,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         self._device: Optional[DeviceDescriptor] = None
         self._endpoints: CDCEndpoints = CDCEndpoints()
         self._commands: dict[int, CMD_SUBMIT] = {}  # seqnum/command
-        self._responses: dict[int, tuple[RET_SUBMIT_PREFIX, bytes]] = {}  # seqnum/(ret/data)
+        self._responses: dict[int, URBResponse] = {}  # seqnum/(ret/data)
         self._logger: logging.Logger = LOGGER
         self._delimiter: bytes = b'\r\n'
 
@@ -271,9 +279,9 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 # if we got a response, then pop it off and return the size of data
                 #  the send operation successfully sent
                 if command.seqnum in self._responses:
-                    response: tuple[RET_SUBMIT_PREFIX, bytes] = self._responses.pop(command.seqnum)
+                    response: URBResponse = self._responses.pop(command.seqnum)
                     self._commands.pop(command.seqnum)
-                    return response[0].actual_length  # how much data was sent
+                    return response.prefix.actual_length  # how much data was sent
             return 0
         except ConnectionError as connection_error:
             raise USBConnectionLostError(detail="send_command() connection lost", connection=self) from connection_error
@@ -347,13 +355,13 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         payload: bytes = bytes()
 
         if prefix.seqnum in self._commands:
-            ep = self._commands[prefix.seqnum].ep
+            ep: int = self._commands[prefix.seqnum].ep
             if (ep in [self.endpoint.control.number, self.endpoint.input.number] and  # type: ignore[union-attr]
                     self._commands[prefix.seqnum].direction == Direction.USBIP_DIR_IN):
                 payload = USBIPClient.readall(prefix.actual_length, self)
             prefix.ep = self._commands[prefix.seqnum].ep  # simplifies correlation with endpoints
 
-        self._responses[prefix.seqnum] = (prefix, payload)
+        self._responses[prefix.seqnum] = URBResponse(prefix, payload)
         return True
 
     @property
@@ -364,7 +372,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         return [
             seqnum
             for seqnum, response in self._responses.items()
-            if response[0].ep == self.endpoint.input.number
+            if response.prefix.ep == self.endpoint.input.number
         ]
 
     def response_data(self, timeout: float = PAYLOAD_TIMEOUT, size: int = 0) -> bytes:
@@ -397,8 +405,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         while perf_counter() - start_time < timeout:
             if self.wait_for_response():  # if any responses pending, pull them in
                 for seqnum in self.response_sequences:
-                    if self._responses[seqnum][1]:
-                        data += self._responses[seqnum][1]
+                    if self._responses[seqnum].payload:
+                        data += self._responses[seqnum].payload
                     self._responses.pop(seqnum)
                     self._commands.pop(seqnum)
                     if size and len(data) >= size:
