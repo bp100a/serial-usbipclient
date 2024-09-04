@@ -354,6 +354,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
     @property
     def response_sequences(self) -> list[int]:
         """return the sequence #s for responses we have read"""
+        if self.endpoint.input is None:
+            return []
         return [
             seqnum
             for seqnum, response in self._responses.items()
