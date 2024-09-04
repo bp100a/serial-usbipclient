@@ -317,39 +317,49 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
     def wait_for_response(self, header_data: Optional[bytes] = None) -> bool:
         """wait for response"""
-        # Read any response packet that is waiting and save it in our 'queue'
+        # we need to check if the command was a CONTROL or INPUT endpoint, which will have
+        # an additional set of payload data we need to read in.
+        if self.endpoint.control is None or self.endpoint.input is None:
+            raise USBIPValueError("missing endpoint(s)")
+
+        # get our header data if we don't already have it.
+        header_data = self.readall(HEADER_BASIC.size, self) if not header_data else header_data  # type: ignore[arg-type]
         if not header_data:
-            header_data = self.readall(HEADER_BASIC.size, self)  # type: ignore[arg-type]
-            if not header_data:
-                return False
+            return False  # nothing to do
 
         header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
-        if header.command == BasicCommands.RET_SUBMIT:  # this is a return from a submit
-            expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)  # type: ignore[arg-type, operator]
-            prefix_data: bytes = bytes()
-            if expected_size:  # if there's more data, read it in
-                prefix_data = header_data + self.readall(expected_size, self)
-                if not prefix_data:
-                    return True
+        if header.command != BasicCommands.RET_SUBMIT:  # this is a return from a submit
+            return False  # unrecognized
 
-            prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
-            payload: bytes = bytes()
+        # we have a response, check to see if there's any additional data
+        expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)  # type: ignore[arg-type, operator]
+        prefix_data: bytes = bytes()
+        if expected_size:  # if there's more data, read it in
+            prefix_data = self.readall(expected_size, self)
+            if not prefix_data:
+                return False  # no additional data, we are done
+            prefix_data = header_data + prefix_data
 
-            # we need to check if the command was a CONTROL or INPUT endpoint, which will have
-            # an additional set of payload data we need to read in.
-            if self.endpoint.control is None or self.endpoint.input is None:
-                raise USBIPValueError("missing endpoint(s)")
+        prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
+        payload: bytes = bytes()
 
-            if prefix.seqnum in self._commands:
-                if (self._commands[prefix.seqnum].ep in [self.endpoint.control.number, self.endpoint.input.number] and
-                        self._commands[prefix.seqnum].direction == Direction.USBIP_DIR_IN):
-                    payload = USBIPClient.readall(prefix.actual_length, self)
-                prefix.ep = self._commands[prefix.seqnum].ep  # simplifies correlation with endpoints
+        if prefix.seqnum in self._commands:
+            if (self._commands[prefix.seqnum].ep in [self.endpoint.control.number, self.endpoint.input.number] and
+                    self._commands[prefix.seqnum].direction == Direction.USBIP_DIR_IN):
+                payload = USBIPClient.readall(prefix.actual_length, self)
+            prefix.ep = self._commands[prefix.seqnum].ep  # simplifies correlation with endpoints
 
-            self._responses[prefix.seqnum] = (prefix, payload)
-            return True
+        self._responses[prefix.seqnum] = (prefix, payload)
+        return True
 
-        return False
+    @property
+    def response_sequences(self) -> list[int]:
+        """return the sequence #s for responses we have read"""
+        return [
+            seqnum
+            for seqnum, response in self._responses.items()
+            if response[0].ep == self.endpoint.input.number
+        ]
 
     def response_data(self, timeout: float = PAYLOAD_TIMEOUT, size: int = 0) -> bytes:
         """
@@ -379,22 +389,17 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         data: bytes = bytes()
         start_time: float = perf_counter()
         while perf_counter() - start_time < timeout:
-            self.wait_for_response()  # if any responses pending, pull them in
-            read_data: list[int] = [
-                seqnum
-                for seqnum, response in self._responses.items()
-                if response[0].ep == self.endpoint.input.number
-            ]
-            for seqnum in read_data:
-                if self._responses[seqnum][1]:
-                    data += self._responses[seqnum][1]
-                self._responses.pop(seqnum)
-                self._commands.pop(seqnum)
-                if size and len(data) >= size:
-                    return data
-                # if a delimiter is specified, check for it & return what we have
-                if size == 0 and data.endswith(self.delimiter) and self.delimiter:
-                    return data
+            if self.wait_for_response():  # if any responses pending, pull them in
+                for seqnum in self.response_sequences:
+                    if self._responses[seqnum][1]:
+                        data += self._responses[seqnum][1]
+                    self._responses.pop(seqnum)
+                    self._commands.pop(seqnum)
+                    if size and len(data) >= size:
+                        return data
+                    # if a delimiter is specified, check for it & return what we have
+                    if size == 0 and data.endswith(self.delimiter) and self.delimiter:
+                        return data
 
         if data:  # we received a response
             return data
