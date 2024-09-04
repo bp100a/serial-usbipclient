@@ -189,16 +189,6 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         self._device = desc
 
     @property
-    def logger(self) -> logging.Logger:
-        """return the current logger"""
-        return self._logger
-
-    @logger.setter
-    def logger(self, logger: logging.Logger) -> None:
-        """set the logger"""
-        self._logger = logger
-
-    @property
     def configuration(self) -> ConfigurationDescriptor:
         """configuration of the device"""
         if self._configuration is None:
@@ -259,6 +249,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         """wrapper for socket sendall"""
         if self.socket:
             self.socket.sendall(data)
+        else:
+            raise USBIPValueError("socket not available!")
 
     def send_command(self, command: CMD_SUBMIT) -> int:
         """send the command"""
@@ -296,7 +288,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                 return True
             return False
         except ConnectionError as connection_error:
-            raise USBConnectionLostError(detail="send_unlink() connection lost", connection=self) from connection_error
+            raise USBConnectionLostError(detail="connection lost", connection=self) from connection_error
 
     @staticmethod
     def readall(size: int, usb: USBIP_Connection | SocketWrapper, timeout: float = PAYLOAD_TIMEOUT) -> bytes:
@@ -505,7 +497,6 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         """create a USBIP device connection for the attached device"""
         conn: USBIP_Connection = USBIP_Connection(busnum=attached.busnum, devnum=attached.devnum,
                                                   device=device, sock=self._remove_connection())
-        conn.logger = self._logger
         return conn
 
     @staticmethod
