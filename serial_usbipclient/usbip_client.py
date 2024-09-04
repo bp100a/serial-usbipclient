@@ -347,7 +347,8 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
         payload: bytes = bytes()
 
         if prefix.seqnum in self._commands:
-            if (self._commands[prefix.seqnum].ep in [self.endpoint.control.number, self.endpoint.input.number] and  # type: ignore[union-attr]
+            ep = self._commands[prefix.seqnum].ep
+            if (ep in [self.endpoint.control.number, self.endpoint.input.number] and  # type: ignore[union-attr]
                     self._commands[prefix.seqnum].direction == Direction.USBIP_DIR_IN):
                 payload = USBIPClient.readall(prefix.actual_length, self)
             prefix.ep = self._commands[prefix.seqnum].ep  # simplifies correlation with endpoints
