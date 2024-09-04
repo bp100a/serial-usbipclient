@@ -314,30 +314,34 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
         raise TimeoutError("timeout waiting for unlink response")
 
-    def wait_for_response(self, header_data: Optional[bytes] = None) -> bool:
-        """wait for response"""
-        # we need to check if the command was a CONTROL or INPUT endpoint, which will have
-        # an additional set of payload data we need to read in.
+    def _fetch_header(self, header_data: Optional[bytes] = None) -> Optional[HEADER_BASIC]:
+        """fetch the header (if required)"""
         if self.endpoint.control is None or self.endpoint.input is None:
             raise USBIPValueError("missing endpoint(s)")
 
         # get our header data if we don't already have it.
-        header_data = self.readall(HEADER_BASIC.size) if not header_data else header_data  # type: ignore[arg-type]
+        header_data = self.readall(HEADER_BASIC.size) if header_data is None else header_data  # type: ignore[arg-type]
         if not header_data:
-            return False  # nothing to do
+            return None
 
-        header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
-        if header.command != BasicCommands.RET_SUBMIT:  # this is a return from a submit
+        return HEADER_BASIC.new(data=header_data)
+
+    def wait_for_response(self, header_data: Optional[bytes] = None) -> bool:
+        """wait for response"""
+        # we need to check if the command was a CONTROL or INPUT endpoint, which will have
+        # an additional set of payload data we need to read in.
+        header: Optional[HEADER_BASIC] = self._fetch_header(header_data)
+        if header is None or header.command != BasicCommands.RET_SUBMIT:  # this is a return from a submit
             return False  # unrecognized
 
         # we have a response, check to see if there's any additional data
-        expected_size: int = RET_SUBMIT_PREFIX.size - len(header_data)  # type: ignore[arg-type, operator]
+        expected_size: int = RET_SUBMIT_PREFIX.size - header.size  # type: ignore[arg-type, operator]
         prefix_data: bytes = bytes()
         if expected_size:  # if there's more data, read it in
             prefix_data = self.readall(expected_size)
             if not prefix_data:
                 return False  # no additional data, we are done
-            prefix_data = header_data + prefix_data
+            prefix_data = header.pack() + prefix_data
 
         prefix: RET_SUBMIT_PREFIX = RET_SUBMIT_PREFIX.new(data=prefix_data)
         payload: bytes = bytes()
@@ -536,9 +540,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
 
     def list_published(self) -> OP_REP_DEVLIST_HEADER:
         """get list of remote devices"""
-        if self.usbipd is None:
-            raise USBIPValueError("no connection to USBIPD server")
-
+        self.connect_server()  # ensure we are connected to the USBIPD server
         request: bytes = OP_REQ_DEVLIST().packet()
         self.usbipd.sendall(request)
         data: bytes = self.readall(OP_REP_DEVLIST_HEADER.size, self.usbipd)  # type: ignore[arg-type]
@@ -862,7 +864,7 @@ class USBIPClient:  # pylint: disable=too-many-public-methods
         start_time: float = perf_counter()
         while perf_counter() - start_time < timeout:
             try:
-                packet: bytes = usb.response_data()
+                packet: bytes = usb.response_data(size=0)  # reads until delimiter
                 if packet:
                     response.extend(packet)
                     if usb.delimiter in packet:

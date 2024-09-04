@@ -2,8 +2,8 @@
 import socket
 
 from common_test_base import CommonTestBase, MockSocketWrapper
-from serial_usbipclient import EndPointDescriptor, USBIPResponseTimeoutError
-from serial_usbipclient.protocol.packets import CMD_SUBMIT, CMD_UNLINK
+from serial_usbipclient import EndPointDescriptor, USBIPResponseTimeoutError, USBIPClient, HardwareID
+from serial_usbipclient.protocol.packets import CMD_SUBMIT, CMD_UNLINK, OP_REP_IMPORT
 from serial_usbipclient.protocol.urb_packets import ConfigurationDescriptor
 from serial_usbipclient.usbip_client import USBIPValueError, USBIP_Connection, USBConnectionLostError
 
@@ -63,3 +63,26 @@ class TestExceptions(CommonTestBase):
 
         with self.assertRaisesRegex(expected_exception=USBIPResponseTimeoutError, expected_regex=r'Timeout error'):
             conn.response_data()
+
+    def test_oserror_shutdown(self):
+        """test we handle an OSError thrown during shutdown"""
+        class ShutdownErrorSocketWrapper(MockSocketWrapper):
+            """raise a timeout error on connection"""
+            def shutdown(self, how: int) -> None:
+                """raise an OSError"""
+                raise OSError('mock shutdown')
+
+        with self.assertRaisesRegex(expected_exception=USBIPValueError, expected_regex='no socket to read'):
+            USBIPClient.readall(size=0, usb=USBIP_Connection())
+
+        self.client = USBIPClient(remote=(self.host, self.port), socket_class=ShutdownErrorSocketWrapper)
+        with self.assertRaisesRegex(expected_exception=USBIPValueError, expected_regex='no socket to set options'):
+            self.client.set_tcp_nodelay()
+        self.client.connect_server()
+        self.client.disconnect_server()  # OSError raised but swallowed as expected
+
+    def test_no_connection(self):
+        """test we handle no connection when we try to use it"""
+        self.client = USBIPClient(remote=(self.host, self.port), socket_class=MockSocketWrapper)
+        with self.assertRaisesRegex(expected_exception=USBIPValueError, expected_regex='no socket to remove'):
+            self.client.create_connection(device=HardwareID(0, 0), attached=OP_REP_IMPORT(devnum=1, busnum=1))
