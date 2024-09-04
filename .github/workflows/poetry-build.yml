@@ -57,7 +57,12 @@ jobs:
 
       - name: radon code analysis
         run: |
-          python -m poetry run python -m radon cc serial_usbipclient
+          # run complexity check on specific files since we can't exclude files/folders/etc.
+          python -m poetry run python -m radon cc serial_usbipclient/protocol serial_usbipclient/usbip_client.py serial_usbipclient/socket_wrapper.py -a
+
+      - name: xenon code analysis
+          # Xenon will run radon and fail if threshold is exceeded.
+          python -m poetry run python -m xenon -m C serial_usbipclient
 
       - name: Test & generate coverage
         run: |

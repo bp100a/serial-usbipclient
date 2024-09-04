@@ -70,12 +70,13 @@ pytest-timeout = "2.3.1"
 isort = "5.13.2"
 mypy = "1.11.2"
 radon = "6.0.1"
+xenon = "0.9.1"
 
 [tool.mypy]
 check_untyped_defs = true
 exclude = [
-    'test_',
-    'common_test_base.py'
+    "test_",
+    "common_test_base.py"
 ]
 
 [[tool.mypy.overrides]]
@@ -83,6 +84,6 @@ module = ["datastruct.*", "common_test_base", "mock_usbip"]
 ignore_missing_imports = true
 
 [tool.radon]
-exclude = ["test_*.py", "mock_usbpi.py"]
-cc_min = "D"
+exclude = ["test_", "mock_usbip.py"]
+cc_min = "C"
 show_complexity = "True"
