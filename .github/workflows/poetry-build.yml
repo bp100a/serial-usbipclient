@@ -63,7 +63,7 @@ jobs:
       - name: xenon code analysis
         run: |
           # Xenon will run radon and fail if threshold is exceeded.
-          poetry run xenon -m C -b C serial_usbipclient/protocol serial_usbipclient/usbip_client.py serial_usbipclient/socket_wrapper.py
+          poetry run xenon -m B -b B serial_usbipclient/protocol serial_usbipclient/usbip_client.py serial_usbipclient/socket_wrapper.py
 
       - name: Test & generate coverage
         run: |

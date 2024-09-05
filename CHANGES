@@ -1,5 +1,5 @@
 # CHANGES
-## [1.0.1] - 2024-09-04
+## [1.0.1] - 2024-09-05
 - now radon/xenon use for cyclomatic complexity checks
 - more test coverage, removing unused/unnecessary code
 
