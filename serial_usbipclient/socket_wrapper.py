@@ -34,7 +34,6 @@ class SocketWrapper:
     def close(self) -> None:
         """close the socket"""
         self._socket.close()
-        self._socket = None
 
     def getsockname(self) -> tuple[str, int]:
         """get the socket's name"""
