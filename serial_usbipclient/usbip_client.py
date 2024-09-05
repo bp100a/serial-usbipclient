@@ -149,6 +149,8 @@ class URBResponse:
 
 class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid-name
     """a connection to an usbip device we attached to"""
+    UNLINK_TIMEOUT_SECONDS: float = 10.0  # when shutting down afford unlink a lot of time
+
     def __init__(self, busnum: int = 0, devnum: int = 0, seqnum: int = 0,
                  device: Optional[HardwareID] = None, sock: Optional[SocketWrapper] = None):
         """fill in our local variables"""
@@ -283,7 +285,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                     return response.prefix.actual_length  # how much data was sent
             return 0
         except ConnectionError as connection_error:
-            raise USBConnectionLostError(detail="send_command() connection lost", connection=self) from connection_error
+            raise USBConnectionLostError(detail="connection lost", connection=self) from connection_error
 
     def send_unlink(self, command: CMD_UNLINK) -> bool:
         """send an unlink command"""
@@ -303,23 +305,19 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
 
     def wait_for_unlink(self) -> Optional[RET_UNLINK]:
         """wait for the unlink response"""
-        start_time: float = time()
-        while time() - start_time < 10.0:  # wade through any residual packets to get the unlink response
-            header_data: bytes = USBIPClient.readall(HEADER_BASIC.size, self.socket, timeout=1.0)  # type: ignore[arg-type]
-            if not header_data:
-                return None
-            header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
-            if header.command == BasicCommands.RET_UNLINK:  # unlink command
-                unlink_data: bytes = (header_data +
-                                      USBIPClient.readall(RET_UNLINK.size - HEADER_BASIC.size, self))  # type: ignore[operator]
-                unlink: RET_UNLINK = RET_UNLINK.unpack(unlink_data)
-                return unlink
-            if header.command == BasicCommands.RET_SUBMIT:  # response for a submit
-                self._logger.warning(f"wait_for_unlink() read a RET_SUBMIT {header_data.hex()=}")
-                self.wait_for_response(header_data=header_data)
-                return None
-
-        raise TimeoutError("timeout waiting for unlink response")
+        header_data: bytes = USBIPClient.readall(HEADER_BASIC.size, self.socket, timeout=1.0)  # type: ignore[arg-type]
+        if not header_data:
+            return None
+        header: HEADER_BASIC = HEADER_BASIC.new(data=header_data)
+        if header.command == BasicCommands.RET_UNLINK:  # unlink command
+            unlink_data: bytes = (header_data +
+                                  USBIPClient.readall(RET_UNLINK.size - HEADER_BASIC.size, self))  # type: ignore[operator]
+            unlink: RET_UNLINK = RET_UNLINK.unpack(unlink_data)
+            return unlink
+        if header.command == BasicCommands.RET_SUBMIT:  # response for a submit
+            self._logger.warning(f"wait_for_unlink() read a RET_SUBMIT {header_data.hex()=}")
+            self.wait_for_response(header_data=header_data)
+            return None
 
     def _fetch_header(self, header_data: Optional[bytes] = None) -> Optional[HEADER_BASIC]:
         """fetch the header (if required)"""
