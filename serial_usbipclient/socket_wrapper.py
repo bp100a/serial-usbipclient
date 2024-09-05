@@ -14,10 +14,6 @@ class SocketWrapper:
         self._socket: socket = socket(family, kind)
         self._address: tuple[str, int] = ('', 0)
 
-    def raw_socket(self) -> socket:
-        """return the underlying, raw socket"""
-        return self._socket
-
     def settimeout(self, timeout: float | None) -> None:
         """set the timeout on the socket"""
         self._socket.settimeout(timeout)
@@ -38,6 +34,7 @@ class SocketWrapper:
     def close(self) -> None:
         """close the socket"""
         self._socket.close()
+        self._socket = None
 
     def getsockname(self) -> tuple[str, int]:
         """get the socket's name"""
