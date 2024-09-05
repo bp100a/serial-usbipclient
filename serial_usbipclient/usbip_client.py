@@ -13,7 +13,6 @@ import struct
 from dataclasses import dataclass
 from time import perf_counter, time
 from typing import Optional, cast
-from collections import namedtuple
 
 # wrapper for sockets
 from serial_usbipclient.socket_wrapper import SocketWrapper
