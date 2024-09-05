@@ -1,5 +1,5 @@
 - [ ] Closes # (insert issue number)
-- [ ] Executed ``black -t py36 . && isort -rc . && pylint`` with no errors
+- [ ] Executed `isort, mypy, pylint, radon/xenon` with no errors
 - [ ] The change is fully covered by automated unit tests
 - [ ] Documented in docs/ as appropriate
 - [ ] Added an entry to the CHANGES file
