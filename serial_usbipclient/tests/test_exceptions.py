@@ -1,12 +1,15 @@
 """test exceptions are properly raised"""
+import errno
 import socket
+from socket import AddressFamily, SocketKind
 
 from common_test_base import CommonTestBase, MockSocketWrapper
 
-from serial_usbipclient import (EndPointDescriptor, HardwareID, USBIPClient,
-                                USBIPResponseTimeoutError)
+from serial_usbipclient import (RET_UNLINK, EndPointDescriptor, HardwareID,
+                                USBIPClient, USBIPResponseTimeoutError)
 from serial_usbipclient.protocol.packets import (CMD_SUBMIT, CMD_UNLINK,
-                                                 OP_REP_IMPORT)
+                                                 OP_REP_IMPORT,
+                                                 USBIP_RET_SUBMIT)
 from serial_usbipclient.protocol.urb_packets import ConfigurationDescriptor
 from serial_usbipclient.usbip_client import (USBConnectionLostError,
                                              USBIP_Connection, USBIPValueError)
@@ -90,3 +93,71 @@ class TestExceptions(CommonTestBase):
         self.client = USBIPClient(remote=(self.host, self.port), socket_class=MockSocketWrapper)
         with self.assertRaisesRegex(expected_exception=USBIPValueError, expected_regex='no socket to remove'):
             self.client.create_connection(device=HardwareID(0, 0), attached=OP_REP_IMPORT(devnum=1, busnum=1))
+
+    def test_hardware_id(self):
+        """test hardware id __eq__"""
+        with self.assertRaisesRegex(expected_exception=NotImplementedError, expected_regex=''):
+            an_object: object = int
+            hardware_id: HardwareID = HardwareID(0, 0)
+            _ = hardware_id == an_object
+
+    def test_send_command_connection_error(self):
+        """test sending command to bad connection generates connection error"""
+        class SendAllErrorSocketWrapper(MockSocketWrapper):
+            """raise a timeout error on connection"""
+            def sendall(self, data: bytes) -> None:
+                """raise connection error"""
+                raise ConnectionError(f"{__class__.__name__} mock error")
+
+        conn: USBIP_Connection = USBIP_Connection()
+        conn.endpoint.input = EndPointDescriptor()
+        conn.endpoint.output = EndPointDescriptor()
+        conn.socket = SendAllErrorSocketWrapper(family=socket.AF_INET, kind=socket.SOCK_STREAM)
+        with self.assertRaisesRegex(expected_exception=USBConnectionLostError, expected_regex='connection lost'):
+            conn.send_command(command=CMD_SUBMIT())
+
+    def test_wait_for_unlink(self):
+        """test when a RET_SUBMIT is returned while waiting for the unlink response"""
+        class RetSubmitSocketWrapper(MockSocketWrapper):
+            """raise a timeout error on connection"""
+            def __init__(self, family: AddressFamily, kind: SocketKind):
+                """set up local variables"""
+                super().__init__(family, kind)
+                self.response_data = USBIP_RET_SUBMIT(status=0, seqnum=1, transfer_buffer=bytes()).pack()
+
+        conn: USBIP_Connection = USBIP_Connection()
+        conn.endpoint.input = EndPointDescriptor()
+        conn.endpoint.output = EndPointDescriptor()
+        conn.socket = RetSubmitSocketWrapper(family=socket.AF_INET, kind=socket.SOCK_STREAM)
+        conn.wait_for_unlink()
+
+    def test_send_unlink(self):
+        """send unlink and get back failure status"""
+        class UnlinkStatusSocketWrapper(MockSocketWrapper):
+            """raise a timeout error on connection"""
+            def __init__(self, family: AddressFamily, kind: SocketKind):
+                """set up local variables"""
+                super().__init__(family, kind)
+                self.response_data = RET_UNLINK(status=errno.ENODEV, seqnum=1).pack()
+
+        conn: USBIP_Connection = USBIP_Connection()
+        conn.endpoint.input = EndPointDescriptor()
+        conn.endpoint.output = EndPointDescriptor()
+        conn.socket = UnlinkStatusSocketWrapper(family=socket.AF_INET, kind=socket.SOCK_STREAM)
+        self.assertTrue(conn.send_unlink(command=CMD_UNLINK(seqnum=2, unlink_seqnum=1)))
+
+    def test_is_complete(self):
+        """test determination of is complete"""
+        conn: USBIP_Connection = USBIP_Connection()
+
+        # sized buffers
+        self.assertTrue(conn.is_complete(data=b'\01\02', size=2))
+        self.assertTrue(conn.is_complete(data=b'\01\02', size=1))
+        self.assertFalse(conn.is_complete(data=b'\01\02', size=3))
+
+        # delimited buffers
+        self.assertFalse(conn.is_complete(data=b'\01\02', size=0))  # default delimiter
+        self.assertTrue(conn.is_complete(data=b'\01\02\r\n', size=0))
+        conn.delimiter = b'\n'
+        self.assertFalse(conn.is_complete(data=b'\01\02\r', size=0))
+        self.assertTrue(conn.is_complete(data=b'\01\02\n', size=0))

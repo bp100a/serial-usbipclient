@@ -1,4 +1,9 @@
 # CHANGES
+
+## [1.0.2] - 2024-09-05
+- refactor some code to increase test coverage of the usbip_client.py
+- more exception path tests
+
 ## [1.0.1] - 2024-09-05
 - now radon/xenon use for cyclomatic complexity checks
 - more test coverage, removing unused/unnecessary code
