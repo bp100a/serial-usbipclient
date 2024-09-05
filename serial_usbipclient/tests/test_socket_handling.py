@@ -4,8 +4,10 @@ from typing import Optional
 
 from common_test_base import CommonTestBase, MockSocketWrapper
 
-from serial_usbipclient import USBConnectionLostError, USBIPConnectionError, USBIPServerTimeoutError, USBIP_Connection
-from serial_usbipclient.protocol.packets import OP_REP_DEVLIST_HEADER, BasicCommands, CommonHeader
+from serial_usbipclient import (USBConnectionLostError, USBIP_Connection,
+                                USBIPConnectionError, USBIPServerTimeoutError)
+from serial_usbipclient.protocol.packets import (OP_REP_DEVLIST_HEADER,
+                                                 BasicCommands, CommonHeader)
 from serial_usbipclient.usbip_client import HardwareID, USBIPClient
 
 

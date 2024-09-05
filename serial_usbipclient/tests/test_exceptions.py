@@ -2,10 +2,14 @@
 import socket
 
 from common_test_base import CommonTestBase, MockSocketWrapper
-from serial_usbipclient import EndPointDescriptor, USBIPResponseTimeoutError, USBIPClient, HardwareID
-from serial_usbipclient.protocol.packets import CMD_SUBMIT, CMD_UNLINK, OP_REP_IMPORT
+
+from serial_usbipclient import (EndPointDescriptor, HardwareID, USBIPClient,
+                                USBIPResponseTimeoutError)
+from serial_usbipclient.protocol.packets import (CMD_SUBMIT, CMD_UNLINK,
+                                                 OP_REP_IMPORT)
 from serial_usbipclient.protocol.urb_packets import ConfigurationDescriptor
-from serial_usbipclient.usbip_client import USBIPValueError, USBIP_Connection, USBConnectionLostError
+from serial_usbipclient.usbip_client import (USBConnectionLostError,
+                                             USBIP_Connection, USBIPValueError)
 
 
 class ConnectionErrorSocketWrapper(MockSocketWrapper):

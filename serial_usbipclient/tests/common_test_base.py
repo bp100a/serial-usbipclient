@@ -6,15 +6,14 @@ import os
 import re
 import sys
 from os import getenv
+from socket import AddressFamily, SocketKind
 from typing import Optional
 from unittest import TestCase
 
-from socket import AddressFamily, SocketKind
 from mock_usbip import MockUSBIP
 
-from serial_usbipclient.usbip_client import USBIPClient, SocketWrapper
 from serial_usbipclient.protocol.packets import BasicCommands, CommonHeader
-
+from serial_usbipclient.usbip_client import SocketWrapper, USBIPClient
 
 LOG_FORMAT: str = '%(asctime)s\t%(levelname)s \t[%(filename)s:%(lineno)d] - %(message)s'
 logging.basicConfig(
