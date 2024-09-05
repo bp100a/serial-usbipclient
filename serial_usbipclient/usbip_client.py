@@ -375,6 +375,16 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
             if response.prefix.ep == self.endpoint.input.number
         ]
 
+    def is_complete(self, data: bytes, size: int) -> bool:
+        """indicates we have sufficient data to consider this fetch complete"""
+        if size and len(data) >= size:
+            return True
+        # if a delimiter is specified, check for it & return what we have
+        if size == 0 and data.endswith(self.delimiter) and self.delimiter:
+            return True
+
+        return False
+
     def response_data(self, timeout: float = PAYLOAD_TIMEOUT, size: int = 0) -> bytes:
         """
         Read device data from the USBIP device
@@ -409,10 +419,7 @@ class USBIP_Connection:  # pylint: disable=too-many-instance-attributes, invalid
                         data += self._responses[seqnum].payload
                     self._responses.pop(seqnum)
                     self._commands.pop(seqnum)
-                    if size and len(data) >= size:
-                        return data
-                    # if a delimiter is specified, check for it & return what we have
-                    if size == 0 and data.endswith(self.delimiter) and self.delimiter:
+                    if self.is_complete(data, size):
                         return data
 
         if data:  # we received a response

@@ -99,6 +99,8 @@ ___
 This package was created using JetBrains PyCharm Professional IDE, the repository does not contain any IDE specific files. 
 Development work was done using Windows 11 & Python 3.12.5, with final verification on an Ubuntu 20.04 system.
 
+Static code analysis performed using `radon` and `xenon`. 
+
 ### Packages required to run tests
 ___
 | Module         | Version | comments                                           |
@@ -111,6 +113,9 @@ ___
 | pytest-cov     | 5.0.0   | integrates coverage with pytest                    |
 | pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
 | mypy           | 1.11.2  | type checking                                      |
+| radon          | 6.0.1   | static code analysis                               |
+| xenon          | 0.9.1   | static code analysis with thresholds               |
+
 
 ### Packages required publish to PyPi
 ___
