@@ -1,14 +1,15 @@
 """test exceptions are properly raised"""
-import socket
 import errno
+import socket
 from socket import AddressFamily, SocketKind
 
 from common_test_base import CommonTestBase, MockSocketWrapper
 
-from serial_usbipclient import (EndPointDescriptor, HardwareID, USBIPClient,
-                                USBIPResponseTimeoutError, RET_UNLINK)
+from serial_usbipclient import (RET_UNLINK, EndPointDescriptor, HardwareID,
+                                USBIPClient, USBIPResponseTimeoutError)
 from serial_usbipclient.protocol.packets import (CMD_SUBMIT, CMD_UNLINK,
-                                                 OP_REP_IMPORT, USBIP_RET_SUBMIT)
+                                                 OP_REP_IMPORT,
+                                                 USBIP_RET_SUBMIT)
 from serial_usbipclient.protocol.urb_packets import ConfigurationDescriptor
 from serial_usbipclient.usbip_client import (USBConnectionLostError,
                                              USBIP_Connection, USBIPValueError)
