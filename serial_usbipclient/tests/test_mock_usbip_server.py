@@ -129,10 +129,14 @@ class TestDeviceConfiguration(CommonTestBase):
         client: USBIPServerClient = USBIPServerClient(connection=socket(), address=(self.host, self.port))
         client.busid = b'\01\02\03\04' + b'\0' * 4
         with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='busnum=0/devnum=0 not found'):
-            self.mock_usbip.mock_urb_responses(client=client, message=CMD_SUBMIT(seqnum=2, devid=0, ep=1, direction=Direction.USBIP_DIR_IN).pack())
+            self.mock_usbip.mock_urb_responses(client=client,
+                                               message=CMD_SUBMIT(seqnum=2, devid=0, ep=1,
+                                                                  direction=Direction.USBIP_DIR_IN).pack())
 
         with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='busnum=0/devnum=0 not found'):
-            self.mock_usbip.mock_urb_responses(client=client, message=CMD_SUBMIT(seqnum=2, devid=0, ep=1, direction=Direction.USBIP_DIR_OUT).pack())
+            self.mock_usbip.mock_urb_responses(client=client,
+                                               message=CMD_SUBMIT(seqnum=2, devid=0, ep=1,
+                                                                  direction=Direction.USBIP_DIR_OUT).pack())
 
     def test_bad_mock_response(self):
         """test that mock response returns proper exceptions"""
@@ -153,7 +157,8 @@ class TestDeviceConfiguration(CommonTestBase):
 
         self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
         client: USBIPServerClient = USBIPServerClient(connection=socket(), address=(self.host, self.port))
-        busid: bytes = b'1-3\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        busid: bytes = (b'1-3\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
         client.busid = bytes()
         with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='path.busnum=1/path.devnum=3 path not found!'):
             mock_device: MockDevice = self.mock_usbip.usb_devices.device(busnum=1, devnum=3)
@@ -164,7 +169,8 @@ class TestDeviceConfiguration(CommonTestBase):
         """test if no device match found, nothing done"""
         self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
         client: USBIPServerClient = USBIPServerClient(connection=socket(), address=(self.host, self.port))
-        busid: bytes = b'1-4\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        busid: bytes = (b'1-4\x00\x00\x00\x00\x00\x00\x00\x00'
+                        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
         client.busid = bytes()
         with self.assertLogs(level='WARNING') as logs:
             self.mock_usbip.mock_response(client=client, message=OP_REQ_IMPORT(busid=busid).pack())
@@ -174,5 +180,6 @@ class TestDeviceConfiguration(CommonTestBase):
         """test if we don't have appropriate sockets, wait fails"""
         self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
         self.mock_usbip.shutdown()  # cleanup the server socket
-        with self.assertRaisesRegex(expected_exception=ValueError, expected_regex='neither the wakeup or server socket can be empty'):
+        with self.assertRaisesRegex(expected_exception=ValueError,
+                                    expected_regex='neither the wakeup or server socket can be empty'):
             self.mock_usbip.wait_for_message(conn=None)
