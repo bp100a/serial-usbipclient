@@ -1,6 +1,8 @@
 # CHANGES
 ## [1.0.3] - 2024-09-06
 - refactoring for better test coverage of the Mock USBIP server
+- for testability, MockUSBIP server uses the SocketWrapper class
+  for socket abstraction, will allow injecting errors for testing
 
 ## [1.0.2] - 2024-09-05
 - refactor some code to increase test coverage of the usbip_client.py
