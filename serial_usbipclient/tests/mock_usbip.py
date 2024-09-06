@@ -34,6 +34,8 @@ from serial_usbipclient.protocol.urb_packets import (
     UrbSetupPacket, URBStandardDeviceRequest)
 from serial_usbipclient.protocol.usb_descriptors import DescriptorType
 from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
+from serial_usbipclient.socket_wrapper import SocketWrapper
+
 
 LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -423,12 +425,13 @@ class MockUSBIP:
         NO_WRITE_RESPONSE = 'no-write-response'  # write does not return acknowledgement
         NO_READ_RESPONSE = 'no-read-response'  # suppress an expected read
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, socket_class: type = SocketWrapper):
         """set up our instance"""
         self.host: str = host
         self.port: int = port
         self.logger: logging.Logger = LOGGER
-        self.server_socket: Optional[socket.socket] = None
+        self.server_socket: Optional[SocketWrapper] = None
+        self._socket_class: type = socket_class
         self.thread: Optional[Thread] = Thread(name=f'mock-usbip@{self.host}:{self.port}', target=self.run_server, daemon=True)
         self.event: Event = Event()
         self._is_windows: bool = platform.system() == 'Windows'
@@ -676,7 +679,7 @@ class MockUSBIP:
         if self._wakeup is None or self.server_socket is None:
             raise ValueError("neither the wakeup or server socket can be empty!")
 
-        rlist: list[socket.socket | USBIPServerClient] = [self._wakeup.listener, self.server_socket]
+        rlist: list[socket.socket | USBIPServerClient] = [self._wakeup.listener, self.server_socket.raw_socket]
         if conn:
             if conn not in self._clients:
                 self._clients.append(conn)
@@ -693,7 +696,7 @@ class MockUSBIP:
                     if socket_read == self._wakeup.listener:  # time to bail
                         self.logger.info("Wakeup!")
                         raise OrderlyExit("wakeup!")
-                    elif socket_read == self.server_socket:  # someone is knocking
+                    elif socket_read == self.server_socket.raw_socket:  # someone is knocking
                         self.logger.info(f"wait_for_message(): accept() {self.server_socket=}")
                         new_conn, address = self.server_socket.accept()  # accept new connection
                         client: USBIPServerClient = USBIPServerClient(connection=new_conn, address=address)
@@ -750,12 +753,12 @@ class MockUSBIP:
 
     def run_server(self):
         """standup the server, start listening"""
-        self.server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind((self.host, self.port))
-        self.server_socket.settimeout(None)  # so our accept() will block
+        self.server_socket = self._socket_class(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # type: ignore[union-attr]
+        self.server_socket.bind((self.host, self.port))  # type: ignore[union-attr]
+        self.server_socket.settimeout(None)  # type: ignore[union-attr]  # accept should block
 
-        self.server_socket.listen(1)  # only allow one connection (testing)
+        self.server_socket.listen(1)  # type: ignore[union-attr] # only allow one connection (testing)
         self.event.set()
         self.logger.info("\nmock USBIP server started @%s:%s", self.host, self.port)
         try:
