@@ -1,5 +1,6 @@
 """wraps socket so we can abstract if for testing (dependency injection)"""
 from socket import AddressFamily, SocketKind, socket
+from typing import Any
 
 from typing_extensions import Buffer
 
@@ -46,3 +47,24 @@ class SocketWrapper:
     def recv(self, size: int) -> bytes:
         """read from our socket"""
         return self._socket.recv(size)
+
+    def bind(self, address: tuple[str, int]) -> None:
+        """bind to the socket"""
+        return self._socket.bind(address)
+
+    def listen(self, backlog: int):
+        """listen for connections"""
+        return self._socket.listen(backlog)
+
+    def accept(self) -> tuple[socket, Any]:
+        """accept a connection"""
+        return self._socket.accept()
+
+    def fileno(self) -> int:
+        """return the sockets file"""
+        return self._socket.fileno()
+
+    @property
+    def raw_socket(self) -> socket:
+        """get the underlying socket"""
+        return self._socket
