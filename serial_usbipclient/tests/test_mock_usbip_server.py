@@ -5,7 +5,7 @@ import os
 from socket import AF_INET, SHUT_RDWR, SOCK_STREAM, socket
 
 from common_test_base import CommonTestBase
-from mock_usbip import MockUSBDevice, MockUSBIP, ParseLSUSB, USBIPServerClient
+from mock_usbip import MockUSBDevice, MockUSBIP, ParseLSUSB, USBIPServerClient, OrderlyExit
 
 from serial_usbipclient.protocol.packets import (CMD_SUBMIT, CMD_UNLINK,
                                                  OP_REQ_IMPORT, CommonHeader)
@@ -183,3 +183,24 @@ class TestDeviceConfiguration(CommonTestBase):
         with self.assertRaisesRegex(expected_exception=ValueError,
                                     expected_regex='neither the wakeup or server socket can be empty'):
             self.mock_usbip.wait_for_message(conn=None)
+
+    def test_wait_for_response_new_connection(self):
+        """test if we don't have appropriate sockets, wait fails"""
+        self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
+        client: USBIPServerClient = USBIPServerClient(connection=socket(), address=(self.host, self.port))
+        self.mock_usbip.event.clear()  # so we don't get stuck in the wait loop
+        self.assertFalse(self.mock_usbip.has_clients)
+        with self.assertRaisesRegex(expected_exception=OrderlyExit, expected_regex='event set'):
+            self.mock_usbip.wait_for_message(conn=client)
+        self.assertTrue(self.mock_usbip.has_clients, 'should have stashed client passed in')
+
+    def test_wait_for_response_wakeup(self):
+        """Test we can wake up the wait_for_response method"""
+        self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
+        client: USBIPServerClient = USBIPServerClient(connection=socket(), address=(self.host, self.port))
+        self.mock_usbip.wakeup()  # send a wakeup message
+        with self.assertRaisesRegex(expected_exception=OrderlyExit, expected_regex='wakeup'):
+            self.mock_usbip.wait_for_message(conn=client)
+
+        # the server is down, so to avoid a timeout we should just clean up here
+        self.mock_usbip = None

@@ -452,6 +452,11 @@ class MockUSBIP:
         else:
             LOGGER.info("MockUSBIP server not started")
 
+    @property
+    def has_clients(self) -> bool:
+        """return the clients we have (for testing)"""
+        return bool(self._clients)
+
     def setup(self):
         """setup our instance"""
         data_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'usbip_packets.json')
@@ -461,6 +466,11 @@ class MockUSBIP:
         parser: ParseLSUSB = ParseLSUSB()
         self.usb_devices = MockUSBDevice(parser.devices)
         self.usb_devices.setup()  # now we have binary for the USB devices we can emulate
+
+    def wakeup(self):
+        """send a wakeup packet"""
+        if self._wakeup:
+            self._wakeup.wakeup()
 
     def shutdown(self):
         """shutdown the USBIP server thread"""
@@ -681,7 +691,7 @@ class MockUSBIP:
                 read_sockets, _, _ = select.select(rlist, [], [])
                 for socket_read in read_sockets:
                     if socket_read == self._wakeup.listener:  # time to bail
-                        self.logger.info("[usbip-server]Wakeup!")
+                        self.logger.info("Wakeup!")
                         raise OrderlyExit("wakeup!")
                     elif socket_read == self.server_socket:  # someone is knocking
                         self.logger.info(f"wait_for_message(): accept() {self.server_socket=}")
@@ -704,7 +714,7 @@ class MockUSBIP:
             except OSError as os_error:
                 self.logger.error(f"wait_for_message: OSError: {str(os_error)}")
 
-        raise OrderlyExit("wait_for_message(), event set!")
+        raise OrderlyExit("event set!")
 
     def read_message(self, client: Optional[USBIPServerClient] = None) -> tuple[USBIPServerClient, bytes]:
         """read a single message from the socket"""
