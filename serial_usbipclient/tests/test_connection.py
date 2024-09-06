@@ -26,9 +26,8 @@ class TestUSBIPConnection(CommonTestBase):
 
     def setUp(self):
         """set up our connection test"""
-        # make sure that each instance of MockUSBIP() has a unique port, even when running in a parallel environment
-        self.port += self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
         super().setUp()
+        self.port += self.get_test_index(name=os.path.join(__file__, str(__class__.__name__), self._testMethodName))
         self.mock_usbip = MockUSBIP(host=self.host, port=self.port)
 
     def test_connection(self):

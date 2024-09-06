@@ -340,7 +340,7 @@ class SocketPair:
             self._far = None
 
 
-class USBIPClient:
+class USBIPServerClient:
     """connections to the usbip clients, wrap the socket to provide more context"""
     def __init__(self, connection: socket.socket, address: tuple[str, int], size: int = 0) -> None:
         """local variables"""
@@ -436,7 +436,7 @@ class MockUSBIP:
         self.urb_queue: dict[int, Any] = {}  # pending read URBs, queued by seq #
         self.usb_devices: MockUSBDevice = MockUSBDevice(devices=[])  # to keep mypy & others happy
         self._wakeup: Optional[SocketPair] = SocketPair()
-        self._clients: list[USBIPClient] = []
+        self._clients: list[USBIPServerClient] = []
         self.setup()
         if self.host and self.port:
             self.event.clear()
@@ -452,6 +452,11 @@ class MockUSBIP:
         else:
             LOGGER.info("MockUSBIP server not started")
 
+    @property
+    def has_clients(self) -> bool:
+        """return the clients we have (for testing)"""
+        return bool(self._clients)
+
     def setup(self):
         """setup our instance"""
         data_path: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'usbip_packets.json')
@@ -462,14 +467,21 @@ class MockUSBIP:
         self.usb_devices = MockUSBDevice(parser.devices)
         self.usb_devices.setup()  # now we have binary for the USB devices we can emulate
 
+    def wakeup(self):
+        """send a wakeup packet"""
+        if self._wakeup:
+            self._wakeup.wakeup()
+
     def shutdown(self):
         """shutdown the USBIP server thread"""
         if self.thread and self.event.is_set():
             self.logger.info("clear event, wait for thread to recognize exit condition")
             self.event.clear()  # -> 0, thread will exit loop if we aren't blocking on accept()
             if self.server_socket:
-                if not self._is_windows:  # in linux-land, need to shut down as well
+                try:
                     self.server_socket.shutdown(socket.SHUT_RDWR)
+                except OSError:  # if socket isn't bound yet, an exception is generated
+                    pass
                 self.server_socket.close()  # if we are waiting for accept(), should unblock
 
             self.logger.info("waiting for event to signal (0->1)")
@@ -522,7 +534,7 @@ class MockUSBIP:
         self.logger.info("generate_mock_response()")
         return response + ret_submit.pack()  # send the read values back immediately
 
-    def mock_urb_responses(self, client: USBIPClient, message: bytes) -> bytes:
+    def mock_urb_responses(self, client: USBIPServerClient, message: bytes) -> bytes:
         """return URB packets"""
         urb_header: HEADER_BASIC = HEADER_BASIC.unpack(message)
         if urb_header.command == BasicCommands.CMD_UNLINK:  # de-queue a read request
@@ -604,7 +616,7 @@ class MockUSBIP:
         client.busid = bytes()
         return failure.pack()
 
-    def mock_response(self, client: USBIPClient, message: bytes) -> None:
+    def mock_response(self, client: USBIPServerClient, message: bytes) -> None:
         """use the lsusb devices to mock a response"""
         busid: str = client.busid.strip(b'\0').decode('utf-8') if client.is_attached else 'None'
         self.logger.info(f"{busid=}, {message.hex()=}")
@@ -654,15 +666,17 @@ class MockUSBIP:
                     client.busid = path.busid
                     self.logger.info(f"OP_REP_IMPORT: {data.hex()}")
                     return
+
+            self.logger.warning("no response")
             return
 
-    def wait_for_message(self, conn: Optional[USBIPClient] = None) -> tuple[USBIPClient, bytes]:
+    def wait_for_message(self, conn: Optional[USBIPServerClient] = None) -> tuple[USBIPServerClient, bytes]:
         """wait for a response (or a shutdown)"""
         self.logger.info(f"wait_for_message({conn=}), {self._clients=}")
         if self._wakeup is None or self.server_socket is None:
-            raise ValueError("neither the wakeup or server socket can be emptied!")
+            raise ValueError("neither the wakeup or server socket can be empty!")
 
-        rlist: list[socket.socket | USBIPClient] = [self._wakeup.listener, self.server_socket]
+        rlist: list[socket.socket | USBIPServerClient] = [self._wakeup.listener, self.server_socket]
         if conn:
             if conn not in self._clients:
                 self._clients.append(conn)
@@ -677,17 +691,17 @@ class MockUSBIP:
                 read_sockets, _, _ = select.select(rlist, [], [])
                 for socket_read in read_sockets:
                     if socket_read == self._wakeup.listener:  # time to bail
-                        self.logger.info("[usbip-server]Wakeup!")
+                        self.logger.info("Wakeup!")
                         raise OrderlyExit("wakeup!")
                     elif socket_read == self.server_socket:  # someone is knocking
                         self.logger.info(f"wait_for_message(): accept() {self.server_socket=}")
                         new_conn, address = self.server_socket.accept()  # accept new connection
-                        client: USBIPClient = USBIPClient(connection=new_conn, address=address)
+                        client: USBIPServerClient = USBIPServerClient(connection=new_conn, address=address)
                         self._clients.append(client)
                         rlist.append(client)
                         self.logger.info(f"client @{address} connected {self._clients=}")
                         continue
-                    elif isinstance(socket_read, USBIPClient):
+                    elif isinstance(socket_read, USBIPServerClient):
                         # should be a USBClient instance
                         message: bytes = socket_read.recv(socket_read.size)
                         self.logger.info(f"wait_for_message: {message.hex()=}")
@@ -700,9 +714,9 @@ class MockUSBIP:
             except OSError as os_error:
                 self.logger.error(f"wait_for_message: OSError: {str(os_error)}")
 
-        raise OrderlyExit("wait_for_message(), event set!")
+        raise OrderlyExit("event set!")
 
-    def read_message(self, client: Optional[USBIPClient] = None) -> tuple[USBIPClient, bytes]:
+    def read_message(self, client: Optional[USBIPServerClient] = None) -> tuple[USBIPServerClient, bytes]:
         """read a single message from the socket"""
         client, message = self.wait_for_message(client)
         if client.is_attached and message:  # reading URBs

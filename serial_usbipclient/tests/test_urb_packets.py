@@ -2,7 +2,7 @@
 import socket
 
 from common_test_base import CommonTestBase
-from mock_usbip import MockUSBIP, USBIPClient
+from mock_usbip import MockUSBIP, USBIPServerClient
 
 from serial_usbipclient.protocol.packets import RET_SUBMIT_PREFIX
 from serial_usbipclient.protocol.urb_packets import (CDCDescriptorSubType,
@@ -14,7 +14,7 @@ from serial_usbipclient.protocol.urb_packets import (CDCDescriptorSubType,
                                                      StringDescriptor)
 
 
-class MockUSBIPClient(USBIPClient):
+class MockUSBIPClient(USBIPServerClient):
     """fake usbipclient for testing"""
     def __init__(self, busid: bytes):
         """set up local variables"""
