@@ -5,7 +5,8 @@ import os
 from socket import AF_INET, SHUT_RDWR, SOCK_STREAM, socket
 
 from common_test_base import CommonTestBase
-from mock_usbip import MockUSBDevice, MockUSBIP, ParseLSUSB, USBIPServerClient, OrderlyExit
+from mock_usbip import (MockUSBDevice, MockUSBIP, OrderlyExit, ParseLSUSB,
+                        USBIPServerClient)
 
 from serial_usbipclient.protocol.packets import (CMD_SUBMIT, CMD_UNLINK,
                                                  OP_REQ_IMPORT, CommonHeader)
