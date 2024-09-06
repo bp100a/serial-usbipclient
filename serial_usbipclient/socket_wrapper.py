@@ -1,7 +1,6 @@
 """wraps socket so we can abstract if for testing (dependency injection)"""
-from typing import Any
-
 from socket import AddressFamily, SocketKind, socket
+from typing import Any
 
 from typing_extensions import Buffer
 

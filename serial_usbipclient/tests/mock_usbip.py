@@ -36,7 +36,6 @@ from serial_usbipclient.protocol.usb_descriptors import DescriptorType
 from serial_usbipclient.protocol.usbip_defs import BasicCommands, Direction
 from serial_usbipclient.socket_wrapper import SocketWrapper
 
-
 LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
