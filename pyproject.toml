@@ -59,10 +59,10 @@ py-datastruct = "^1.0.0"
 typing-extensions="^4.12"
 
 [tool.poetry.group.tests.dependencies]
-pytest = "8.3.2"
+pytest = "8.3.3"
 pytest-xdist = "3.6.1"
 coverage = "7.6.1"
-pylint = "3.2.6"
+pylint = "3.2.7"
 pip-tools = "7.4.1"
 black = "24.8.0"
 pytest-cov = "5.0.0"

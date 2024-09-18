@@ -12,7 +12,8 @@ import socket
 import struct
 import sys
 import traceback
-from enum import EnumType, StrEnum
+from enum import EnumMeta
+
 from pathlib import Path
 from threading import Event, Thread
 from time import sleep, time
@@ -171,7 +172,7 @@ class ParseLSUSB:
                 elif value.startswith('0x'):
                     value = self.from_hex(value)
 
-                if type(field[0].type) == EnumType:  # pylint: disable=unidiomatic-typecheck
+                if type(field[0].type) == EnumMeta:  # pylint: disable=unidiomatic-typecheck
                     value = int(value)
                 typed_value = field[0].type(value)
                 setattr(urb, name, typed_value)
@@ -419,10 +420,10 @@ class MockUSBIP:
     """mock USBIP server"""
     STARTUP_TIMEOUT: float = 5.0
 
-    class DebugCommands(StrEnum):
+    class DebugCommands:
         """commands that are tunneled and their expected behavior"""
-        NO_WRITE_RESPONSE = 'no-write-response'  # write does not return acknowledgement
-        NO_READ_RESPONSE = 'no-read-response'  # suppress an expected read
+        NO_WRITE_RESPONSE: str = 'no-write-response'  # write does not return acknowledgement
+        NO_READ_RESPONSE: str = 'no-read-response'  # suppress an expected read
 
     def __init__(self, host: str, port: int, socket_class: type = SocketWrapper):
         """set up our instance"""
