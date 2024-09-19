@@ -1,4 +1,8 @@
 # CHANGES
+## [1.0.5] - 2024-09-19
+- implementation is only CPython. PyPy doesn't work due to py-datastruct
+  package.
+
 ## [1.0.4] - 2024-09-06
 - for testability, MockUSBIP server uses the SocketWrapper class
   for socket abstraction, will allow injecting errors for testing

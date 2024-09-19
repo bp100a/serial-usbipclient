@@ -1,4 +1,4 @@
-USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/poetry-build.yml/badge.svg?branch=master) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/cython) ![coverage](https://raw.githubusercontent.com/bp100a/serial-usbipclient/master/coverage.svg)
+USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/poetry-build.yml/badge.svg?branch=master) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/py-datastruct) ![coverage](https://raw.githubusercontent.com/bp100a/serial-usbipclient/master/coverage.svg)
 ========================================================================================================
 <div>
 
@@ -109,7 +109,6 @@ ___
 | pytest-xdist   | 3.6.1   | distributes testing across multiple cpu/cores      |
 | coverage       | 7.6.1   | coverage of unit tests                             |
 | pylint         | 3.2.6   | linter, ensures adherence to PEP-8 standards       |
-| pip-tools      | 7.4.1   | provides `pip-compile` to create requirement files |
 | pytest-cov     | 5.0.0   | integrates coverage with pytest                    |
 | pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
 | mypy           | 1.11.2  | type checking                                      |
@@ -123,14 +122,14 @@ ___
 |-------------|----------|--------------------------------|
 | poetry-core | 1.9.0    | build system                   |
 
-All tooling is defined in the `tool_requirements.txt` and should be installed on the build system as follows:
+All tooling is defined in the `pyporject.toml` and managed using [poetry](https://pypi.org/project/poetry/) as follows:
 ```shell
-pip install -r tool_requirements.txt
+poetry install --with tests
 ```
 
 Tooling is not needed to run the package but is required for testing & packaging.
 
-Build Process (_now using Poetry!_)
+Build Process
 --------------------------------------------------------------------------
 ___
 Store the PyPi API token
