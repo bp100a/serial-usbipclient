@@ -122,7 +122,7 @@ ___
 |-------------|----------|--------------------------------|
 | poetry-core | 1.9.0    | build system                   |
 
-All tooling is defined in the `pyporject.toml` and managed using [poetry](https://pypi.org/project/poetry/) as follows:
+All tooling is defined in the `pyproject.toml` and managed using [poetry](https://pypi.org/project/poetry/) as follows:
 ```shell
 poetry install --with tests
 ```
