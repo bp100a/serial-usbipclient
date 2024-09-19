@@ -1,4 +1,7 @@
 # CHANGES
+## [1.0.6] - 2024-09-19
+- fix logo reference
+
 ## [1.0.5] - 2024-09-19
 - implementation is only CPython. PyPy doesn't work due to py-datastruct
   package.
