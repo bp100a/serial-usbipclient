@@ -1,4 +1,4 @@
-USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/poetry-build.yml/badge.svg?branch=master) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/py-datastruct) ![coverage](https://raw.githubusercontent.com/bp100a/serial-usbipclient/master/coverage.svg)
+USBIP Serial client ![workflow](https://github.com/bp100a/serial-usbipclient/actions/workflows/poetry-build.yml/badge.svg?branch=master) ![Python](https://img.shields.io/badge/python-3.11%20%7C%20%203.12%20%7C%20%203.13%20%7C%20%203.14-blue) ![PyPI - Implementation](https://img.shields.io/pypi/implementation/py-datastruct) ![coverage](https://raw.githubusercontent.com/bp100a/serial-usbipclient/master/coverage.svg)
 ========================================================================================================
 <div>
 
@@ -19,7 +19,7 @@ it is difficult to recover the connection between the docker container and the h
 Here's a [link](https://marc.merlins.org/perso/linux/post_2018-12-20_Accessing-USB-Devices-In-Docker-_ttyUSB0_-dev-bus-usb-_-for-fastboot_-adb_-without-using-privileged.html) that discusses this issue and another solution.
 
 The USBIP client implementation will only address USB devices that implemented the CDC protocol, basically simple
-serial devices. This allows for a direct connection to the USBIP server without the need for mapping USB devices into
+serial devices. This allows for a direct connection to the USBIP server without the need of mapping USB devices into
 the container.
 
 * Project Homepage: https://github.com/bp100a/serial-usbipclient
@@ -48,7 +48,7 @@ connections: list[USBIP_Connection] = client.get_connection(device=target)
 connections[0].sendall(data=b'\01\02\03\04')
 
 # response data can be read either explicitly by specifying the size of the expected
-# response, or if 0 size is specified, up to a delimiter. The delimiter is a property of
+# response, or if 0, the size is specified, up to a delimiter. The delimiter is a property of
 # the connection and can be set, default=b'\r\n'
 connections[0].delimiter = b'\n'
 response: bytes = connections[0].response_data(size=0)  # reads until delimiter
@@ -116,11 +116,11 @@ ___
 | xenon          | 0.9.1   | static code analysis with thresholds               |
 
 
-### Packages required publish to PyPi
+### Packages required to publish to PyPi
 ___
-| Module      | Version  | comments                       |
-|-------------|----------|--------------------------------|
-| poetry-core | 1.9.0    | build system                   |
+| Module      | Version | comments                       |
+|-------------|---------|--------------------------------|
+| poetry-core | 2.2.1   | build system                   |
 
 All tooling is defined in the `pyproject.toml` and managed using [poetry](https://pypi.org/project/poetry/) as follows:
 ```shell
@@ -136,7 +136,7 @@ Store the PyPi API token
 ```bash
 keyring set https://upload.pypi.org/legacy/ __token__
 ```
-when prompted enter the API token you created using PyPi.
+when prompted, enter the API token you created using PyPi.
 
 To build the distribution and upload to PyPi
 ```cmd
