@@ -48,7 +48,7 @@ connections: list[USBIP_Connection] = client.get_connection(device=target)
 connections[0].sendall(data=b'\01\02\03\04')
 
 # response data can be read either explicitly by specifying the size of the expected
-# response, or if 0 size is specified, up to a delimiter. The delimiter is a property of
+# response, or if 0, the size is specified, up to a delimiter. The delimiter is a property of
 # the connection and can be set, default=b'\r\n'
 connections[0].delimiter = b'\n'
 response: bytes = connections[0].response_data(size=0)  # reads until delimiter
@@ -57,11 +57,11 @@ response: bytes = connections[0].response_data(size=0)  # reads until delimiter
 SOUP
 --------------------------------------------------------------------------
 ___
-| Module          | Version    | comments                                     |
-|-----------------|------------|----------------------------------------------|
-| Python          | 3.11, 3.12 | Python interpreter                           |
-| py-datastruct   | 1.0.0      | Serialization of binary to/from dataclasses  |
-| type-extensions | 4.12.2     | extensions for typing (SocketWrapper typing) |
+| Module          | Version                | comments                                     |
+|-----------------|------------------------|----------------------------------------------|
+| Python          | 3.11, 3.12, 3.13, 3.14 | Python interpreter(s)                        |
+| py-datastruct   | 1.1.0                  | Serialization of binary to/from dataclasses  |
+| type-extensions | 4.15.0                 | extensions for typing (SocketWrapper typing) |
 
 
 Useful Resources
@@ -103,20 +103,20 @@ Static code analysis performed using `radon` and `xenon`.
 
 ### Packages required to run tests
 ___
-| Module         | Version | comments                                           |
-|----------------|---------|----------------------------------------------------|
-| pytest         | 8.3.2   | unit testing framework                             |
-| pytest-xdist   | 3.6.1   | distributes testing across multiple cpu/cores      |
-| coverage       | 7.6.1   | coverage of unit tests                             |
-| pylint         | 3.2.6   | linter, ensures adherence to PEP-8 standards       |
-| pytest-cov     | 5.0.0   | integrates coverage with pytest                    |
-| pytest-timeout | 2.3.1   | provides ability to timeout pytest unit tests      |
-| mypy           | 1.11.2  | type checking                                      |
-| radon          | 6.0.1   | static code analysis                               |
-| xenon          | 0.9.1   | static code analysis with thresholds               |
+| Module          | Version | comments                                           |
+|-----------------|---------|----------------------------------------------------|
+| pytest          | 9.0.0   | unit testing framework                             |
+| pytest-xdist    | 3.8.0   | distributes testing across multiple cpu/cores      |
+| coverage        | 7.11.3  | coverage of unit tests                             |
+| pylint          | 4.0.2   | linter, ensures adherence to PEP-8 standards       |
+| pytest-cov      | 7.0.0   | integrates coverage with pytest                    |
+| pytest-timeout  | 2.4.0   | provides ability to timeout pytest unit tests      |
+| mypy            | 1.18.2  | type checking                                      |
+| radon           | 6.0.1   | static code analysis                               |
+| xenon           | 0.9.3   | static code analysis with thresholds               |
 
 
-### Packages required publish to PyPi
+### Packages required to publish to PyPi
 ___
 | Module      | Version  | comments                       |
 |-------------|----------|--------------------------------|
@@ -127,7 +127,7 @@ All tooling is defined in the `pyproject.toml` and managed using [poetry](https:
 poetry install --with tests
 ```
 
-Tooling is not needed to run the package but is required for testing & packaging.
+Tooling is not needed to run the package but is required for testing and packaging.
 
 Build Process
 --------------------------------------------------------------------------
@@ -136,7 +136,7 @@ Store the PyPi API token
 ```bash
 keyring set https://upload.pypi.org/legacy/ __token__
 ```
-when prompted enter the API token you created using PyPi.
+when prompted, enter the API token you created using PyPi.
 
 To build the distribution and upload to PyPi
 ```cmd
