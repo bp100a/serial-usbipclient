@@ -8,7 +8,6 @@ authors = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
 maintainers = [{name = "Harry J. Collins", email="bp100a@gmail.com"}]
 description = "Simple serial connectivity to CDC (serial) USB devices exposed by a USBIPD service."
 readme = "README.md"
-license = {text = "BSD License"}
 dependencies = [
   "py-datastruct>=1.1.0",
   "typing-extensions>=4.15.0",
